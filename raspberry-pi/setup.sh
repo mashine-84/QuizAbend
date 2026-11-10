@@ -38,6 +38,11 @@ sudo apt-get install -y "$CHR" fonts-noto-color-emoji   # Emoji-Schrift für die
 sudo apt-get install -y unclutter >/dev/null 2>&1 || true   # versteckt den Mauszeiger (optional)
 [ "$MODE" = kiosk ] && sudo apt-get install -y cage          # Mini-Anzeige ohne Desktop
 
+# Chromium-Richtlinie: keine Übersetzungs-Leiste, keine Passwort-/Anmelde-Hinweise
+sudo mkdir -p /etc/chromium/policies/managed
+echo '{ "TranslateEnabled": false, "PasswordManagerEnabled": false, "BrowserSignin": 0, "PromotionsEnabled": false }' | \
+  sudo tee /etc/chromium/policies/managed/quizabend.json >/dev/null
+
 NODE_BIN="$(command -v node || command -v nodejs)"
 if [ -z "$NODE_BIN" ]; then echo "Node.js konnte nicht installiert werden."; exit 1; fi
 echo "    Node.js: $($NODE_BIN -v)"
