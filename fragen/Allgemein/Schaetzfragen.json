@@ -1,0 +1,9 @@
+{
+  "paket": "Schätzfragen",
+  "fragen": [
+    {"kategorie": "Bauwerke", "frage": "Wie hoch ist der Eiffelturm (mit Antennen)?", "schaetzen": 330, "einheit": "m"},
+    {"kategorie": "Technik", "frage": "In welchem Jahr wurde das erste iPhone vorgestellt?", "schaetzen": 2007},
+    {"kategorie": "Geografie", "frage": "Wie viele Länder gehören zur Europäischen Union?", "schaetzen": 27},
+    {"kategorie": "Allgemeinwissen", "frage": "Wie viele Sekunden hat eine Stunde?", "schaetzen": 3600, "einheit": "s"}
+  ]
+}

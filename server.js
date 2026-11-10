@@ -1,4 +1,4 @@
-// TV-Quiz – kleiner Spielserver ohne zusätzliche Pakete.
+// QuizAbend – kleiner Spielserver ohne zusätzliche Pakete.
 // Start: node server.js   (danach öffnet sich die TV-Ansicht im Browser)
 
 const http = require('http');
@@ -8,22 +8,24 @@ const os = require('os');
 const { exec } = require('child_process');
 
 const PORT = Number(process.env.PORT) || 3000;
-const QUESTIONS_PER_GAME = Number(process.env.FRAGEN) || 10;
+const DEFAULT_PER_GAME = Number(process.env.FRAGEN) || 10;
 const QUESTION_TIME_MS = (Number(process.env.SEKUNDEN) || 20) * 1000;
-const VOTES_MS = 3500;   // erst zeigen, wer was gewählt hat …
-const REVEAL_MS = 5000;  // … dann die richtige Antwort
+const MATCH_TIME_MS = 30000;   // Zuordnen braucht etwas länger
+const INTRO_MS = 3000;         // Ankündigung mit Countdown 3-2-1
+const PREVIEW_MS = 6000;       // Zuordnen: Begriffe vorab zeigen
+const VOTES_MS = 3500;         // erst zeigen, wer was gewählt hat …
+const REVEAL_MS = 5000;        // … dann die Lösung
+const MATCH_STEP_MS = 2200;    // Zuordnen: Paar für Paar auflösen
 const SCORES_MS = 6000;
 const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
 
+const FRAGEN_DIR = path.join(__dirname, 'fragen');
+const SETTINGS_FILE = path.join(__dirname, 'einstellungen.json');
+const IMAGE_TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml' };
+
 const COLORS = ['#ff4d6d', '#4dabf7', '#ffd43b', '#51cf66', '#cc5de8', '#ff922b', '#22d3ee', '#f783ac'];
 const AVATARS = ['🦊', '🐼', '🐸', '🦁', '🐙', '🐵', '🦄', '🐧'];
-
-// ---------- Fragen laden ----------
-function loadQuestions() {
-  const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'fragen.json'), 'utf8'));
-  return raw.filter(q => q.frage && Array.isArray(q.antworten) && q.antworten.length >= 2);
-}
 
 function shuffle(arr) {
   const a = arr.slice();
@@ -34,20 +36,123 @@ function shuffle(arr) {
   return a;
 }
 
-// ---------- Spielzustand ----------
+// =====================================================================
+// Fragenpakete:  fragen/<Hauptkategorie>/<Paket>.json  (+ Bilder daneben oder in bilder/)
+// =====================================================================
+let packs = [];        // [{id, group, name, questions, kinds}]
+let packErrors = [];   // [{file, error}]
+
+function jsonErrorText(err, text) {
+  const m = /position (\d+)/.exec(err.message);
+  const line = m ? text.slice(0, Number(m[1])).split('\n').length : null;
+  return (line ? `Zeile ${line}: ` : '') + 'JSON-Fehler – fehlt ein Komma, eine Klammer oder ein Anführungszeichen?';
+}
+
+function resolveImage(dir, name) {
+  for (const rel of [path.join(dir, name), path.join(dir, 'bilder', name)]) {
+    const full = path.join(FRAGEN_DIR, rel);
+    if (full.startsWith(FRAGEN_DIR) && IMAGE_TYPES[path.extname(full).toLowerCase()] && fs.existsSync(full))
+      return '/media/' + rel.split(path.sep).map(encodeURIComponent).join('/');
+  }
+  return null;
+}
+
+function normalizeQuestion(q, dir, packName) {
+  if (!q || typeof q !== 'object') throw new Error('ist kein gültiger Eintrag');
+  if (!q.frage) throw new Error('das Feld "frage" fehlt');
+  const base = { category: q.kategorie || packName, text: String(q.frage), timeMs: Number(q.zeit) > 0 ? Number(q.zeit) * 1000 : null, image: null };
+  if (q.bild) {
+    base.image = resolveImage(dir, String(q.bild));
+    if (!base.image) throw new Error(`Bild "${q.bild}" nicht gefunden (in den Ordner "bilder" neben der Datei legen)`);
+  }
+  if (q.zuordnen) {
+    const pairs = Array.isArray(q.zuordnen) ? q.zuordnen : Object.entries(q.zuordnen);
+    if (pairs.length < 2 || pairs.length > 6 || pairs.some(p => !Array.isArray(p) || p.length !== 2 || !p[0] || !p[1]))
+      throw new Error('"zuordnen" braucht 2 bis 6 Paare, z. B. {"Barack Obama": "Michelle"}');
+    return { ...base, kind: 'match', pairs: pairs.map(([a, b]) => [String(a), String(b)]) };
+  }
+  if (q.schaetzen !== undefined) {
+    const value = Number(String(q.schaetzen).replace(',', '.'));
+    if (!isFinite(value)) throw new Error('"schaetzen" muss eine Zahl sein');
+    return { ...base, kind: 'estimate', value, unit: q.einheit ? String(q.einheit) : '' };
+  }
+  if (Array.isArray(q.antworten) && q.antworten.length >= 2)
+    return { ...base, kind: 'choice', answers: q.antworten.slice(0, 4).map(String) };
+  throw new Error('es fehlen "antworten", "schaetzen" oder "zuordnen"');
+}
+
+function loadPacks() {
+  const found = [], errors = [];
+  const addFile = (group, rel) => {
+    const full = path.join(FRAGEN_DIR, rel);
+    let text, raw;
+    try { text = fs.readFileSync(full, 'utf8').replace(/^﻿/, ''); raw = JSON.parse(text); }
+    catch (e) { errors.push({ file: rel, error: text ? jsonErrorText(e, text) : 'Datei nicht lesbar' }); return; }
+    const list = Array.isArray(raw) ? raw : raw && raw.fragen;
+    const name = (!Array.isArray(raw) && raw && raw.paket) || path.basename(rel, '.json');
+    if (!Array.isArray(list)) { errors.push({ file: rel, error: 'keine Liste "fragen" gefunden' }); return; }
+    const questions = [];
+    list.forEach((q, i) => {
+      try { questions.push(normalizeQuestion(q, path.dirname(rel), name)); }
+      catch (e) { errors.push({ file: rel, error: `Frage ${i + 1}: ${e.message}` }); }
+    });
+    const kinds = {
+      choice: questions.some(q => q.kind === 'choice' && !q.image), image: questions.some(q => q.image),
+      estimate: questions.some(q => q.kind === 'estimate'), match: questions.some(q => q.kind === 'match'),
+    };
+    found.push({ id: rel.replace(/\\/g, '/').replace(/\.json$/i, ''), group, name, questions, kinds });
+  };
+  if (fs.existsSync(FRAGEN_DIR)) {
+    for (const e of fs.readdirSync(FRAGEN_DIR, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name, 'de'))) {
+      if (e.isDirectory()) {
+        for (const f of fs.readdirSync(path.join(FRAGEN_DIR, e.name)).sort((a, b) => a.localeCompare(b, 'de')))
+          if (f.toLowerCase().endsWith('.json')) addFile(e.name, path.join(e.name, f));
+      } else if (e.name.toLowerCase().endsWith('.json')) addFile('Sonstiges', e.name);
+    }
+  }
+  packs = found;
+  packErrors = errors;
+  if (errors.length) console.log('  ⚠️  Probleme in Fragendateien:\n' + errors.map(e => `     ${e.file}: ${e.error}`).join('\n'));
+}
+
+// ---------- Einstellungen (welche Pakete aktiv sind) ----------
+let settings = { disabled: [], perGame: DEFAULT_PER_GAME };
+try { settings = { ...settings, ...JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) }; } catch (_) {}
+function saveSettings() { try { fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2)); } catch (_) {} }
+const isEnabled = p => !settings.disabled.includes(p.id);
+const activePool = () => packs.filter(isEnabled).flatMap(p => p.questions);
+
+function packSummary() {
+  return { enabledPacks: packs.filter(isEnabled).length, totalPacks: packs.length, questions: activePool().length,
+    perGame: settings.perGame, errors: packErrors.length };
+}
+
+function packList() {
+  const groups = [];
+  for (const p of packs) {
+    let g = groups.find(x => x.name === p.group);
+    if (!g) groups.push(g = { name: p.group, packs: [] });
+    g.packs.push({ id: p.id, name: p.name, count: p.questions.length, kinds: p.kinds, enabled: isEnabled(p) });
+  }
+  return { groups, errors: packErrors, perGame: settings.perGame };
+}
+
+// =====================================================================
+// Spielzustand
+// =====================================================================
 const players = new Map(); // id -> {id,name,color,avatar,score,connected,joinedAt}
 const clients = new Set(); // {res, role, playerId}
 let state = newGameState();
 let timer = null;
 
 function newGameState() {
-  return { phase: 'lobby', questions: [], idx: -1, startedAt: 0, endsAt: 0, answers: {}, results: {} };
+  return { phase: 'lobby', questions: [], idx: -1, phaseEnds: 0, phaseMs: 0, startedAt: 0, answers: {}, results: {}, step: 0 };
 }
 
 function currentQuestion() { return state.questions[state.idx]; }
 
 function vipId() {
-  // Der zuerst beigetretene, verbundene Spieler darf das Spiel steuern.
+  // Der zuerst beigetretene, verbundene Spieler ist der Gamemaster (👑)
   const list = [...players.values()].filter(p => p.connected).sort((a, b) => a.joinedAt - b.joinedAt);
   return list[0] ? list[0].id : null;
 }
@@ -59,84 +164,154 @@ function freeSlot() {
 }
 
 function clearTimer() { if (timer) { clearTimeout(timer); timer = null; } }
+function setPhase(phase, ms, next) {
+  clearTimer();
+  state.phase = phase;
+  state.phaseMs = ms || 0;
+  state.phaseEnds = ms ? Date.now() + ms : 0;
+  if (ms && next) timer = setTimeout(next, ms);
+  broadcast();
+}
+
+function prepareQuestion(q) {
+  const out = { ...q };
+  if (q.kind === 'choice') {
+    out.answers = shuffle(q.answers);
+    out.correct = out.answers.indexOf(q.answers[0]);
+  }
+  if (q.kind === 'match') {
+    const pairs = shuffle(q.pairs);
+    out.left = pairs.map(p => p[0]);
+    out.right = shuffle(pairs.map(p => p[1]));
+    out.solution = pairs.map(p => out.right.indexOf(p[1])); // linker Index -> rechter Index
+  }
+  if (q.kind === 'match') { out.label = 'Zuordnung'; out.icon = '🔗'; }
+  else if (q.kind === 'estimate') { out.label = q.image ? 'Bilderrätsel · Schätzfrage' : 'Schätzfrage'; out.icon = q.image ? '🖼️' : '🔢'; }
+  else if (q.image) { out.label = 'Bilderrätsel'; out.icon = '🖼️'; }
+  out.timeMs = q.timeMs || (q.kind === 'match' ? MATCH_TIME_MS : QUESTION_TIME_MS);
+  return out;
+}
 
 function startGame() {
-  const pool = loadQuestions();
-  const picked = shuffle(pool).slice(0, QUESTIONS_PER_GAME).map(q => {
-    const correctText = q.antworten[0];
-    const answers = shuffle(q.antworten.slice(0, 4));
-    return { category: q.kategorie || 'Quiz', text: q.frage, answers, correct: answers.indexOf(correctText) };
-  });
+  loadPacks();
+  const pool = activePool();
+  if (!pool.length) return false;
   for (const p of players.values()) { p.score = 0; p.streak = 0; }
   state = newGameState();
-  state.questions = picked;
+  state.questions = shuffle(pool).slice(0, settings.perGame).map(prepareQuestion);
   nextQuestion();
+  return true;
 }
 
 function nextQuestion() {
-  clearTimer();
   state.idx++;
-  if (state.idx >= state.questions.length) { state.phase = 'end'; broadcast(); return; }
-  state.phase = 'question';
+  if (state.idx >= state.questions.length) return setPhase('end');
   state.answers = {};
   state.results = {};
-  state.startedAt = Date.now();
-  state.endsAt = state.startedAt + QUESTION_TIME_MS;
-  timer = setTimeout(showVotes, QUESTION_TIME_MS);
-  broadcast();
+  state.step = 0;
+  const q = currentQuestion();
+  if (q.label) setPhase('intro', INTRO_MS, afterIntro); // neue Fragearten werden angekündigt
+  else startAnswering();
 }
 
-function showVotes() {
-  // Zeit um: alle sehen, wer was gewählt hat – die Lösung kommt danach
-  clearTimer();
-  state.phase = 'votes';
-  timer = setTimeout(reveal, VOTES_MS);
-  broadcast();
+function afterIntro() {
+  if (currentQuestion().kind === 'match') setPhase('preview', PREVIEW_MS, startAnswering);
+  else startAnswering();
+}
+
+function startAnswering() {
+  state.startedAt = Date.now();
+  state.answerEnds = state.startedAt + currentQuestion().timeMs;
+  setPhase('question', currentQuestion().timeMs, endAnswering);
+}
+
+function endAnswering() {
+  if (currentQuestion().kind === 'match') reveal();
+  else setPhase('votes', VOTES_MS, reveal);
+}
+
+function streakBonus(p, ok) {
+  p.streak = ok ? (p.streak || 0) + 1 : 0;
+  return ok ? Math.min(p.streak - 1, 3) * 50 : 0;
+}
+const round10 = x => Math.round(x / 10) * 10;
+
+function scoreQuestion() {
+  const q = currentQuestion();
+  const speed = a => Math.max(0, state.answerEnds - a.at) / q.timeMs; // 1 = sofort, 0 = letzte Sekunde
+  const list = [...players.values()];
+  if (q.kind === 'estimate') {
+    const diffs = list.map(p => state.answers[p.id]).filter(Boolean).map(a => Math.abs(a.value - q.value));
+    const best = diffs.length ? Math.min(...diffs) : null;
+    for (const p of list) {
+      const a = state.answers[p.id];
+      if (!a) { streakBonus(p, false); state.results[p.id] = { gain: 0, correct: false, answered: false }; continue; }
+      const diff = Math.abs(a.value - q.value);
+      const acc = q.value === 0 ? (diff === 0 ? 1 : 0) : Math.max(0, 1 - diff / Math.abs(q.value));
+      const closest = diff === best;
+      const gain = round10(800 * acc) + (closest ? 200 : 0) + streakBonus(p, closest);
+      p.score += gain;
+      state.results[p.id] = { gain, correct: closest, exact: diff === 0, answered: true, value: a.value };
+    }
+  } else if (q.kind === 'match') {
+    for (const p of list) {
+      const a = state.answers[p.id];
+      if (!a) { streakBonus(p, false); state.results[p.id] = { gain: 0, correct: false, answered: false, pairs: q.left.map(() => false) }; continue; }
+      const pairs = q.solution.map((r, i) => a.order[i] === r);
+      const k = pairs.filter(Boolean).length, all = k === pairs.length;
+      const gain = round10((k / pairs.length) * (500 + 500 * speed(a))) + streakBonus(p, all);
+      p.score += gain;
+      state.results[p.id] = { gain, correct: all, answered: true, pairs, right: k };
+    }
+  } else {
+    for (const p of list) {
+      const a = state.answers[p.id];
+      const ok = !!a && a.choice === q.correct;
+      const gain = ok ? round10(500 + 500 * speed(a)) + streakBonus(p, true) : (streakBonus(p, false), 0);
+      p.score += gain;
+      state.results[p.id] = { gain, correct: ok, answered: !!a, choice: a ? a.choice : null };
+    }
+  }
 }
 
 function reveal() {
-  clearTimer();
+  scoreQuestion();
   const q = currentQuestion();
-  for (const p of players.values()) {
-    const a = state.answers[p.id];
-    let gain = 0;
-    if (a && a.choice === q.correct) {
-      const remaining = Math.max(0, state.endsAt - a.at) / QUESTION_TIME_MS;
-      p.streak = (p.streak || 0) + 1;
-      gain = Math.round((500 + 500 * remaining) / 10) * 10 + Math.min(p.streak - 1, 3) * 50;
-    } else {
-      p.streak = 0;
-    }
-    p.score += gain;
-    state.results[p.id] = { gain, correct: !!a && a.choice === q.correct, answered: !!a, choice: a ? a.choice : null };
-  }
-  state.phase = 'reveal';
-  timer = setTimeout(showScores, REVEAL_MS);
-  broadcast();
+  if (q.kind === 'match') {
+    state.step = 0;
+    const stepOn = () => {
+      state.step++;
+      if (state.step >= q.left.length) setPhase('reveal', REVEAL_MS, showScores);
+      else setPhase('reveal', MATCH_STEP_MS, stepOn);
+    };
+    setPhase('reveal', 1200, stepOn);
+  } else setPhase('reveal', REVEAL_MS, showScores);
 }
 
 function showScores() {
-  clearTimer();
-  state.phase = 'scores';
   const last = state.idx >= state.questions.length - 1;
-  timer = setTimeout(last ? () => { state.phase = 'end'; broadcast(); } : nextQuestion, SCORES_MS);
-  broadcast();
+  setPhase('scores', SCORES_MS, last ? () => setPhase('end') : nextQuestion);
 }
 
 function advance() {
-  // "Weiter"-Knopf: überspringt Wartezeiten
-  if (state.phase === 'lobby') { if (connectedCount() >= MIN_PLAYERS) startGame(); }
-  else if (state.phase === 'question') showVotes();
-  else if (state.phase === 'votes') reveal();
-  else if (state.phase === 'reveal') showScores();
-  else if (state.phase === 'scores') {
-    if (state.idx >= state.questions.length - 1) { clearTimer(); state.phase = 'end'; broadcast(); }
-    else nextQuestion();
-  } else if (state.phase === 'end') {
-    clearTimer();
-    for (const p of players.values()) { p.score = 0; p.streak = 0; }
-    state = newGameState();
-    broadcast();
+  // "Weiter"-Knopf (👑 am Handy oder Leertaste am TV): überspringt Wartezeiten
+  const q = currentQuestion();
+  switch (state.phase) {
+    case 'lobby': if (connectedCount() >= MIN_PLAYERS) startGame(); break;
+    case 'intro': afterIntro(); break;
+    case 'preview': startAnswering(); break;
+    case 'question': endAnswering(); break;
+    case 'votes': reveal(); break;
+    case 'reveal':
+      if (q.kind === 'match' && state.step < q.left.length) { state.step = q.left.length; setPhase('reveal', REVEAL_MS, showScores); }
+      else showScores();
+      break;
+    case 'scores': if (state.idx >= state.questions.length - 1) setPhase('end'); else nextQuestion(); break;
+    case 'end':
+      for (const p of players.values()) { p.score = 0; p.streak = 0; }
+      state = newGameState();
+      setPhase('lobby');
+      break;
   }
 }
 
@@ -147,7 +322,9 @@ function allAnswered() {
   return active.length > 0 && active.every(p => state.answers[p.id]);
 }
 
-// ---------- Ansichten für TV und Handy ----------
+// =====================================================================
+// Ansichten für TV und Handy
+// =====================================================================
 function ranking() {
   return [...players.values()]
     .sort((a, b) => b.score - a.score || a.joinedAt - b.joinedAt)
@@ -159,21 +336,36 @@ function rankOf(id) { return ranking().findIndex(p => p.id === id) + 1; }
 
 function baseView() {
   const q = currentQuestion();
+  const ph = state.phase;
   const v = {
-    phase: state.phase, vip: vipId(), minPlayers: MIN_PLAYERS, maxPlayers: MAX_PLAYERS,
+    phase: ph, vip: vipId(), minPlayers: MIN_PLAYERS, maxPlayers: MAX_PLAYERS,
     players: ranking(), qNum: state.idx + 1, qTotal: state.questions.length,
-    remainingMs: state.phase === 'question' ? Math.max(0, state.endsAt - Date.now()) : 0,
-    durationMs: QUESTION_TIME_MS,
+    remainingMs: state.phaseEnds ? Math.max(0, state.phaseEnds - Date.now()) : 0, phaseMs: state.phaseMs,
+    packs: packSummary(),
   };
-  if (q && state.phase !== 'lobby' && state.phase !== 'end') {
-    v.question = { category: q.category, text: q.text, answers: q.answers };
-    if (state.phase !== 'question') {
-      // wer hat was gewählt (in Reihenfolge der Antworten)
-      const byTime = Object.entries(state.answers).sort((a, b) => a[1].at - b[1].at);
-      v.question.voters = q.answers.map((_, i) => byTime.filter(([, a]) => a.choice === i).map(([id]) => id));
-      v.question.counts = v.question.voters.map(l => l.length);
+  if (q && ['intro', 'preview', 'question', 'votes', 'reveal'].includes(ph)) {
+    const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category };
+    if (ph !== 'intro' && q.kind === 'match') vq.left = q.left;
+    if (['question', 'votes', 'reveal'].includes(ph)) {
+      vq.text = q.text; vq.image = q.image;
+      if (q.kind === 'choice') vq.answers = q.answers;
+      if (q.kind === 'match') vq.right = q.right;
+      if (q.kind === 'estimate') vq.unit = q.unit;
     }
-    if (state.phase !== 'question' && state.phase !== 'votes') v.question.correct = q.correct;
+    if (ph === 'votes' || ph === 'reveal') {
+      const byTime = Object.entries(state.answers).sort((a, b) => a[1].at - b[1].at);
+      if (q.kind === 'choice') {
+        vq.voters = q.answers.map((_, i) => byTime.filter(([, a]) => a.choice === i).map(([id]) => id));
+        vq.counts = vq.voters.map(l => l.length);
+      }
+      if (q.kind === 'estimate')
+        vq.guesses = byTime.map(([id, a]) => ({ id, value: a.value })).sort((a, b) => a.value - b.value);
+    }
+    if (ph === 'reveal') {
+      if (q.kind === 'choice') vq.correct = q.correct;
+      if (q.kind === 'estimate') vq.value = q.value;
+      if (q.kind === 'match') { vq.solution = q.solution.slice(0, state.step); vq.step = state.step; }
+    }
   }
   return v;
 }
@@ -184,7 +376,7 @@ function viewFor(client, base) {
   return { ...base, me: me ? {
     id: me.id, name: me.name, color: me.color, avatar: me.avatar, score: me.score,
     rank: rankOf(me.id), isVip: vipId() === me.id,
-    myAnswer: state.answers[me.id] ? state.answers[me.id].choice : null,
+    answer: state.answers[me.id] || null,
     result: state.results[me.id] || null,
   } : null };
 }
@@ -219,7 +411,9 @@ function lanIp() {
 
 function joinInfo() { return { url: `http://${lanIp()}:${PORT}/` }; }
 
-// ---------- HTTP ----------
+// =====================================================================
+// HTTP
+// =====================================================================
 function readBody(req) {
   return new Promise(resolve => {
     let data = '';
@@ -244,6 +438,35 @@ function serveFile(res, file) {
   });
 }
 
+function serveMedia(res, rel) {
+  let full;
+  try { full = path.normalize(path.join(FRAGEN_DIR, decodeURIComponent(rel))); } catch (_) { full = ''; }
+  const type = IMAGE_TYPES[path.extname(full).toLowerCase()];
+  if (!full.startsWith(FRAGEN_DIR + path.sep) || !type) { res.writeHead(404); res.end(); return; }
+  fs.readFile(full, (err, buf) => {
+    if (err) { res.writeHead(404); res.end(); return; }
+    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'max-age=3600' });
+    res.end(buf);
+  });
+}
+
+function validAnswer(q, body) {
+  if (q.kind === 'choice') {
+    const choice = Number(body.choice);
+    return Number.isInteger(choice) && choice >= 0 && choice < q.answers.length ? { choice } : null;
+  }
+  if (q.kind === 'estimate') {
+    const value = Number(String(body.value).replace(',', '.'));
+    return body.value !== '' && isFinite(value) && Math.abs(value) < 1e12 ? { value } : null;
+  }
+  if (q.kind === 'match') {
+    const order = body.order, n = q.left.length;
+    const ok = Array.isArray(order) && order.length === n && new Set(order).size === n && order.every(x => Number.isInteger(x) && x >= 0 && x < n);
+    return ok ? { order } : null;
+  }
+  return null;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
@@ -251,6 +474,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && (p === '/' || p === '/play')) return serveFile(res, 'play.html');
   if (req.method === 'GET' && p === '/tv') return serveFile(res, 'tv.html');
   if (req.method === 'GET' && p === '/qr.js') return serveFile(res, 'qr.js');
+  if (req.method === 'GET' && p.startsWith('/media/')) return serveMedia(res, p.slice(7));
 
   if (req.method === 'GET' && p === '/events') {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
@@ -269,7 +493,7 @@ const server = http.createServer(async (req, res) => {
         if (state.phase === 'lobby') setTimeout(() => {
           if (state.phase === 'lobby' && players.has(pl.id) && !players.get(pl.id).connected) { players.delete(pl.id); broadcast(); }
         }, 20000);
-        if (state.phase === 'question' && allAnswered()) showVotes();
+        if (state.phase === 'question' && allAnswered()) return endAnswering();
       }
       broadcast();
     });
@@ -296,20 +520,38 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && p === '/api/answer') {
     const body = await readBody(req);
     const pl = players.get(body.id);
-    const choice = Number(body.choice);
-    if (!pl || state.phase !== 'question' || state.answers[pl.id] || !(choice >= 0 && choice < currentQuestion().answers.length))
-      return json(res, 409, { ok: false });
-    state.answers[pl.id] = { choice, at: Date.now() };
-    if (allAnswered()) showVotes(); else broadcast();
+    const q = currentQuestion();
+    const answer = pl && state.phase === 'question' && !state.answers[pl.id] && validAnswer(q, body);
+    if (!answer) return json(res, 409, { ok: false });
+    state.answers[pl.id] = { ...answer, at: Date.now() };
+    if (allAnswered()) endAnswering(); else broadcast();
     return json(res, 200, { ok: true });
   }
 
   if (req.method === 'POST' && p === '/api/advance') {
     const body = await readBody(req);
-    // Steuern darf der Fernseher (role=tv) oder der VIP-Spieler
+    // Steuern darf der Fernseher (role=tv) oder der Gamemaster
     if (body.role !== 'tv' && body.id !== vipId()) return json(res, 403, { ok: false });
     advance();
     return json(res, 200, { ok: true });
+  }
+
+  if (req.method === 'GET' && p === '/api/pakete') {
+    if (state.phase === 'lobby') loadPacks(); // neue/geänderte Dateien sofort sehen
+    broadcast();
+    return json(res, 200, packList());
+  }
+
+  if (req.method === 'POST' && p === '/api/pakete') {
+    const body = await readBody(req);
+    if (body.id !== vipId() || state.phase !== 'lobby') return json(res, 403, { ok: false });
+    const disabled = new Set(settings.disabled);
+    for (const [packId, on] of Object.entries(body.set || {})) on ? disabled.delete(packId) : disabled.add(packId);
+    settings.disabled = [...disabled];
+    if (body.perGame) settings.perGame = Math.max(1, Math.min(50, Math.round(Number(body.perGame)) || DEFAULT_PER_GAME));
+    saveSettings();
+    broadcast();
+    return json(res, 200, packList());
   }
 
   if (req.method === 'POST' && p === '/api/leave') {
@@ -327,11 +569,14 @@ server.on('error', err => {
   process.exit(1);
 });
 
+loadPacks();
 server.listen(PORT, '0.0.0.0', () => {
   const tvUrl = `http://localhost:${PORT}/tv`;
-  console.log('\n  🎉 TV-Quiz läuft!\n');
-  console.log(`  📺 Fernseher (auf diesem Laptop öffnen):  ${tvUrl}`);
-  console.log(`  📱 Handys (im selben WLAN):               ${joinInfo().url}\n`);
+  const s = packSummary();
+  console.log('\n  🎉 QuizAbend läuft!\n');
+  console.log(`  📺 Fernseher (auf diesem Gerät öffnen):  ${tvUrl}`);
+  console.log(`  📱 Handys (im selben WLAN):              ${joinInfo().url}`);
+  console.log(`  📚 ${s.enabledPacks} von ${s.totalPacks} Fragenpaketen aktiv, ${s.questions} Fragen\n`);
   console.log('  Beenden mit Strg+C\n');
   if (!process.env.NO_BROWSER) {
     const cmd = process.platform === 'win32' ? `start "" "${tvUrl}"` : process.platform === 'darwin' ? `open "${tvUrl}"` : `xdg-open "${tvUrl}"`;
