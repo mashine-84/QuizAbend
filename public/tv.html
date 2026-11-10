@@ -199,12 +199,11 @@ function render() {
   const stage = S.phase === 'intro' || S.phase === 'preview' ? S.phase : 'main';
   const key = inQ ? `Q:${S.qNum}:${stage}` : S.phase + ':' + S.qNum;
   const fresh = key !== lastKey;
-  if (inQ && S.qNum !== lastQ) { prevScores = Object.fromEntries(S.players.map(p => [p.id, p.score])); lastQ = S.qNum; }
   if (S.remainingMs && (S.phase !== lastPhase || Math.abs(Date.now() + S.remainingMs - deadline) > 1200)) deadline = Date.now() + S.remainingMs;
   lastKey = key; lastPhase = S.phase;
 
   document.getElementById('status').style.display = (!KIOSK && (S.phase === 'lobby' || S.phase === 'end')) ? '' : 'none';
-  if (S.phase === 'lobby') { lastQ = 0; return renderLobby(); }
+  if (S.phase === 'lobby') { prevScores = {}; return renderLobby(); }
   if (stage === 'intro') return fresh ? renderIntro() : null;
   if (stage === 'preview') return fresh ? renderPreview() : null;
   if (inQ) return fresh ? renderMain() : updateMain();
@@ -381,11 +380,12 @@ function renderScores() {
   app.innerHTML = topbar(`<span class="pill">Nach Frage ${S.qNum} / ${S.qTotal}</span>`) + `
     <div class="board"><h2>${last ? 'Gleich kommt die Siegerehrung …' : 'Zwischenstand'}</h2>
       <div class="rows">${S.players.map((p, i) => {
-        const gain = p.result ? p.result.gain : 0;
+        const gain = p.score - (prevScores[p.id] || 0); // Punkte seit der letzten Rangliste
         return `<div class="row" style="--pc:${p.color};animation-delay:${i * 0.07}s"><span class="pos">${i + 1}.</span><span class="av">${p.avatar}</span>
           <span style="min-width:14vw">${esc(p.name)}</span><span class="bar"><i style="width:${(prevScores[p.id] || 0) / max * 100}%" data-w="${p.score / max * 100}"></i></span>
           <span class="plus">${gain ? '+' + gain : ''}</span><span class="pts" data-from="${p.score - gain}" data-to="${p.score}">${p.score - gain}</span></div>`;
       }).join('')}</div></div>`;
+  prevScores = Object.fromEntries(S.players.map(p => [p.id, p.score]));
   setTimeout(() => {
     document.querySelectorAll('.bar i').forEach(i => { i.style.width = i.dataset.w + '%'; });
     countUp(document.querySelectorAll('.pts'));

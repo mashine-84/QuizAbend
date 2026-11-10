@@ -17,6 +17,7 @@ const VOTES_MS = 3500;         // erst zeigen, wer was gewählt hat …
 const REVEAL_MS = 5000;        // … dann die Lösung
 const MATCH_STEP_MS = 2200;    // Zuordnen: Paar für Paar auflösen
 const SCORES_MS = 6000;
+const SCORES_EVERY = Number(process.env.RANGLISTE) || 5; // Rangliste nur alle X Fragen (und am Ende)
 const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
 
@@ -281,11 +282,17 @@ function reveal() {
     state.step = 0;
     const stepOn = () => {
       state.step++;
-      if (state.step >= q.left.length) setPhase('reveal', REVEAL_MS, showScores);
+      if (state.step >= q.left.length) setPhase('reveal', REVEAL_MS, afterReveal);
       else setPhase('reveal', MATCH_STEP_MS, stepOn);
     };
     setPhase('reveal', 1200, stepOn);
-  } else setPhase('reveal', REVEAL_MS, showScores);
+  } else setPhase('reveal', REVEAL_MS, afterReveal);
+}
+
+function afterReveal() {
+  const last = state.idx >= state.questions.length - 1;
+  if (last || (state.idx + 1) % SCORES_EVERY === 0) showScores();
+  else nextQuestion();
 }
 
 function showScores() {
@@ -303,8 +310,8 @@ function advance() {
     case 'question': endAnswering(); break;
     case 'votes': reveal(); break;
     case 'reveal':
-      if (q.kind === 'match' && state.step < q.left.length) { state.step = q.left.length; setPhase('reveal', REVEAL_MS, showScores); }
-      else showScores();
+      if (q.kind === 'match' && state.step < q.left.length) { state.step = q.left.length; setPhase('reveal', REVEAL_MS, afterReveal); }
+      else afterReveal();
       break;
     case 'scores': if (state.idx >= state.questions.length - 1) setPhase('end'); else nextQuestion(); break;
     case 'end':
