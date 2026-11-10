@@ -97,6 +97,10 @@
   .status { position: fixed; left: 50%; bottom: 1.5vh; transform: translateX(-50%); font-size: 1.1vw; color: var(--muted); opacity: .7; }
   .confetti { position: fixed; top: -3vh; width: .8vw; height: 1.6vw; border-radius: .2vw; animation: fall linear forwards; pointer-events: none; }
   @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+
+  /* Schonender Modus für schwache Geräte (z. B. Raspberry Pi 3): /tv?lite=1 */
+  html.lite body { background: var(--bg); }
+  html.lite *, html.lite *::before, html.lite *::after { animation: none !important; transition: none !important; box-shadow: none !important; text-shadow: none !important; }
 </style>
 </head>
 <body>
@@ -105,6 +109,8 @@
 <script src="/qr.js"></script>
 <script>
 const SHAPES = ['▲', '◆', '●', '■'];
+const LITE = /[?&]lite=1/.test(location.search);
+if (LITE) document.documentElement.classList.add('lite');
 const app = document.getElementById('app');
 let S = null, lastKey = '', deadline = 0, seen = new Set(), prevScores = {};
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -204,7 +210,7 @@ function updateQuestion() {
   }
 }
 
-(function tick() {
+function tick() {
   if (S && S.phase === 'question') {
     const left = Math.max(0, deadline - Date.now());
     const arc = document.getElementById('arc'), num = document.getElementById('num');
@@ -214,8 +220,9 @@ function updateQuestion() {
       num.textContent = Math.ceil(left / 1000);
     }
   }
-  requestAnimationFrame(tick);
-})();
+  if (!LITE) requestAnimationFrame(tick);
+}
+if (LITE) setInterval(tick, 250); else tick();
 
 function renderScores() {
   const max = Math.max(1, ...S.players.map(p => p.score));
@@ -235,6 +242,7 @@ function renderScores() {
 }
 
 function countUp(els) {
+  if (LITE) { els.forEach(el => { el.textContent = el.dataset.to; }); return; }
   const t0 = performance.now();
   (function step(t) {
     const k = Math.min(1, (t - t0) / 1200), e = 1 - Math.pow(1 - k, 3);
@@ -259,6 +267,7 @@ function renderEnd() {
 }
 
 function confetti() {
+  if (LITE) return;
   const colors = ['#e5484d', '#3e8ef7', '#f5b014', '#2fb36d', '#cc5de8', '#fff'];
   for (let i = 0; i < 120; i++) {
     const c = document.createElement('div');

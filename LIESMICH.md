@@ -18,6 +18,24 @@ Lade Node.js (LTS-Version) von https://nodejs.org herunter und installiere es.
 
 **Steuerung am Laptop:** Leertaste/Enter = weiter (überspringt Wartezeiten) · F = Vollbild
 
+## Raspberry Pi (z. B. Pi 3 Model B) als feste Quiz-Box
+Der Pi hängt per HDMI am Fernseher. Nach dem Einschalten startet das Quiz von selbst im Vollbild, einen Laptop brauchst du dann nicht mehr.
+
+Du brauchst **Raspberry Pi OS mit Desktop** (nicht „Lite“), und der Pi muss im WLAN oder per Kabel im Netz sein. Dann im Terminal des Pi:
+```bash
+git clone https://github.com/mashine-84/QuizAbend
+cd QuizAbend
+./raspberry-pi/setup.sh
+sudo reboot
+```
+Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, öffnet nach dem Login die TV-Ansicht im Vollbild und schaltet den Bildschirmschoner ab.
+
+- **Grafik:** Auf dem Pi läuft die TV-Ansicht im schonenden Modus (ohne Konfetti und Animationen), damit nichts ruckelt. Auf einem Pi 4/5 kannst du in `raspberry-pi/kiosk.sh` `LITE=0` setzen.
+- **Steuern ohne Tastatur:** Der 👑-Spieler startet und überspringt alles am Handy.
+- **Fragen ändern:** `fragen.json` bearbeiten und danach `sudo systemctl restart quizabend` ausführen.
+- **Updates holen:** `cd QuizAbend && git pull && sudo systemctl restart quizabend`
+- **Autostart abschalten:** `sudo systemctl disable quizabend` und `rm ~/.config/autostart/quizabend-kiosk.desktop`
+
 ## Ablauf und Punkte
 - 10 zufällige Fragen pro Runde, je 20 Sekunden.
 - Richtig = 500 bis 1000 Punkte (je schneller, desto mehr), dazu bis zu +150 Bonus für Serien.
