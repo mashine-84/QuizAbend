@@ -18,6 +18,7 @@
     background: radial-gradient(ellipse at 20% 0%, #3a2a8a 0%, transparent 55%),
                 radial-gradient(ellipse at 100% 100%, #5b1f6e 0%, transparent 50%), var(--bg);
     font-size: 1.6vw;
+    --row: 13vh;   /* einheitliche Höhe für Antwort-Kacheln und Zuordnungszeilen */
   }
   #app { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 3vh 4vw 4.5vh; }
   .brand { font-weight: 900; letter-spacing: -0.02em; }
@@ -62,7 +63,7 @@
   .chip.ok { background: rgba(47,179,109,.35); opacity: 1; }
   .chip.bad { background: rgba(229,72,77,.3); opacity: 1; }
   .chip .gain { color: #8ff0b5; margin-left: .3vw; }
-  .answers { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 1.6vw; }
+  .answers { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(0, var(--row)); align-content: center; gap: 1.4vh 1.6vw; }
   .ans { border-radius: 1.4vw; display: flex; align-items: center; gap: 1.6vw; padding: 0 2vw; font-size: 2.6vw; font-weight: 800; box-shadow: 0 .8vh 0 rgba(0,0,0,.25); transition: opacity .4s, transform .4s, filter .4s; position: relative; }
   .ans.long { font-size: 2vw; } .ans.xlong { font-size: 1.6vw; }
   .answers.col .ans.long { font-size: 1.8vw; } .answers.col .ans.xlong { font-size: 1.45vw; }
@@ -94,7 +95,7 @@
   .imgq { flex: 1; display: grid; grid-template-columns: 1.4fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 1.6vw; min-height: 0; }
   .imgbox { background: rgba(255,255,255,.06); border-radius: 1.4vw; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 0; animation: pop .5s both; }
   .imgbox img { max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: contain; display: block; }
-  .answers.col { grid-template-columns: 1fr; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 1.2vh; min-height: 0; }
+  .answers.col { grid-template-columns: 1fr; grid-template-rows: none; grid-auto-rows: minmax(0, var(--row)); gap: 1.4vh; min-height: 0; }
   .answers.col .ans { font-size: 2.2vw; padding: 0 1.4vw; }
   .answers.col .ans .shape { font-size: 2.2vw; width: 3vw; }
   .answers.col .vav { width: 3vw; height: 3vw; font-size: 1.8vw; }
@@ -114,8 +115,8 @@
   .erow.truth { background: #fff; color: #1b1440; padding: 1vh 1.6vw; font-size: 2.2vw; animation: pop .5s both; }
   .erow.truth .ev { margin-left: 0; }
   .erow.truth span:last-child { margin-left: auto; color: var(--d); text-transform: uppercase; font-size: 1.4vw; letter-spacing: .1em; }
-  .mlist { flex: 1; min-height: 0; display: grid; grid-auto-rows: minmax(0, 1fr); gap: 1.2vh; max-height: 100%; }
-  .mrow { display: grid; grid-template-columns: 5vw 1fr 1.3fr; align-items: center; gap: 1.4vw; background: rgba(255,255,255,.08); border-radius: 1.2vw; padding: 0 1.4vw; min-height: 0; max-height: 13vh; font-size: min(2.5vw, 4.4vh); font-weight: 800; line-height: 1.1; animation: slide .45s both; transition: background .4s; overflow: hidden; }
+  .mlist { flex: 1; min-height: 0; display: grid; grid-auto-rows: minmax(0, var(--row)); align-content: center; gap: 1.4vh; max-height: 100%; }
+  .mrow { display: grid; grid-template-columns: 5vw 1fr 1.3fr; align-items: center; gap: 1.4vw; background: rgba(255,255,255,.08); border-radius: 1.2vw; padding: 0 1.4vw; min-height: 0; height: 100%; font-size: min(2.5vw, 4.4vh); font-weight: 800; line-height: 1.1; animation: slide .45s both; transition: background .4s; overflow: hidden; }
   .mlist.n5 .mrow, .mlist.n6 .mrow { font-size: min(2.2vw, 3.8vh); }
   .mnum { width: min(4.4vw, 7vh); height: min(4.4vw, 7vh); border-radius: 50%; background: var(--c); color: #1b1440; display: grid; place-items: center; font-weight: 900; }
   .mright { display: flex; align-items: center; gap: 1vw; min-width: 0; }
