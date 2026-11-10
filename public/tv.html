@@ -106,6 +106,7 @@
   .erow .ev { margin-left: auto; font-variant-numeric: tabular-nums; }
   .erow .eg { color: #8ff0b5; min-width: 5vw; text-align: right; font-size: 1.5vw; }
   .erow.best { background: rgba(47,179,109,.45); }
+  .erow.out { opacity: .45; }
   .erow.truth { background: #fff; color: #1b1440; padding: 1vh 1.6vw; font-size: 2.2vw; animation: pop .5s both; }
   .erow.truth .ev { margin-left: 0; }
   .erow.truth span:last-child { margin-left: auto; color: var(--d); text-transform: uppercase; font-size: 1.4vw; letter-spacing: .1em; }
@@ -325,7 +326,7 @@ function renderMain() {
     body = q.image ? `<div class="imgq">${img}<div class="answers col">${tiles}</div></div>` : `<div class="answers">${tiles}</div>`;
   } else if (q.kind === 'estimate') {
     body = `<div class="estq ${q.image ? '' : 'noimg'}">${img}<div class="estpanel" id="est">
-      <div class="esthint">🔢 Schätzt am Handy!${q.unit ? `<small>Antwort in ${esc(q.unit)}</small>` : ''}</div></div></div>`;
+      <div class="esthint">${q.year ? '📅 Jahreszahl am Handy eingeben!' : '🔢 Schätzt am Handy!'}${q.unit && !q.year ? `<small>Antwort in ${esc(q.unit)}</small>` : ''}${tolText(q) ? `<small>${tolText(q)}</small>` : ''}</div></div></div>`;
   } else if (q.kind === 'match') {
     body = `<div class="mlist">${q.left.map((t, i) => mrow(i, t, '<span class="qm">?</span>')).join('')}</div>`;
   }
@@ -383,6 +384,12 @@ function specialOverlay() {
   if (b) b.innerHTML = S.special ? `<span class="spbadge">⭐ Spezialfrage ×${S.special.mult}</span>` : '';
 }
 
+function tolText(q) {
+  if (q.tolerance === null || q.tolerance === undefined) return '';
+  return q.year ? `Punkte gibt es nur bei höchstens ±${fmt(q.tolerance)} ${q.tolerance === 1 ? 'Jahr' : 'Jahren'} Abweichung`
+    : `Punkte gibt es nur bei höchstens ±${fmt(q.tolerance)}${q.unit ? ' ' + esc(q.unit) : ''} Abweichung`;
+}
+
 function renderEstimate(byId) {
   const q = S.question, box = document.getElementById('est');
   if (!box || box.dataset.phase === S.phase) return;
@@ -398,7 +405,7 @@ function renderEstimate(byId) {
     if (r.truth) return `<div class="erow truth"><span class="ev">✓ ${fmt(r.value)}${unit}</span><span>richtig</span></div>`;
     const p = byId[r.id]; if (!p) return '';
     const res = S.phase === 'reveal' ? p.result : null;
-    return `<div class="erow ${res && res.correct ? 'best' : ''}" style="--pc:${p.color};animation-delay:${S.phase === 'votes' ? i * 0.15 : 0}s">
+    return `<div class="erow ${res && res.correct ? 'best' : ''} ${res && res.outOfRange ? 'out' : ''}" style="--pc:${p.color};animation-delay:${S.phase === 'votes' ? i * 0.15 : 0}s">
       <span class="vav">${p.avatar}</span><span class="en">${esc(p.name)}</span><span class="ev">${fmt(r.value)}${unit}</span>
       ${res ? `<span class="eg">${res.gain ? '+' + res.gain : ''}</span>` : ''}</div>`;
   }).join('')}</div>`;

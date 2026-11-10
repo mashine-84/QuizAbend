@@ -361,11 +361,14 @@ function renderChoice() {
 }
 
 function renderEstimate() {
-  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '⌫'];
-  main.innerHTML = qline('Schätze!') + `
+  const q = S.question;
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', q.year ? '' : ',', '0', '⌫'];
+  const tol = q.tolerance !== null && q.tolerance !== undefined
+    ? `<p class="hint">Punkte nur bei höchstens ±${fmt(q.tolerance)} ${q.year ? (q.tolerance === 1 ? 'Jahr' : 'Jahren') : esc(q.unit || '')} Abweichung</p>` : '';
+  main.innerHTML = qline(q.year ? 'Jahreszahl!' : 'Schätze!') + tol + `
     <div class="est">
-      <div class="display"><span id="disp">${est ? esc(est) : '<span class="ph">Zahl eingeben</span>'}</span>${S.question.unit ? `<small>${esc(S.question.unit)}</small>` : ''}</div>
-      <div class="pad">${keys.map(k => `<button onclick="estKey('${k}')">${k}</button>`).join('')}</div>
+      <div class="display"><span id="disp">${est ? esc(est) : `<span class="ph">${q.year ? 'Jahreszahl' : 'Zahl'} eingeben</span>`}</span>${q.unit ? `<small>${esc(q.unit)}</small>` : ''}</div>
+      <div class="pad">${keys.map(k => k ? `<button onclick="estKey('${k}')">${k}</button>` : '<span></span>').join('')}</div>
       <button class="btn" onclick="sendEstimate()" ${est && est !== '-' ? '' : 'disabled'}>Abschicken</button>
     </div>`;
 }
@@ -431,7 +434,8 @@ function renderResult() {
     const unit = q.unit ? ' ' + esc(q.unit) : '';
     cls = !r.answered ? 'none' : r.correct ? 'ok' : r.gain ? 'mid' : 'bad';
     title = !r.answered ? 'Keine Schätzung' : r.exact ? 'Exakt! 🎯' : r.correct ? 'Am nächsten dran! 🎉' : r.gain ? 'Nicht schlecht!' : 'Daneben';
-    detail = `<p>Richtig: <b>${fmt(q.value)}${unit}</b>${r.answered ? `<br>Du: ${fmt(r.value)}${unit}` : ''}</p>`;
+    const far = r.outOfRange ? `<br><small>mehr als ±${fmt(q.tolerance)} ${q.year ? 'Jahre' : esc(q.unit || '')} daneben – keine Punkte</small>` : '';
+    detail = `<p>Richtig: <b>${fmt(q.value)}${unit}</b>${r.answered ? `<br>Du: ${fmt(r.value)}${unit}` : ''}${far}</p>`;
   } else {
     cls = !r.answered ? 'none' : r.correct ? 'ok' : 'bad';
     title = !r.answered ? 'Zu langsam!' : r.correct ? 'Richtig! 🎉' : 'Leider falsch';
