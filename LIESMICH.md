@@ -50,6 +50,7 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 - **Zuordnung:** Erst erscheinen nur die Begriffe, dann die Frage. Am Handy ordnest du die Partner den Zahlen zu. Aufgelöst wird Paar für Paar, Punkte gibt es pro richtigem Paar.
 - Wer mehrere Fragen in Folge richtig hat, bekommt bis zu +150 Serienbonus.
 - Ist die Zeit um, zeigt der Fernseher erst, wer was gewählt hat. Danach kommt die Auflösung.
+- Die Rangliste erscheint nach jeder 5. Frage und am Ende der Runde, mit den Punkten seit der letzten Rangliste.
 - Handy-Akku leer oder Seite neu geladen? Einfach wieder öffnen, der Spielstand bleibt erhalten.
 
 ## Fragenpakete auswählen
@@ -99,6 +100,7 @@ Achte auf die Kommas zwischen den Einträgen. Neue oder geänderte Dateien ersch
 |---|---|---|
 | `FRAGEN` | Fragen pro Runde | 10 |
 | `SEKUNDEN` | Zeit pro Frage | 20 |
+| `RANGLISTE` | Rangliste nach jeder X. Frage | 5 |
 | `PORT` | Port des Servers | 3000 |
 | `HOST_IP` | Adresse im QR-Code erzwingen | automatisch |
 
