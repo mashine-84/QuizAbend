@@ -1,6 +1,12 @@
 #!/bin/bash
 # Öffnet die TV-Ansicht im Vollbild. Wird von setup.sh beim Login gestartet.
 
+# Nur einmal starten (mehrere Autostart-Wege sind eingetragen) und mitprotokollieren
+exec 9>/tmp/quizabend-kiosk.lock
+flock -n 9 || exit 0
+exec >>/tmp/quizabend-kiosk.log 2>&1
+echo "--- $(date) Kiosk-Start (Sitzung: ${XDG_SESSION_TYPE:-?} ${XDG_CURRENT_DESKTOP:-?})"
+
 # LITE=1: schonende Grafik (ohne Konfetti und Animationen), empfohlen für Pi 3.
 # Auf Pi 4/5 kannst du LITE=0 probieren.
 LITE=1
@@ -18,6 +24,8 @@ xset s off -dpms 2>/dev/null || true
 command -v unclutter >/dev/null && unclutter -idle 1 -root &
 
 BROWSER="$(command -v chromium || command -v chromium-browser)"
+[ -z "$BROWSER" ] && { echo "Chromium nicht gefunden"; exit 1; }
+echo "Starte $BROWSER $URL"
 exec "$BROWSER" --kiosk --noerrdialogs --disable-infobars --no-first-run \
   --password-store=basic --disable-session-crashed-bubble \
   --check-for-update-interval=31536000 --disk-cache-dir=/tmp/quizabend-cache "$URL"
