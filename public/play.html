@@ -111,6 +111,10 @@
   .lv { font-style: normal; margin-left: 6px; } .lv1 { color: #8ff0b5; } .lv2 { color: #ffd43b; } .lv3 { color: #ff8787; }
   .center.special h1 { color: var(--c); font-size: 40px; }
   .gain small { font-size: .6em; opacity: .85; }
+  .ans.long { font-size: 17px; } .ans.xlong { font-size: 15px; }
+  .pchip { max-width: 100%; }
+  .mslots.tight { gap: 6px; } .mslots.tight .mslot { padding: 6px 10px; font-size: 17px; } .mslots.tight .mnum { width: 30px; height: 30px; }
+  .mslots.tight ~ .pool { gap: 6px; margin: 10px 0; } .mslots.tight ~ .pool .pchip { padding: 9px 14px; font-size: 16px; }
 </style>
 </head>
 <body>
@@ -123,6 +127,7 @@ const main = document.getElementById('main');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = n => Math.abs(n) >= 10000 ? n.toLocaleString('de-DE') : String(n).replace('.', ',');
 let myId = localStorage.getItem('quizId');
+let serverVersion = null;
 let S = null, es = null, lastKey = '', joining = false, sending = false;
 let ui = { settings: false, packs: null, edit: null, avatar: null }; // Einstellungen (nur 👑), Emoji-Wahl
 let est = '';                                  // Schätzfrage: Eingabe
@@ -131,7 +136,13 @@ let match = { sel: [], active: 0 };            // Zuordnen: sel[slot] = Index im
 function connect() {
   if (es) es.close();
   es = new EventSource('/events?role=player' + (myId ? '&id=' + encodeURIComponent(myId) : ''));
-  es.onmessage = e => { document.getElementById('offline').style.display = 'none'; S = JSON.parse(e.data); render(); };
+  es.onmessage = e => {
+    document.getElementById('offline').style.display = 'none';
+    S = JSON.parse(e.data);
+    if (serverVersion && S.version && S.version !== serverVersion) return location.reload(); // neue Version
+    serverVersion = S.version || serverVersion;
+    render();
+  };
   es.onerror = () => { document.getElementById('offline').style.display = 'block'; };
 }
 connect();
@@ -357,7 +368,7 @@ function renderInfo(icon, title, text, cls) {
 
 function renderChoice() {
   main.innerHTML = qline('Antworte schnell!') + `
-    <div class="grid">${S.question.answers.map((a, i) => `<button class="ans c${i}" onclick="sendAnswer({choice:${i}}, chosenHtml(${i}))"><span class="shape">${SHAPES[i]}</span>${esc(a)}</button>`).join('')}</div>`;
+    <div class="grid">${S.question.answers.map((a, i) => `<button class="ans c${i} ${a.length > 40 ? 'xlong' : a.length > 24 ? 'long' : ''}" onclick="sendAnswer({choice:${i}}, chosenHtml(${i}))"><span class="shape">${SHAPES[i]}</span>${esc(a)}</button>`).join('')}</div>`;
 }
 
 function renderEstimate() {
@@ -390,7 +401,7 @@ function renderMatch() {
   const complete = match.sel.every(x => x !== null);
   main.innerHTML = qline('Ordne zu!') + `
     <p class="hint">Tippe einen Begriff, er landet bei der markierten Zahl – Zahlen wie auf dem Fernseher.</p>
-    <div class="mslots">${q.left.map((_, i) => `<button class="mslot ${match.active === i ? 'active' : ''} ${match.sel[i] !== null ? 'filled' : ''}" onclick="slotTap(${i})">
+    <div class="mslots ${q.left.length > 4 ? 'tight' : ''}">${q.left.map((_, i) => `<button class="mslot ${match.active === i ? 'active' : ''} ${match.sel[i] !== null ? 'filled' : ''}" onclick="slotTap(${i})">
       <span class="mnum">${i + 1}</span><span class="mval">${match.sel[i] !== null ? esc(q.right[match.sel[i]]) : '…'}</span>${match.sel[i] !== null ? '<span class="mx">✕</span>' : ''}</button>`).join('')}</div>
     <div class="pool">${q.right.map((t, j) => used.has(j) ? '' : `<button class="pchip" onclick="poolTap(${j})">${esc(t)}</button>`).join('')}</div>
     <button class="btn" onclick="sendMatch()" ${complete ? '' : 'disabled'}>Abschicken</button>`;
