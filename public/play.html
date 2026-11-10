@@ -91,6 +91,26 @@
   .errors { background: rgba(229,72,77,.2); border-radius: 14px; padding: 12px 14px; font-size: 14px; display: flex; flex-direction: column; gap: 8px; }
   .errors code { color: #ffd0d0; }
   .legend { text-align: center; }
+  .emojis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; width: 100%; max-width: 340px; }
+  .emo { font-size: 28px; aspect-ratio: 1; border-radius: 12px; border: 3px solid transparent; background: rgba(255,255,255,.08); padding: 0; }
+  .emo.on { border-color: var(--c); background: rgba(245,176,20,.2); }
+  .emo:disabled { opacity: .18; }
+  .settings h3 { font-size: 16px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 8px; }
+  .blockcard { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; font: inherit; color: #fff; border: none; border-radius: 14px; background: rgba(255,255,255,.1); padding: 12px 14px; }
+  .bnum { width: 34px; height: 34px; border-radius: 50%; background: var(--c); color: #1b1440; display: grid; place-items: center; font-weight: 900; flex: none; }
+  .binfo { flex: 1; display: flex; flex-direction: column; gap: 2px; font-size: 16px; }
+  .binfo small { color: var(--muted); font-size: 13px; }
+  .bgo { font-size: 26px; color: var(--muted); }
+  .warnc { color: #ffb4b4; }
+  .switch { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,.08); border-radius: 14px; padding: 12px 14px; font-weight: 700; }
+  .switch input { width: 24px; height: 24px; accent-color: var(--c); flex: none; }
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .seg button { font: inherit; font-size: 22px; font-weight: 900; border: none; border-radius: 12px; padding: 12px; background: rgba(255,255,255,.1); color: #fff; }
+  .seg button.on { background: var(--c); color: #1b1440; }
+  .pname small { margin-left: 6px; font-size: 12px; }
+  .lv { font-style: normal; margin-left: 6px; } .lv1 { color: #8ff0b5; } .lv2 { color: #ffd43b; } .lv3 { color: #ff8787; }
+  .center.special h1 { color: var(--c); font-size: 40px; }
+  .gain small { font-size: .6em; opacity: .85; }
 </style>
 </head>
 <body>
@@ -104,7 +124,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const fmt = n => Math.abs(n) >= 10000 ? n.toLocaleString('de-DE') : String(n).replace('.', ',');
 let myId = localStorage.getItem('quizId');
 let S = null, es = null, lastKey = '', joining = false, sending = false;
-let ui = { settings: false, packs: null };     // Paketauswahl (nur 👑)
+let ui = { settings: false, packs: null, edit: null, avatar: null }; // Einstellungen (nur 👑), Emoji-Wahl
 let est = '';                                  // Schätzfrage: Eingabe
 let match = { sel: [], active: 0 };            // Zuordnen: sel[slot] = Index im rechten Begriff
 
@@ -127,9 +147,10 @@ async function join(ev) {
   const name = document.getElementById('name').value.trim();
   if (!name) return;
   joining = true;
-  const { ok, data } = await post('/api/join', { name });
+  const { ok, data } = await post('/api/join', { name, avatar: ui.avatar });
   joining = false;
-  if (!ok) { document.getElementById('err').textContent = data.error || 'Hat nicht geklappt.'; return; }
+  if (!ok) { document.getElementById('err').textContent = data.error || 'Hat nicht geklappt.'; if (data.avatarTaken) { ui.avatar = null; lastKey = ''; render(); } return; }
+  localStorage.setItem('quizAvatar', ui.avatar || '');
   localStorage.setItem('quizName', name);
   localStorage.setItem('quizId', data.id);
   myId = data.id;
@@ -171,7 +192,8 @@ function render() {
   header();
   const me = S.me;
   const lobbyKey = S.phase === 'lobby' ? [S.players.filter(p => p.connected).length, JSON.stringify(S.packs), ui.settings].join(',') : '';
-  const key = [S.phase, S.qNum, me ? me.id : '-', me && JSON.stringify(me.answer && (me.answer.choice ?? me.answer.value ?? me.answer.order)),
+  const joinKey = me ? '' : S.players.map(p => p.avatar).join('');
+  const key = [joinKey, S.phase, S.qNum, me ? me.id : '-', me && JSON.stringify(me.answer && (me.answer.choice ?? me.answer.value ?? me.answer.order)),
     me && me.isVip, lobbyKey, S.question && S.question.step].join('|');
   if (key === lastKey) return; // nichts Relevantes geändert (Eingaben nicht zerstören)
   const newQuestion = !lastKey.startsWith('question|' + S.qNum + '|');
@@ -180,6 +202,8 @@ function render() {
   if (!me) return renderJoin();
   if (S.phase !== 'lobby') ui.settings = false;
   if (S.phase === 'lobby') return ui.settings && me.isVip ? renderSettings() : renderLobby();
+  if (S.phase === 'block') return renderInfo('📦', `Block ${S.block.num} von ${S.block.total}`, `${esc(S.block.names.join(', '))}<br>Schau auf den Fernseher!`);
+  if (S.phase === 'special') return renderInfo('⭐', 'Spezialfrage!', `Diese Frage zählt <b>×${S.special.mult}</b> Punkte!<br>Schau auf den Fernseher 👀`, 'special');
   if (S.phase === 'intro') return renderInfo(S.question.icon, S.question.label, `Kategorie: ${esc(S.question.category)}<br>Gleich geht's los – schau auf den Fernseher!`);
   if (S.phase === 'preview') return renderInfo('👀', 'Merk dir die Begriffe!', 'Gleich musst du ihnen auf dem Handy die richtigen Partner zuordnen.');
   if (S.phase === 'question') {
@@ -203,83 +227,132 @@ function waitingFor(a) {
 function renderJoin() {
   myId = null; localStorage.removeItem('quizId');
   const full = S.players.length >= S.maxPlayers;
+  const taken = new Set(S.players.map(p => p.avatar));
+  const prev = document.getElementById('name');
+  const name = prev ? prev.value : (localStorage.getItem('quizName') || '');
+  const fav = localStorage.getItem('quizAvatar');
+  if (!ui.avatar || taken.has(ui.avatar)) ui.avatar = fav && !taken.has(fav) ? fav : S.avatars.find(a => !taken.has(a));
   main.innerHTML = `<form class="center" onsubmit="join(event)">
     <h1>Quiz<span>Abend</span></h1>
     <p>${S.phase === 'lobby' ? 'Wie heißt du?' : 'Das Spiel läuft schon – du steigst bei der nächsten Frage ein.'}</p>
-    <input id="name" maxlength="14" autocomplete="off" autocapitalize="words" placeholder="Dein Name" value="${esc(localStorage.getItem('quizName') || '')}">
-    <button class="btn" ${full ? 'disabled' : ''}>${full ? 'Spiel ist voll' : 'Mitspielen'}</button>
+    <input id="name" maxlength="14" autocomplete="off" autocapitalize="words" placeholder="Dein Name" value="${esc(name)}">
+    <p class="small">Wähle dein Emoji:</p>
+    <div class="emojis">${S.avatars.map(a => `<button type="button" class="emo ${a === ui.avatar ? 'on' : ''}" ${taken.has(a) ? 'disabled' : ''} onclick="pickAvatar('${a}')">${a}</button>`).join('')}</div>
+    <button class="btn" ${full ? 'disabled' : ''}>${full ? 'Spiel ist voll' : `Mitspielen als ${ui.avatar || ''}`}</button>
     <div class="err" id="err"></div></form>`;
 }
+function pickAvatar(a) { ui.avatar = a; if (navigator.vibrate) navigator.vibrate(10); renderJoin(); }
 
 function renderLobby() {
   const n = S.players.filter(p => p.connected).length;
   const k = S.packs || {};
   const canStart = n >= S.minPlayers && k.questions > 0;
+  const blocks = (k.blocks || []).filter(b => b.plays > 0).length;
   main.innerHTML = `<div class="center">
     <div class="big">${S.me.avatar}</div>
     <h1>Du bist dabei!</h1>
     <p>Schau auf den Fernseher.<br>${n} von max. ${S.maxPlayers} Spielern da.</p>
     ${S.me.isVip ? `
       <button class="btn" onclick="advance()" ${canStart ? '' : 'disabled'}>${canStart ? 'Alle da – Spiel starten!' : k.questions ? `Warte auf Mitspieler (min. ${S.minPlayers})` : 'Erst Fragenpakete wählen'}</button>
-      <button class="btn ghost" onclick="openSettings()">📚 Fragenpakete · ${k.enabledPacks}/${k.totalPacks}${k.errors ? ' · ⚠️' : ''}</button>
-      <p class="small">${k.questions} Fragen aktiv · ${Math.min(k.perGame, k.questions)} pro Runde</p>`
+      <button class="btn ghost" onclick="openSettings()">⚙️ Einstellungen${k.errors ? ' · ⚠️' : ''}</button>
+      <p class="small">${blocks > 1 ? `${blocks} Blöcke · ` : ''}${k.questions} Fragen${k.special && k.special.on ? ` · ⭐ Spezialfrage ×${k.special.mult}` : ''}</p>`
       : `<p>Warte, bis 👑 das Spiel startet …</p>`}
     <button class="leave" onclick="leave()">Spiel verlassen</button></div>`;
 }
 
-// ---------- Paketauswahl für den Gamemaster ----------
+// ---------- Einstellungen für den Gamemaster ----------
 async function openSettings() {
-  ui.settings = true; lastKey = '';
-  main.innerHTML = '<div class="center"><p>Lade Fragenpakete …</p></div>';
+  ui.settings = true; ui.edit = null; lastKey = '';
+  main.innerHTML = '<div class="center"><p>Lade Einstellungen …</p></div>';
   ui.packs = await fetch('/api/pakete').then(r => r.json()).catch(() => null);
   lastKey = ''; render();
 }
 function closeSettings() { ui.settings = false; lastKey = ''; render(); }
+const cfg = () => ui.packs.settings;
 
-async function setPacks(set, perGame) {
-  const { ok, data } = await post('/api/pakete', { id: myId, set, perGame });
-  if (ok) { ui.packs = data; lastKey = ''; render(); }
+async function saveCfg() {
+  const { ok, data } = await post('/api/einstellungen', { id: myId, settings: cfg() });
+  if (ok) ui.packs = data;
+  lastKey = ''; render();
 }
-function togglePack(gi, pi, on) { setPacks({ [ui.packs.groups[gi].packs[pi].id]: on }); }
-function toggleGroup(gi, on) {
-  const set = {}; ui.packs.groups[gi].packs.forEach(p => { set[p.id] = on; }); setPacks(set);
+function setBlocks(n) {
+  const b = cfg().blocks;
+  while (b.length < n) b.push({ count: 10, disabled: [] });
+  b.length = Math.max(1, Math.min(6, n));
+  saveCfg();
 }
-function changePerGame(d) { setPacks({}, Math.max(1, Math.min(50, ui.packs.perGame + d))); }
+function setCount(bi, d) { const b = cfg().blocks[bi]; b.count = Math.max(1, Math.min(50, b.count + d)); saveCfg(); }
+function packOn(bi, id, on) {
+  const dis = new Set(cfg().blocks[bi].disabled);
+  on ? dis.delete(id) : dis.add(id);
+  cfg().blocks[bi].disabled = [...dis];
+}
+function togglePack(gi, pi, on) { packOn(ui.edit, ui.packs.groups[gi].packs[pi].id, on); saveCfg(); }
+function toggleGroup(gi, on) { ui.packs.groups[gi].packs.forEach(p => packOn(ui.edit, p.id, on)); saveCfg(); }
+function editBlock(i) { ui.edit = i; lastKey = ''; render(); window.scrollTo(0, 0); }
+function setSpecial(on) { cfg().special.on = on; saveCfg(); }
+function setMult(m) { cfg().special.mult = m; saveCfg(); }
 
 function kindIcons(k) {
   return [k.choice && '❓', k.image && '🖼️', k.estimate && '🔢', k.match && '🔗'].filter(Boolean).join(' ');
 }
+const stepper = (label, value, minus, plus) =>
+  `<div class="pergame"><span>${label}</span><button onclick="${minus}">−</button><b>${value}</b><button onclick="${plus}">+</button></div>`;
 
 function renderSettings() {
   const d = ui.packs;
-  if (!d) { main.innerHTML = '<div class="center"><p>Konnte die Pakete nicht laden.</p><button class="btn" onclick="closeSettings()">Zurück</button></div>'; return; }
-  const total = d.groups.flatMap(g => g.packs).filter(p => p.enabled).reduce((s, p) => s + p.count, 0);
+  if (!d) { main.innerHTML = '<div class="center"><p>Konnte die Einstellungen nicht laden.</p><button class="btn" onclick="closeSettings()">Zurück</button></div>'; return; }
+  if (ui.edit !== null && cfg().blocks[ui.edit]) return renderBlockEditor();
+  const c = cfg(), sum = d.summary;
   main.innerHTML = `<div class="settings">
-    <div class="shead"><h2>📚 Fragenpakete</h2><button class="btn sm" onclick="closeSettings()">Fertig</button></div>
-    <div class="pergame"><span>Fragen pro Runde</span><button onclick="changePerGame(-1)">−</button><b>${d.perGame}</b><button onclick="changePerGame(1)">+</button></div>
-    <p class="small">${total} Fragen in den gewählten Paketen</p>
+    <div class="shead"><h2>⚙️ Einstellungen</h2><button class="btn sm" onclick="closeSettings()">Fertig</button></div>
+    <h3>Frageblöcke</h3>
+    ${stepper('Anzahl Blöcke', c.blocks.length, `setBlocks(${c.blocks.length - 1})`, `setBlocks(${c.blocks.length + 1})`)}
+    ${c.blocks.map((b, i) => {
+      const s = sum.blocks[i] || { plays: 0, available: 0, names: [] };
+      return `<button class="blockcard" onclick="editBlock(${i})">
+        <span class="bnum">${i + 1}</span>
+        <span class="binfo"><b>${s.plays} ${s.plays === 1 ? 'Frage' : 'Fragen'}</b>${s.plays < b.count ? ` <span class="warnc">(nur ${s.available} verfügbar)</span>` : ''}
+          <small>${s.names.length ? esc(s.names.join(', ')) : '<span class="warnc">keine Pakete gewählt</span>'}</small></span>
+        <span class="bgo">›</span></button>`;
+    }).join('')}
+    <p class="small">Insgesamt ${sum.questions} Fragen. Leichte Fragen kommen zuerst, schwere werden mit jeder Frage wahrscheinlicher.</p>
+    <h3>⭐ Spezialfrage</h3>
+    <label class="switch"><input type="checkbox" ${c.special.on ? 'checked' : ''} onchange="setSpecial(this.checked)"><span>Eine zufällige Spezialfrage pro Spiel</span></label>
+    ${c.special.on ? `<div class="seg">${[2, 3, 4].map(m => `<button class="${c.special.mult === m ? 'on' : ''}" onclick="setMult(${m})">×${m}</button>`).join('')}</div>
+      <p class="small">Erst nach dem Antworten wird verraten, dass es die Spezialfrage war. Die Punkte zählen dann ×${c.special.mult}.</p>` : ''}
+    ${d.errors.length ? `<div class="errors"><b>⚠️ Fehler in Fragendateien</b>${d.errors.map(e => `<div><code>${esc(e.file)}</code><br>${esc(e.error)}</div>`).join('')}</div>` : ''}
+  </div>`;
+}
+
+function renderBlockEditor() {
+  const d = ui.packs, bi = ui.edit, b = cfg().blocks[bi], dis = new Set(b.disabled), s = d.summary.blocks[bi] || { available: 0 };
+  main.innerHTML = `<div class="settings">
+    <div class="shead"><button class="btn sm ghost" onclick="editBlock(null)">‹ Zurück</button><h2>Block ${bi + 1}</h2></div>
+    ${stepper('Fragen in diesem Block', b.count, `setCount(${bi}, -1)`, `setCount(${bi}, 1)`)}
+    <p class="small">${s.available} Fragen in den gewählten Paketen</p>
     ${d.groups.map((g, gi) => {
-      const on = g.packs.filter(p => p.enabled).length;
+      const on = g.packs.filter(p => !dis.has(p.id)).length;
       return `<div class="group">
         <label class="grow"><input type="checkbox" data-group="${gi}" ${on === g.packs.length ? 'checked' : ''} onchange="toggleGroup(${gi}, this.checked)">
           <span class="gname">${esc(g.name)}</span><span class="gcount">${on}/${g.packs.length}</span></label>
-        ${g.packs.map((p, pi) => `<label class="prow"><input type="checkbox" ${p.enabled ? 'checked' : ''} onchange="togglePack(${gi}, ${pi}, this.checked)">
-          <span class="pname">${esc(p.name)}</span><span class="pmeta">${kindIcons(p.kinds)} · ${p.count}</span></label>`).join('')}
+        ${g.packs.map((p, pi) => `<label class="prow"><input type="checkbox" ${!dis.has(p.id) ? 'checked' : ''} onchange="togglePack(${gi}, ${pi}, this.checked)">
+          <span class="pname">${esc(p.name)}<small>${kindIcons(p.kinds)}</small></span>
+          <span class="pmeta">${p.levels.map((n, l) => n ? `<i class="lv lv${l + 1}">${'★'.repeat(l + 1)} ${n}</i>` : '').join('')}</span></label>`).join('')}
       </div>`;
     }).join('') || '<p>Keine Fragendateien im Ordner <b>fragen</b> gefunden.</p>'}
-    ${d.errors.length ? `<div class="errors"><b>⚠️ Fehler in Fragendateien</b>${d.errors.map(e => `<div><code>${esc(e.file)}</code><br>${esc(e.error)}</div>`).join('')}</div>` : ''}
-    <p class="small legend">❓ Auswahl · 🖼️ Bilderrätsel · 🔢 Schätzfrage · 🔗 Zuordnung</p>
+    <p class="small legend">❓ Auswahl · 🖼️ Bilderrätsel · 🔢 Schätzfrage · 🔗 Zuordnung<br>★ leicht · ★★ mittel · ★★★ schwer</p>
   </div>`;
-  // Gruppen-Häkchen halb gesetzt, wenn nur ein Teil aktiv ist
   main.querySelectorAll('input[data-group]').forEach(cb => {
-    const g = d.groups[cb.dataset.group], on = g.packs.filter(p => p.enabled).length;
+    const g = d.groups[cb.dataset.group], on = g.packs.filter(p => !dis.has(p.id)).length;
     cb.indeterminate = on > 0 && on < g.packs.length;
   });
 }
 
 // ---------- Fragen ----------
-function renderInfo(icon, title, text) {
-  main.innerHTML = `<div class="center"><div class="big">${icon}</div><h1>${esc(title)}</h1><p>${text}</p></div>`;
+function renderInfo(icon, title, text, cls) {
+  main.innerHTML = `<div class="center ${cls || ''}"><div class="big">${icon}</div><h1>${esc(title)}</h1><p>${text}</p></div>`;
+  if (cls === 'special' && navigator.vibrate) navigator.vibrate([80, 50, 80, 50, 200]);
 }
 
 function renderChoice() {
@@ -365,7 +438,7 @@ function renderResult() {
     detail = r.correct ? '' : `<p>Richtig war: ${SHAPES[q.correct]} ${esc(q.answers[q.correct])}</p>`;
   }
   main.innerHTML = `<div class="res ${cls}"><h1>${title}</h1>${detail}
-    ${r.gain ? `<div class="gain">+${r.gain} Punkte</div>` : ''}<p>Du bist auf Platz ${S.me.rank}</p></div>`;
+    ${r.gain ? `<div class="gain">+${r.gain} Punkte${r.mult ? ` <small>(×${r.mult})</small>` : ''}</div>` : ''}<p>Du bist auf Platz ${S.me.rank}</p></div>`;
   if (navigator.vibrate) navigator.vibrate(r.correct ? 80 : [100, 60, 100]);
 }
 
@@ -381,7 +454,7 @@ function renderMatchResult() {
         <span class="mx">${shown ? (ok ? '✓' : '✗') : '…'}</span></div>
         ${shown && !ok ? `<div class="fix">richtig: ${esc(q.right[q.solution[i]])}</div>` : ''}`;
     }).join('')}</div>
-    ${done ? `${r.gain ? `<div class="gain dark">+${r.gain} Punkte</div>` : ''}<p>Du bist auf Platz ${S.me.rank}</p>` : '<p>Schau auf den Fernseher 👀</p>'}</div>`;
+    ${done ? `${r.gain ? `<div class="gain dark">+${r.gain} Punkte${r.mult ? ` <small>(×${r.mult})</small>` : ''}</div>` : ''}<p>Du bist auf Platz ${S.me.rank}</p>` : '<p>Schau auf den Fernseher 👀</p>'}</div>`;
 }
 
 function renderRank(end) {

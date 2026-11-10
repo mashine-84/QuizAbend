@@ -122,6 +122,25 @@
   .pbar { height: 1.2vh; background: rgba(255,255,255,.1); border-radius: 99px; overflow: hidden; }
   .pbar i { display: block; height: 100%; width: 100%; background: var(--c); }
 
+
+  /* Blöcke, Schwierigkeit, Spezialfrage */
+  .stars { color: var(--c); letter-spacing: .1em; margin-left: .6vw; }
+  .qcard .stars { color: #f5b014; }
+  .bnames { display: flex; flex-wrap: wrap; gap: 1vw; justify-content: center; max-width: 80vw; margin-top: 2vh; }
+  .bnames span { background: rgba(255,255,255,.12); border-radius: 99px; padding: .6vh 1.6vw; font-size: 2.2vw; font-weight: 800; animation: pop .5s both; }
+  .spbadge { background: linear-gradient(90deg, #ff4d6d, #f5b014); color: #fff; border-radius: 99px; padding: .4em 1.1em; font-weight: 900; }
+  .special { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(20,16,43,.82); }
+  .burst { position: absolute; width: 140vmax; height: 140vmax; background: repeating-conic-gradient(rgba(245,176,20,.22) 0 10deg, transparent 10deg 20deg); animation: spin 8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .sp-inner { position: relative; text-align: center; animation: zoom .7s cubic-bezier(.2,1.6,.4,1) both; }
+  @keyframes zoom { from { transform: scale(.2) rotate(-12deg); opacity: 0; } }
+  .sp-star { font-size: 12vw; line-height: 1; animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { transform: scale(1.15); } }
+  .sp-title { font-size: 7vw; font-weight: 900; color: #fff; letter-spacing: -0.02em; text-shadow: 0 .6vh 0 #ff4d6d; }
+  .sp-mult { display: inline-block; margin-top: 2vh; font-size: 4vw; font-weight: 900; color: #1b1440; background: var(--c); border-radius: 99px; padding: .5vh 3vw; }
+  html.lite .special { background: #14102b; }
+  html.lite .burst { display: none; }
+
   /* Rangliste */
   .board { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 2vh; }
   .board h2 { font-size: 3.6vw; font-weight: 900; margin-bottom: 3vh; }
@@ -149,7 +168,7 @@
   @keyframes pop { from { transform: scale(.6); opacity: 0; } }
   .fade { animation: fade .4s both; } @keyframes fade { from { opacity: 0; transform: translateY(1.5vh); } }
   .status { position: fixed; left: 50%; bottom: 1.5vh; transform: translateX(-50%); font-size: 1.1vw; color: var(--muted); opacity: .7; }
-  .confetti { position: fixed; top: -3vh; width: .8vw; height: 1.6vw; border-radius: .2vw; animation: fall linear forwards; pointer-events: none; }
+  .confetti { position: fixed; z-index: 60; top: -3vh; width: .8vw; height: 1.6vw; border-radius: .2vw; animation: fall linear forwards; pointer-events: none; }
   @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
 
   /* Schonender Modus für schwache Geräte (z. B. Raspberry Pi 3): /tv?lite=1 */
@@ -190,8 +209,12 @@ function badge(q) { return q && q.label ? `<span class="tbadge">${q.icon || ''} 
 function topbar(right) {
   return `<div class="topbar"><div class="brand" style="font-size:2vw">Quiz<span>Abend</span></div><div class="tright">${right || ''}</div></div>`;
 }
-function qTop() { return topbar(`${badge(S.question)}<span class="pill">Frage ${S.qNum} / ${S.qTotal}</span>`); }
-const IN_Q = ['intro', 'preview', 'question', 'votes', 'reveal'];
+function qTop() {
+  const b = S.block && S.block.total > 1 ? `Block ${S.block.num}/${S.block.total} · ` : '';
+  return topbar(`<span id="spb"></span>${badge(S.question)}<span class="pill">${b}Frage ${S.qNum} / ${S.qTotal}</span>`);
+}
+const IN_Q = ['intro', 'preview', 'question', 'special', 'votes', 'reveal'];
+const stars = l => `<span class="stars" title="Schwierigkeit ${l}">${'★'.repeat(l)}${'☆'.repeat(3 - l)}</span>`;
 const fmt = n => Math.abs(n) >= 10000 ? n.toLocaleString('de-DE') : String(n).replace('.', ',');
 
 function render() {
@@ -204,17 +227,28 @@ function render() {
 
   document.getElementById('status').style.display = (!KIOSK && (S.phase === 'lobby' || S.phase === 'end')) ? '' : 'none';
   if (S.phase === 'lobby') { prevScores = {}; return renderLobby(); }
+  if (S.phase === 'block') return fresh ? renderBlock() : null;
   if (stage === 'intro') return fresh ? renderIntro() : null;
   if (stage === 'preview') return fresh ? renderPreview() : null;
   if (inQ) return fresh ? renderMain() : updateMain();
+  { const ov = document.getElementById('special'); if (ov && S.phase !== 'special') ov.remove(); }
   if (S.phase === 'scores') return fresh ? renderScores() : null;
   if (S.phase === 'end') return fresh ? renderEnd() : null;
 }
 
 function packLine() {
   const k = S.packs || {};
-  if (!k.questions) return `<div class="packs warn">⚠️ Keine Fragen aktiv – 👑 wählt am Handy Fragenpakete aus</div>`;
-  return `<div class="packs">📚 ${k.enabledPacks} von ${k.totalPacks} Paketen · ${k.questions} Fragen · ${Math.min(k.perGame, k.questions)} pro Runde${k.errors ? ` · <span class="warnc">⚠️ ${k.errors} Fehler in Fragendateien (Details am Handy des 👑)</span>` : ''}</div>`;
+  if (!k.questions) return `<div class="packs warn">⚠️ Keine Fragen aktiv – 👑 wählt am Handy unter ⚙️ Einstellungen Fragenpakete aus</div>`;
+  const bl = k.blocks.filter(b => b.plays > 0);
+  return `<div class="packs">📚 ${bl.length > 1 ? `${bl.length} Blöcke · ` : ''}${k.questions} Fragen${k.special && k.special.on ? ` · ⭐ Spezialfrage ×${k.special.mult}` : ''}${k.errors ? ` · <span class="warnc">⚠️ ${k.errors} Fehler in Fragendateien (Details am Handy des 👑)</span>` : ''}</div>`;
+}
+
+function renderBlock() {
+  const b = S.block;
+  app.innerHTML = topbar(`<span class="pill">Frage ${S.qNum} / ${S.qTotal}</span>`) + `<div class="intro">
+    <div class="icat">Block ${b.num} von ${b.total}</div>
+    <div class="ilabel">${b.num === 1 ? 'Los geht\'s!' : b.num === b.total ? 'Letzter Block!' : 'Nächster Block!'}</div>
+    <div class="bnames">${b.names.map(n => `<span>${esc(n)}</span>`).join('')}</div></div>`;
 }
 
 function renderLobby() {
@@ -264,7 +298,7 @@ function renderIntro() {
   const q = S.question;
   app.innerHTML = qTop() + `<div class="intro">
     <div class="iicon">${q.icon || '❓'}</div><div class="ilabel">${esc(q.label)}</div>
-    <div class="icat">${esc(q.category)}</div><div class="inum" id="inum"></div></div>`;
+    <div class="icat">${esc(q.category)} ${stars(q.level)}</div><div class="inum" id="inum"></div></div>`;
 }
 
 // ---------- Zuordnen: erst nur die Begriffe ----------
@@ -279,7 +313,7 @@ function renderPreview() {
 // ---------- Frage + Auflösung ----------
 function renderMain() {
   const q = S.question;
-  const head = `<div class="qcard ${q.image || q.kind === 'match' ? 'compact' : ''}"><div class="cat">${esc(q.category)}</div><div class="qtext">${esc(q.text)}</div></div>`;
+  const head = `<div class="qcard ${q.image || q.kind === 'match' ? 'compact' : ''}"><div class="cat">${esc(q.category)} ${stars(q.level)}</div><div class="qtext">${esc(q.text)}</div></div>`;
   const mid = `<div class="mid">
       <div class="timer"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="10"/>
         <circle id="arc" cx="50" cy="50" r="44" fill="none" stroke="#f5b014" stroke-width="10" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="0"/></svg>
@@ -304,7 +338,8 @@ function updateMain() {
   const q = S.question;
   const byId = Object.fromEntries(S.players.map(p => [p.id, p]));
   document.getElementById('chips').innerHTML = chips();
-  if (S.phase === 'votes' || S.phase === 'reveal') {
+  specialOverlay();
+  if (S.phase === 'special' || S.phase === 'votes' || S.phase === 'reveal') {
     const n = document.getElementById('num');
     if (n) n.innerHTML = S.phase === 'reveal' ? '✓' : '<span class="timesup">Stopp!</span>';
     const arc = document.getElementById('arc'); if (arc) arc.style.strokeDashoffset = 276.5;
@@ -331,6 +366,22 @@ function updateMain() {
         <span class="voters">${right.length ? right.map((p, k) => avatarHtml(p, 0.3 + k * 0.1)).join('') : '<span class="none">keiner</span>'}</span>`;
     }
   }
+}
+
+// ---------- Spezialfrage: Animation nach dem Antworten ----------
+function specialOverlay() {
+  const ov = document.getElementById('special');
+  if (S.phase === 'special' && !ov) {
+    const d = document.createElement('div');
+    d.id = 'special'; d.className = 'special';
+    d.innerHTML = `<div class="burst"></div><div class="sp-inner"><div class="sp-star">⭐</div>
+      <div class="sp-title">Spezialfrage!</div><div class="sp-mult">×${S.special.mult} Punkte</div></div>`;
+    document.body.appendChild(d);
+    if (!LITE) confetti();
+  }
+  if (S.phase !== 'special' && ov) ov.remove();
+  const b = document.getElementById('spb');
+  if (b) b.innerHTML = S.special ? `<span class="spbadge">⭐ Spezialfrage ×${S.special.mult}</span>` : '';
 }
 
 function renderEstimate(byId) {
