@@ -57,6 +57,7 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 - **Auswahlfrage:** Richtig = 500 bis 1000 Punkte, je schneller, desto mehr.
 - **Bilderrätsel und Schätzfragen** werden mit einem Countdown angekündigt. Erst danach erscheinen Bild und Frage.
 - **Schätzfrage:** Je näher dran, desto mehr Punkte (bis 800). Wer am nächsten dran ist, bekommt +200 dazu.
+- **Jahreszahlen** („In welchem Jahr …“): Punkte gibt es nur bei höchstens ±2 Jahren Abweichung. Exakt bringt 800, ±1 Jahr 530 und ±2 Jahre 270 Punkte, dazu +200 für den Nächsten. Wer weiter danebenliegt, bekommt 0 Punkte.
 - **Zuordnung:** Erst erscheinen nur die Begriffe, dann die Frage. Am Handy ordnest du die Partner den Zahlen zu. Aufgelöst wird Paar für Paar, Punkte gibt es pro richtigem Paar.
 - Wer mehrere Fragen in Folge richtig hat, bekommt bis zu +150 Serienbonus.
 - Ist die Zeit um, zeigt der Fernseher erst, wer was gewählt hat. Danach kommt die Auflösung.
@@ -104,7 +105,7 @@ Eine Paketdatei sieht so aus, und die Frageart ergibt sich aus den Feldern:
 |---|---|
 | Auswahl | `"antworten": [...]` mit 2 bis 4 Antworten. **Die erste ist immer die richtige**, im Spiel wird gemischt. |
 | Bilderrätsel | zusätzlich `"bild": "datei.jpg"`. Das Bild in den Ordner `bilder` neben der Datei legen (jpg, png, webp, gif oder svg). |
-| Schätzfrage | `"schaetzen": 330` statt Antworten, optional mit `"einheit": "m"`. Geht mit oder ohne Bild. |
+| Schätzfrage | `"schaetzen": 330` statt Antworten, optional mit `"einheit": "m"`. Geht mit oder ohne Bild. Fragen mit „Jahr“ im Text werden automatisch als Jahreszahl erkannt (±2 Jahre). Mit `"toleranz": 5` stellst du die erlaubte Abweichung selbst ein, auch bei normalen Schätzfragen. `"jahr": false` schaltet die Erkennung ab. |
 | Zuordnung | `"zuordnen": {"Begriff": "Partner", ...}` mit 2 bis 6 Paaren. Die Reihenfolge wird im Spiel gemischt. |
 
 Optional bei jeder Frage:

@@ -86,7 +86,11 @@ function normalizeQuestion(q, dir, packName, packLevel) {
   if (q.schaetzen !== undefined) {
     const value = Number(String(q.schaetzen).replace(',', '.'));
     if (!isFinite(value)) throw new Error('"schaetzen" muss eine Zahl sein');
-    return { ...base, kind: 'estimate', value, unit: q.einheit ? String(q.einheit) : '' };
+    // Jahreszahl-Fragen ("In welchem Jahr …") zählen nur bis ±2 Jahre; mit "toleranz" frei einstellbar
+    const year = q.jahr !== undefined ? !!q.jahr : /\bJahr\b/i.test(String(q.frage)) && Number.isInteger(value) && !q.einheit?.match?.(/^(m|km|g|kg|s|%)$/);
+    let tolerance = q.toleranz !== undefined ? Number(q.toleranz) : year ? 2 : null;
+    if (tolerance !== null && !(tolerance >= 0)) throw new Error('"toleranz" muss eine Zahl ab 0 sein');
+    return { ...base, kind: 'estimate', value, unit: q.einheit ? String(q.einheit) : '', year, tolerance };
   }
   if (Array.isArray(q.antworten) && q.antworten.length >= 2)
     return { ...base, kind: 'choice', answers: q.antworten.slice(0, 4).map(String) };
@@ -335,17 +339,21 @@ function scoreQuestion() {
   const speed = a => Math.max(0, state.answerEnds - a.at) / q.timeMs; // 1 = sofort, 0 = letzte Sekunde
   const list = [...players.values()];
   if (q.kind === 'estimate') {
-    const diffs = list.map(p => state.answers[p.id]).filter(Boolean).map(a => Math.abs(a.value - q.value));
+    const tol = q.tolerance;
+    const inRange = d => tol === null || d <= tol;
+    const diffs = list.map(p => state.answers[p.id]).filter(Boolean).map(a => Math.abs(a.value - q.value)).filter(inRange);
     const best = diffs.length ? Math.min(...diffs) : null;
     for (const p of list) {
       const a = state.answers[p.id];
       if (!a) { streakBonus(p, false); state.results[p.id] = { gain: 0, correct: false, answered: false }; continue; }
       const diff = Math.abs(a.value - q.value);
-      const acc = q.value === 0 ? (diff === 0 ? 1 : 0) : Math.max(0, 1 - diff / Math.abs(q.value));
-      const closest = diff === best;
+      // Mit Toleranz: exakt = volle Punkte, am Rand weniger, außerhalb nichts
+      const acc = tol !== null ? (diff <= tol ? 1 - diff / (tol + 1) : 0)
+        : q.value === 0 ? (diff === 0 ? 1 : 0) : Math.max(0, 1 - diff / Math.abs(q.value));
+      const closest = best !== null && diff === best;
       const gain = round10(800 * acc) + (closest ? 200 : 0) + streakBonus(p, closest);
       p.score += gain;
-      state.results[p.id] = { gain, correct: closest, exact: diff === 0, answered: true, value: a.value };
+      state.results[p.id] = { gain, correct: closest, exact: diff === 0, answered: true, value: a.value, outOfRange: !inRange(diff) };
     }
   } else if (q.kind === 'match') {
     for (const p of list) {
@@ -464,7 +472,7 @@ function baseView() {
       vq.text = q.text; vq.image = q.image;
       if (q.kind === 'choice') vq.answers = q.answers;
       if (q.kind === 'match') vq.right = q.right;
-      if (q.kind === 'estimate') vq.unit = q.unit;
+      if (q.kind === 'estimate') { vq.unit = q.unit; vq.year = q.year; vq.tolerance = q.tolerance; }
     }
     if (ph === 'votes' || ph === 'reveal') {
       const byTime = Object.entries(state.answers).sort((a, b) => a[1].at - b[1].at);
