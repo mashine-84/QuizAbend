@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" translate="no">
 <head>
 <meta charset="utf-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quiz-Abend – TV</title>
 <style>
@@ -12,7 +13,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
   body {
-    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif, "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji";
     color: var(--ink); overflow: hidden; cursor: default;
     background: radial-gradient(ellipse at 20% 0%, #3a2a8a 0%, transparent 55%),
                 radial-gradient(ellipse at 100% 100%, #5b1f6e 0%, transparent 50%), var(--bg);
@@ -100,6 +101,7 @@
 
   /* Schonender Modus für schwache Geräte (z. B. Raspberry Pi 3): /tv?lite=1 */
   html.lite body { background: var(--bg); }
+  body.nocursor, body.nocursor * { cursor: none !important; }
   html.lite *, html.lite *::before, html.lite *::after { animation: none !important; transition: none !important; box-shadow: none !important; text-shadow: none !important; }
 </style>
 </head>
@@ -110,7 +112,12 @@
 <script>
 const SHAPES = ['▲', '◆', '●', '■'];
 const LITE = /[?&]lite=1/.test(location.search);
+const KIOSK = /[?&]kiosk=1/.test(location.search);
 if (LITE) document.documentElement.classList.add('lite');
+// Mauszeiger nach 2 s ohne Bewegung ausblenden
+let cursorTimer;
+function wakeCursor() { document.body.classList.remove('nocursor'); clearTimeout(cursorTimer); cursorTimer = setTimeout(() => document.body.classList.add('nocursor'), 2000); }
+addEventListener('mousemove', wakeCursor); addEventListener('DOMContentLoaded', wakeCursor);
 const app = document.getElementById('app');
 let S = null, lastKey = '', deadline = 0, seen = new Set(), prevScores = {};
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -137,7 +144,7 @@ function render() {
   if (S.phase === 'question' && fresh) prevScores = Object.fromEntries(S.players.map(p => [p.id, p.score]));
   lastKey = key;
 
-  document.getElementById('status').style.display = (S.phase === 'lobby' || S.phase === 'end') ? '' : 'none';
+  document.getElementById('status').style.display = (!KIOSK && (S.phase === 'lobby' || S.phase === 'end')) ? '' : 'none';
   if (S.phase === 'lobby') return renderLobby();
   if (S.phase === 'question' || S.phase === 'reveal') return fresh ? renderQuestion() : updateQuestion();
   if (S.phase === 'scores') return fresh ? renderScores() : null;
