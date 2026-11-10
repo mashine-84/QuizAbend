@@ -26,6 +26,9 @@ command -v unclutter >/dev/null && unclutter -idle 1 -root &
 BROWSER="$(command -v chromium || command -v chromium-browser)"
 [ -z "$BROWSER" ] && { echo "Chromium nicht gefunden"; exit 1; }
 echo "Starte $BROWSER $URL"
-exec "$BROWSER" --kiosk --noerrdialogs --disable-infobars --no-first-run \
+EXTRA=""
+[ -n "$WAYLAND_DISPLAY" ] && EXTRA="--ozone-platform=wayland"
+# shellcheck disable=SC2086
+exec "$BROWSER" $EXTRA --kiosk --noerrdialogs --disable-infobars --no-first-run \
   --password-store=basic --disable-session-crashed-bubble \
   --check-for-update-interval=31536000 --disk-cache-dir=/tmp/quizabend-cache "$URL"
