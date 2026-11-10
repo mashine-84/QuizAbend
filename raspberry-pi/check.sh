@@ -5,6 +5,8 @@ echo "== Server";   systemctl is-active quizabend; curl -s -o /dev/null -w "HTTP
 journalctl -u quizabend -n 8 --no-pager 2>/dev/null
 echo "== Sitzung";  echo "Typ=${XDG_SESSION_TYPE:-?} Desktop=${XDG_CURRENT_DESKTOP:-?}"; pgrep -l 'labwc|wayfire|lxsession|Xorg' || echo "kein Desktop gefunden"
 echo "== Autologin"; systemctl get-default; grep -rh '^autologin-user' /etc/lightdm/ 2>/dev/null || echo "kein Desktop-Autologin"
+grep -h autologin /etc/systemd/system/getty@tty1.service.d/*.conf 2>/dev/null || echo "kein Konsolen-Autologin"
+echo "== Ohne-Desktop-Modus"; grep -l "QuizAbend" ~/.profile ~/.bash_profile 2>/dev/null || echo "nicht aktiv"; command -v cage || echo "cage nicht installiert"
 echo "== Autostart"; ls ~/.config/autostart/ 2>/dev/null; grep -l quizabend ~/.config/labwc/autostart ~/.config/lxsession/LXDE-pi/autostart ~/.config/wayfire.ini 2>/dev/null
 echo "== Browser";  command -v chromium chromium-browser || echo "Chromium fehlt"
 echo "== Kiosk-Log"; tail -n 15 /tmp/quizabend-kiosk.log 2>/dev/null || echo "kein Log – kiosk.sh wurde nicht gestartet"

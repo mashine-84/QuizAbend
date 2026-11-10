@@ -3,8 +3,19 @@
 #  - installiert Node.js und Chromium
 #  - startet den Quiz-Server automatisch beim Hochfahren (systemd)
 #  - öffnet nach dem Login die TV-Ansicht im Vollbild (Kiosk)
-# Aufruf (ohne sudo):  ./raspberry-pi/setup.sh
+#
+# Aufruf (ohne sudo):
+#   ./raspberry-pi/setup.sh                 mit Desktop: Quiz startet nach dem Desktop-Login
+#   ./raspberry-pi/setup.sh --ohne-desktop  ohne Desktop: Pi bootet direkt ins Quiz (empfohlen für Pi 3)
+# Zurück zum Desktop: einfach wieder ohne Option ausführen.
 set -e
+
+MODE=desktop
+case "$1" in
+  --ohne-desktop|--no-desktop) MODE=kiosk ;;
+  ""|--mit-desktop) ;;
+  *) echo "Unbekannte Option: $1  (erlaubt: --ohne-desktop)"; exit 1 ;;
+esac
 
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 USER_NAME="$(whoami)"
@@ -20,6 +31,7 @@ sudo apt-get install -y nodejs curl
 if apt-cache show chromium >/dev/null 2>&1; then CHR=chromium; else CHR=chromium-browser; fi
 sudo apt-get install -y "$CHR"
 sudo apt-get install -y unclutter >/dev/null 2>&1 || true   # versteckt den Mauszeiger (optional)
+[ "$MODE" = kiosk ] && sudo apt-get install -y cage          # Mini-Anzeige ohne Desktop
 
 NODE_BIN="$(command -v node || command -v nodejs)"
 if [ -z "$NODE_BIN" ]; then echo "Node.js konnte nicht installiert werden."; exit 1; fi
@@ -48,7 +60,7 @@ sudo systemctl enable --now quizabend.service
 
 echo "==> Vollbild-Browser beim Login starten …"
 KIOSK="$DIR/raspberry-pi/kiosk.sh"
-chmod +x "$KIOSK" "$DIR/raspberry-pi/check.sh"
+chmod +x "$KIOSK" "$DIR/raspberry-pi/check.sh" "$DIR/raspberry-pi/kiosk-cage.sh"
 # Je nach Raspberry-Pi-OS-Version läuft ein anderer Desktop. Wir tragen uns überall ein;
 # kiosk.sh sorgt selbst dafür, dass der Browser nur einmal startet.
 
@@ -82,14 +94,39 @@ if [ -f "$WF" ] && ! grep -q quizabend "$WF"; then
   else printf '\n[autostart]\nquizabend = %s\n' "$KIOSK" >> "$WF"; fi
 fi
 
+# Start ohne Desktop: Login-Skript der Textkonsole auf dem Fernseher (tty1) startet cage + Browser
+PROFILE="$HOME/.profile"; [ -f "$HOME/.bash_profile" ] && PROFILE="$HOME/.bash_profile"
+[ -f "$PROFILE" ] && sed -i '/# >>> QuizAbend/,/# <<< QuizAbend/d' "$PROFILE"
+if [ "$MODE" = kiosk ]; then
+  cat >> "$PROFILE" <<PROF
+# >>> QuizAbend (von raspberry-pi/setup.sh, entfernen mit: setup.sh ohne Option)
+if [ -z "\$SSH_CONNECTION" ] && [ "\$(tty)" = "/dev/tty1" ]; then
+  "$DIR/raspberry-pi/kiosk-cage.sh"
+fi
+# <<< QuizAbend
+PROF
+fi
+
 if command -v raspi-config >/dev/null; then
-  echo "==> Automatisch in den Desktop einloggen, Bildschirmschoner aus …"
-  sudo raspi-config nonint do_boot_behaviour B4 || true
-  sudo raspi-config nonint do_blanking 1 || true
+  if [ "$MODE" = kiosk ]; then
+    echo "==> Ohne Desktop starten, automatisch in der Konsole anmelden …"
+    sudo raspi-config nonint do_boot_behaviour B2 || true
+  else
+    echo "==> Automatisch in den Desktop einloggen …"
+    sudo raspi-config nonint do_boot_behaviour B4 || true
+  fi
+  sudo raspi-config nonint do_blanking 1 || true   # Bildschirmschoner aus
+elif [ "$MODE" = kiosk ]; then
+  echo "==> Automatisch in der Konsole anmelden …"
+  sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
+  printf '[Service]\nExecStart=\nExecStart=-/sbin/agetty --autologin %s --noclear %%I $TERM\n' "$USER_NAME" | \
+    sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf >/dev/null
+  sudo systemctl set-default multi-user.target
 fi
 
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 echo
 echo "Fertig! Nach einem Neustart (sudo reboot) zeigt der Fernseher das Quiz."
+[ "$MODE" = kiosk ] && echo "Modus: ohne Desktop. Zurück zum Desktop:  ./raspberry-pi/setup.sh  (ohne Option)"
 echo "Klappt es nicht:  ./raspberry-pi/check.sh  ausführen und die Ausgabe weitergeben."
 echo "Handys verbinden sich über den QR-Code oder http://${IP:-<IP-des-Pi>}:3000/"
