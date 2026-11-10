@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#14102b">
+<title>Quiz-Abend</title>
+<style>
+  :root { --bg: #14102b; --ink: #fff; --muted: #b9b2e6; --a: #e5484d; --b: #3e8ef7; --c: #f5b014; --d: #2fb36d; --pc: #6a5acd; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body { font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; background: var(--bg); color: var(--ink);
+    display: flex; flex-direction: column; overscroll-behavior: none; user-select: none; -webkit-user-select: none; }
+  header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; padding-top: max(12px, env(safe-area-inset-top)); background: rgba(255,255,255,.06); font-weight: 800; }
+  header .av { width: 36px; height: 36px; border-radius: 50%; background: var(--pc); display: grid; place-items: center; font-size: 20px; }
+  header .score { margin-left: auto; font-variant-numeric: tabular-nums; background: rgba(255,255,255,.1); padding: 4px 12px; border-radius: 99px; }
+  main { flex: 1; display: flex; flex-direction: column; padding: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  .center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 14px; }
+  h1 { font-size: 34px; font-weight: 900; letter-spacing: -0.02em; line-height: 1.1; }
+  h1 span { color: var(--c); }
+  p { color: var(--muted); font-size: 17px; line-height: 1.4; }
+  input { width: 100%; max-width: 340px; font: inherit; font-size: 22px; font-weight: 700; padding: 16px 18px; border-radius: 14px; border: 3px solid transparent; background: #fff; color: #1b1440; text-align: center; outline: none; }
+  input:focus { border-color: var(--c); }
+  .btn { width: 100%; max-width: 340px; font: inherit; font-size: 21px; font-weight: 900; padding: 17px; border-radius: 14px; border: none; background: var(--c); color: #1b1440; box-shadow: 0 5px 0 rgba(0,0,0,.3); cursor: pointer; }
+  .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
+  .btn:disabled { opacity: .4; }
+  .btn.ghost { background: rgba(255,255,255,.12); color: #fff; }
+  .err { color: #ff8787; font-weight: 700; min-height: 1.4em; }
+  .big { font-size: 72px; line-height: 1; }
+  .grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 12px; }
+  .ans { border: none; border-radius: 18px; color: #fff; font: inherit; font-weight: 800; font-size: 21px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 10px; box-shadow: 0 6px 0 rgba(0,0,0,.3); cursor: pointer; text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+  .ans .shape { font-size: 46px; line-height: 1; }
+  .ans:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
+  .c0 { background: var(--a); } .c1 { background: var(--b); } .c2 { background: var(--c); } .c3 { background: var(--d); }
+  .qline { text-align: center; color: var(--muted); font-weight: 700; margin-bottom: 12px; font-size: 15px; }
+  .chosen { width: 130px; height: 130px; border-radius: 26px; display: grid; place-items: center; font-size: 70px; color: #fff; box-shadow: 0 6px 0 rgba(0,0,0,.3); }
+  .res { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px; animation: pop .4s cubic-bezier(.2,1.5,.4,1) both; }
+  .res.ok { background: #2fb36d; } .res.bad { background: #e5484d; } .res.none { background: #3b3363; }
+  .res h1 { font-size: 40px; } .res p { color: rgba(255,255,255,.9); font-size: 20px; font-weight: 700; }
+  .res .gain { font-size: 30px; font-weight: 900; background: rgba(0,0,0,.18); padding: 8px 22px; border-radius: 99px; }
+  .rank { font-size: 64px; font-weight: 900; color: var(--c); }
+  @keyframes pop { from { transform: scale(.85); opacity: 0; } }
+  .offline { position: fixed; top: 0; left: 0; right: 0; background: #e5484d; color: #fff; text-align: center; padding: 8px; font-weight: 700; font-size: 14px; display: none; z-index: 9; }
+  .leave { background: none; border: none; color: var(--muted); font: inherit; font-size: 14px; text-decoration: underline; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="offline" id="offline">Verbindung weg – verbinde neu …</div>
+<header id="hdr" style="display:none"><span class="av" id="hAv"></span><span id="hName"></span><span class="score" id="hScore">0</span></header>
+<main id="main"></main>
+<script>
+const SHAPES = ['▲', '◆', '●', '■'];
+const main = document.getElementById('main');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let myId = localStorage.getItem('quizId');
+let S = null, es = null, lastKey = '', joining = false, pending = null;
+
+function connect() {
+  if (es) es.close();
+  es = new EventSource('/events?role=player' + (myId ? '&id=' + encodeURIComponent(myId) : ''));
+  es.onmessage = e => { document.getElementById('offline').style.display = 'none'; S = JSON.parse(e.data); render(); };
+  es.onerror = () => { document.getElementById('offline').style.display = 'block'; };
+}
+connect();
+
+async function post(url, body) {
+  const r = await fetch(url, { method: 'POST', body: JSON.stringify(body) });
+  return { ok: r.ok, data: await r.json().catch(() => ({})) };
+}
+
+async function join(ev) {
+  ev.preventDefault();
+  if (joining) return;
+  const name = document.getElementById('name').value.trim();
+  if (!name) return;
+  joining = true;
+  const { ok, data } = await post('/api/join', { name });
+  joining = false;
+  if (!ok) { document.getElementById('err').textContent = data.error || 'Hat nicht geklappt.'; return; }
+  localStorage.setItem('quizName', name);
+  localStorage.setItem('quizId', data.id);
+  myId = data.id;
+  lastKey = '';
+  connect();
+}
+
+function answer(i) {
+  if (pending !== null || (S.me && S.me.myAnswer !== null)) return;
+  pending = i;
+  if (navigator.vibrate) navigator.vibrate(30);
+  renderWaiting(i);
+  post('/api/answer', { id: myId, choice: i }).finally(() => { pending = null; });
+}
+
+function advance() { post('/api/advance', { id: myId }); }
+function leave() {
+  post('/api/leave', { id: myId });
+  localStorage.removeItem('quizId'); myId = null; lastKey = ''; connect();
+}
+
+function header() {
+  const h = document.getElementById('hdr');
+  if (!S.me) { h.style.display = 'none'; return; }
+  h.style.display = '';
+  document.documentElement.style.setProperty('--pc', S.me.color);
+  document.getElementById('hAv').textContent = S.me.avatar;
+  document.getElementById('hName').textContent = S.me.name + (S.me.isVip ? ' 👑' : '');
+  document.getElementById('hScore').textContent = S.me.score + ' P';
+}
+
+function render() {
+  header();
+  const me = S.me;
+  const key = [S.phase, S.qNum, me ? me.id : '-', me && me.myAnswer, me && me.isVip, S.players.length, S.phase === 'lobby' ? S.players.filter(p => p.connected).length : ''].join('|');
+  if (key === lastKey) return; // nichts Relevantes geändert (Eingaben nicht zerstören)
+  lastKey = key;
+
+  if (!me) return renderJoin();
+  if (S.phase === 'lobby') return renderLobby();
+  if (S.phase === 'question') {
+    if (me.myAnswer !== null) return renderWaiting(me.myAnswer);
+    if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+    return renderQuestion();
+  }
+  if (S.phase === 'reveal') return renderResult();
+  if (S.phase === 'scores') return renderRank(false);
+  if (S.phase === 'end') return renderRank(true);
+}
+
+function renderJoin() {
+  myId = null; localStorage.removeItem('quizId');
+  const full = S.players.length >= S.maxPlayers;
+  main.innerHTML = `<form class="center" onsubmit="join(event)">
+    <h1>Quiz<span>Abend</span></h1>
+    <p>${S.phase === 'lobby' ? 'Wie heißt du?' : 'Das Spiel läuft schon – du steigst bei der nächsten Frage ein.'}</p>
+    <input id="name" maxlength="14" autocomplete="off" autocapitalize="words" placeholder="Dein Name" value="${esc(localStorage.getItem('quizName') || '')}">
+    <button class="btn" ${full ? 'disabled' : ''}>${full ? 'Spiel ist voll' : 'Mitspielen'}</button>
+    <div class="err" id="err"></div></form>`;
+}
+
+function renderLobby() {
+  const n = S.players.filter(p => p.connected).length;
+  const canStart = n >= S.minPlayers;
+  main.innerHTML = `<div class="center">
+    <div class="big">${S.me.avatar}</div>
+    <h1>Du bist dabei!</h1>
+    <p>Schau auf den Fernseher.<br>${n} von max. ${S.maxPlayers} Spielern da.</p>
+    ${S.me.isVip
+      ? `<button class="btn" onclick="advance()" ${canStart ? '' : 'disabled'}>${canStart ? 'Alle da – Spiel starten!' : `Warte auf Mitspieler (min. ${S.minPlayers})`}</button>`
+      : `<p>Warte, bis 👑 das Spiel startet …</p>`}
+    <button class="leave" onclick="leave()">Spiel verlassen</button></div>`;
+}
+
+function renderQuestion() {
+  main.innerHTML = `<div class="qline">Frage ${S.qNum} / ${S.qTotal} · Antworte schnell!</div>
+    <div class="grid">${S.question.answers.map((a, i) => `<button class="ans c${i}" onclick="answer(${i})"><span class="shape">${SHAPES[i]}</span>${esc(a)}</button>`).join('')}</div>`;
+}
+
+function renderWaiting(i) {
+  main.innerHTML = `<div class="center"><div class="chosen c${i}">${SHAPES[i]}</div>
+    <h1>Eingeloggt!</h1><p>Warte auf die anderen …</p></div>`;
+}
+
+function renderResult() {
+  const r = S.me.result || { answered: false };
+  const cls = !r.answered ? 'none' : r.correct ? 'ok' : 'bad';
+  const title = !r.answered ? 'Zu langsam!' : r.correct ? 'Richtig! 🎉' : 'Leider falsch';
+  const q = S.question;
+  main.innerHTML = `<div class="res ${cls}"><h1>${title}</h1>
+    ${r.correct ? `<div class="gain">+${r.gain} Punkte</div>` : `<p>Richtig war: ${SHAPES[q.correct]} ${esc(q.answers[q.correct])}</p>`}
+    <p>Du bist auf Platz ${S.me.rank}</p></div>`;
+  if (navigator.vibrate) navigator.vibrate(r.correct ? 80 : [100, 60, 100]);
+}
+
+function renderRank(end) {
+  const me = S.me, ahead = S.players[me.rank - 2];
+  const gap = ahead ? ahead.score - me.score : 0;
+  main.innerHTML = `<div class="center">
+    <p>${end ? 'Endergebnis' : 'Zwischenstand'}</p>
+    <div class="rank">${me.rank === 1 && end ? '🏆' : me.rank + '.'}</div>
+    <h1>${end ? (me.rank === 1 ? 'Du hast gewonnen!' : `Platz ${me.rank}`) : `${me.score} Punkte`}</h1>
+    <p>${me.rank === 1 ? (end ? `${me.score} Punkte – stark!` : 'Du führst! 🔥') : `${gap} Punkte hinter ${esc(ahead.name)}`}</p>
+    ${me.isVip ? `<button class="btn ${end ? '' : 'ghost'}" onclick="advance()">${end ? 'Neue Runde' : 'Weiter'}</button>` : ''}
+  </div>`;
+}
+</script>
+</body>
+</html>

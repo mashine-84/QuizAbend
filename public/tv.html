@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiz-Abend – TV</title>
+<style>
+  :root {
+    --bg: #14102b; --bg2: #221a4d; --ink: #fff; --muted: #b9b2e6;
+    --a: #e5484d; --b: #3e8ef7; --c: #f5b014; --d: #2fb36d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    color: var(--ink); overflow: hidden; cursor: default;
+    background: radial-gradient(ellipse at 20% 0%, #3a2a8a 0%, transparent 55%),
+                radial-gradient(ellipse at 100% 100%, #5b1f6e 0%, transparent 50%), var(--bg);
+    font-size: 1.6vw;
+  }
+  #app { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 3vh 4vw 4.5vh; }
+  .brand { font-weight: 900; letter-spacing: -0.02em; }
+  .brand span { color: var(--c); }
+  .topbar { display: flex; justify-content: space-between; align-items: center; font-size: 1.4vw; color: var(--muted); min-height: 4vh; }
+  .pill { background: rgba(255,255,255,.1); border-radius: 99px; padding: .4em 1.1em; font-weight: 700; color: var(--ink); }
+
+  /* Lobby */
+  .lobby { flex: 1; display: grid; grid-template-columns: 1fr 1.25fr; gap: 4vw; align-items: center; }
+  .join h1 { font-size: 5.4vw; line-height: 1; font-weight: 900; letter-spacing: -0.03em; }
+  .join h1 span { color: var(--c); }
+  .join p { color: var(--muted); font-size: 1.7vw; margin: 2vh 0 3vh; }
+  .qrbox { display: flex; gap: 2vw; align-items: center; }
+  .qr { width: 17vw; height: 17vw; background: #fff; border-radius: 1.2vw; padding: .6vw; box-shadow: 0 1vw 3vw rgba(0,0,0,.4); }
+  .qr svg { width: 100%; height: 100%; display: block; }
+  .url { font-size: 1.5vw; color: var(--muted); }
+  .url b { display: block; color: var(--ink); font-size: 1.8vw; margin-top: .4vh; white-space: nowrap; }
+  .slots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.6vh 1.4vw; }
+  .slot { height: 9.5vh; border-radius: 1.2vw; border: .25vw dashed rgba(255,255,255,.18); display: flex; align-items: center; gap: 1vw; padding: 0 1.4vw; color: rgba(255,255,255,.3); font-size: 1.5vw; }
+  .slot.on { border: none; background: var(--pc); color: #fff; font-weight: 800; font-size: 2vw; box-shadow: 0 .6vh 0 rgba(0,0,0,.25); }
+  .slot .av { font-size: 2.8vw; }
+  .slot .crown { margin-left: auto; font-size: 1.7vw; }
+  .slot.off { opacity: .45; }
+  .hint { margin-top: 3vh; color: var(--muted); font-size: 1.5vw; text-align: center; }
+  .hint b { color: var(--ink); }
+
+  /* Frage */
+  .qwrap { flex: 1; display: flex; flex-direction: column; gap: 2.5vh; padding-top: 1vh; }
+  .qcard { background: #fff; color: #1b1440; border-radius: 1.6vw; padding: 4vh 3vw; text-align: center; box-shadow: 0 1vh 0 rgba(0,0,0,.25); }
+  .cat { display: inline-block; font-size: 1.3vw; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #6a5acd; margin-bottom: 1.2vh; }
+  .qtext { font-size: 3.4vw; font-weight: 900; line-height: 1.15; letter-spacing: -0.01em; }
+  .mid { display: flex; align-items: center; gap: 2vw; }
+  .timer { position: relative; width: 9vw; height: 9vw; flex: none; }
+  .timer svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .timer .num { position: absolute; inset: 0; display: grid; place-items: center; font-size: 3.4vw; font-weight: 900; }
+  .answered { flex: 1; display: flex; flex-wrap: wrap; gap: .8vw; justify-content: flex-end; }
+  .chip { display: flex; align-items: center; gap: .5vw; background: rgba(255,255,255,.08); border-radius: 99px; padding: .4vw 1vw .4vw .5vw; font-weight: 700; font-size: 1.3vw; opacity: .45; transition: all .3s; }
+  .chip .dot { width: 2.4vw; height: 2.4vw; border-radius: 50%; display: grid; place-items: center; background: var(--pc); font-size: 1.4vw; }
+  .chip.done { opacity: 1; background: rgba(255,255,255,.18); transform: translateY(-.3vh); }
+  .chip.ok { background: rgba(47,179,109,.35); opacity: 1; }
+  .chip.bad { background: rgba(229,72,77,.3); opacity: 1; }
+  .chip .gain { color: #8ff0b5; margin-left: .3vw; }
+  .answers { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 1.6vw; }
+  .ans { border-radius: 1.4vw; display: flex; align-items: center; gap: 1.6vw; padding: 0 2vw; font-size: 2.6vw; font-weight: 800; box-shadow: 0 .8vh 0 rgba(0,0,0,.25); transition: opacity .4s, transform .4s, filter .4s; position: relative; }
+  .ans .shape { font-size: 3vw; width: 4vw; text-align: center; opacity: .9; }
+  .ans .count { margin-left: auto; background: rgba(0,0,0,.25); border-radius: 99px; padding: .2vw 1.1vw; font-size: 2vw; }
+  .ans.dim { opacity: .25; filter: grayscale(.7); transform: scale(.97); }
+  .ans.win { transform: scale(1.03); box-shadow: 0 0 0 .4vw #fff, 0 .8vh 0 rgba(0,0,0,.25); }
+  .ans.win::after { content: "✓"; position: absolute; right: -1vw; top: -1.6vw; width: 3.6vw; height: 3.6vw; border-radius: 50%; background: #fff; color: var(--d); display: grid; place-items: center; font-size: 2.4vw; font-weight: 900; }
+  .c0 { background: var(--a); } .c1 { background: var(--b); } .c2 { background: var(--c); } .c3 { background: var(--d); }
+
+  /* Rangliste */
+  .board { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 2vh; }
+  .board h2 { font-size: 3.6vw; font-weight: 900; margin-bottom: 3vh; }
+  .rows { width: 70vw; display: flex; flex-direction: column; gap: 1.3vh; }
+  .row { display: flex; align-items: center; gap: 1.4vw; background: rgba(255,255,255,.08); border-radius: 1.2vw; padding: 1.2vh 1.6vw; font-size: 2vw; font-weight: 800; animation: slide .5s both; }
+  .row .pos { width: 3vw; color: var(--muted); }
+  .row .av { width: 3.6vw; height: 3.6vw; border-radius: 50%; display: grid; place-items: center; background: var(--pc); font-size: 2.2vw; }
+  .row .bar { flex: 1; height: 1.2vh; background: rgba(255,255,255,.08); border-radius: 99px; overflow: hidden; }
+  .row .bar i { display: block; height: 100%; background: var(--pc); border-radius: 99px; transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
+  .row .pts { min-width: 8vw; text-align: right; font-variant-numeric: tabular-nums; }
+  .row .plus { color: #8ff0b5; font-size: 1.4vw; min-width: 6vw; text-align: right; }
+  @keyframes slide { from { opacity: 0; transform: translateX(-3vw); } }
+
+  /* Ende */
+  .podium { display: flex; align-items: flex-end; justify-content: center; gap: 2vw; margin: 2vh 0 3vh; }
+  .step { width: 16vw; display: flex; flex-direction: column; align-items: center; animation: rise .9s cubic-bezier(.2,.8,.2,1) both; }
+  .step .who { font-size: 2vw; font-weight: 900; margin-bottom: 1vh; text-align: center; }
+  .step .big { font-size: 5vw; }
+  .step .block { width: 100%; border-radius: 1.2vw 1.2vw 0 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 2vh; font-weight: 900; font-size: 4vw; background: var(--pc); box-shadow: inset 0 -1vh 0 rgba(0,0,0,.2); }
+  .step .block small { font-size: 1.6vw; opacity: .9; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10vh); } }
+  .others { display: flex; gap: 1.2vw; flex-wrap: wrap; justify-content: center; font-size: 1.6vw; color: var(--muted); }
+
+  .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1) both; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } }
+  .fade { animation: fade .4s both; } @keyframes fade { from { opacity: 0; transform: translateY(1.5vh); } }
+  .status { position: fixed; left: 50%; bottom: 1.5vh; transform: translateX(-50%); font-size: 1.1vw; color: var(--muted); opacity: .7; }
+  .confetti { position: fixed; top: -3vh; width: .8vw; height: 1.6vw; border-radius: .2vw; animation: fall linear forwards; pointer-events: none; }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="status" id="status">Leertaste = weiter · F = Vollbild</div>
+<script src="/qr.js"></script>
+<script>
+const SHAPES = ['▲', '◆', '●', '■'];
+const app = document.getElementById('app');
+let S = null, lastKey = '', deadline = 0, seen = new Set(), prevScores = {};
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const es = new EventSource('/events?role=tv');
+es.onmessage = e => { S = JSON.parse(e.data); render(); };
+es.onerror = () => { document.getElementById('status').style.display = ''; document.getElementById('status').textContent = 'Verbindung zum Server unterbrochen – versuche neu …'; };
+es.onopen = () => { document.getElementById('status').textContent = 'Leertaste = weiter · F = Vollbild'; };
+
+function advance() { fetch('/api/advance', { method: 'POST', body: JSON.stringify({ role: 'tv' }) }); }
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); advance(); }
+  if (e.key === 'f' || e.key === 'F') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); }
+});
+
+function topbar(right) {
+  return `<div class="topbar"><div class="brand" style="font-size:2vw">Quiz<span>Abend</span></div><div>${right || ''}</div></div>`;
+}
+
+function render() {
+  const key = S.phase + ':' + S.qNum;
+  const fresh = key !== lastKey;
+  if (S.phase === 'question' && (fresh || Math.abs(Date.now() + S.remainingMs - deadline) > 1200)) deadline = Date.now() + S.remainingMs;
+  if (S.phase === 'question' && fresh) prevScores = Object.fromEntries(S.players.map(p => [p.id, p.score]));
+  lastKey = key;
+
+  document.getElementById('status').style.display = (S.phase === 'lobby' || S.phase === 'end') ? '' : 'none';
+  if (S.phase === 'lobby') return renderLobby();
+  if (S.phase === 'question' || S.phase === 'reveal') return fresh ? renderQuestion() : updateQuestion();
+  if (S.phase === 'scores') return fresh ? renderScores() : null;
+  if (S.phase === 'end') return fresh ? renderEnd() : null;
+}
+
+function renderLobby() {
+  const slots = [];
+  for (let i = 0; i < S.maxPlayers; i++) {
+    const p = S.players[i];
+    if (p) {
+      const isNew = !seen.has(p.id); seen.add(p.id);
+      slots.push(`<div class="slot on ${isNew ? 'pop' : ''} ${p.connected ? '' : 'off'}" style="--pc:${p.color}"><span class="av">${p.avatar}</span>${esc(p.name)}${p.id === S.vip ? '<span class="crown">👑</span>' : ''}</div>`);
+    } else slots.push(`<div class="slot">Platz frei</div>`);
+  }
+  const n = S.players.filter(p => p.connected).length;
+  const need = Math.max(0, S.minPlayers - n);
+  app.innerHTML = topbar(`<span class="pill">${n} / ${S.maxPlayers} Spieler</span>`) + `
+    <div class="lobby">
+      <div class="join">
+        <h1>Handy raus,<br><span>los geht's!</span></h1>
+        <p>QR-Code scannen oder Adresse im Handy-Browser öffnen.<br>Alle Handys müssen im selben WLAN sein.</p>
+        <div class="qrbox"><div class="qr">${QR.toSvg(S.join.url)}</div><div class="url">Adresse:<b>${esc(S.join.url.replace(/\/$/, ''))}</b></div></div>
+      </div>
+      <div>
+        <div class="slots">${slots.join('')}</div>
+        <div class="hint">${need > 0 ? `Noch <b>${need}</b> Spieler${need > 1 ? '' : ''} nötig …` : `👑 <b>${esc((S.players.find(p => p.id === S.vip) || {}).name || '')}</b> startet das Spiel am Handy – oder <b>Leertaste</b> drücken`}</div>
+      </div>
+    </div>`;
+}
+
+function chips() {
+  return S.players.filter(p => p.connected || p.answered).map(p => {
+    let cls = p.answered ? 'done' : '', extra = '';
+    if (S.phase === 'reveal' && p.result) {
+      cls = p.result.correct ? 'ok' : 'bad';
+      extra = p.result.correct ? `<span class="gain">+${p.result.gain}</span>` : (p.result.answered ? ' ✗' : ' –');
+    }
+    return `<div class="chip ${cls}" style="--pc:${p.color}"><span class="dot">${p.avatar}</span>${esc(p.name)}${extra}</div>`;
+  }).join('');
+}
+
+function renderQuestion() {
+  const q = S.question;
+  app.innerHTML = topbar(`<span class="pill">Frage ${S.qNum} / ${S.qTotal}</span>`) + `
+    <div class="qwrap fade">
+      <div class="qcard"><div class="cat">${esc(q.category)}</div><div class="qtext">${esc(q.text)}</div></div>
+      <div class="mid">
+        <div class="timer"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="10"/>
+          <circle id="arc" cx="50" cy="50" r="44" fill="none" stroke="#f5b014" stroke-width="10" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="0"/></svg>
+          <div class="num" id="num"></div></div>
+        <div class="answered" id="chips">${chips()}</div>
+      </div>
+      <div class="answers" id="answers">${q.answers.map((a, i) => `<div class="ans c${i}" style="animation:pop .4s ${i * 0.08}s both"><span class="shape">${SHAPES[i]}</span><span>${esc(a)}</span><span class="count" style="display:none"></span></div>`).join('')}</div>
+    </div>`;
+  updateQuestion();
+}
+
+function updateQuestion() {
+  const q = S.question;
+  document.getElementById('chips').innerHTML = chips();
+  if (S.phase === 'reveal') {
+    document.querySelectorAll('.ans').forEach((el, i) => {
+      el.classList.toggle('win', i === q.correct);
+      el.classList.toggle('dim', i !== q.correct);
+      const c = el.querySelector('.count'); c.style.display = ''; c.textContent = q.counts[i];
+    });
+    const n = document.getElementById('num'); if (n) n.textContent = '✓';
+    document.getElementById('arc').style.strokeDashoffset = 276.5;
+  }
+}
+
+(function tick() {
+  if (S && S.phase === 'question') {
+    const left = Math.max(0, deadline - Date.now());
+    const arc = document.getElementById('arc'), num = document.getElementById('num');
+    if (arc) {
+      arc.style.strokeDashoffset = 276.5 * (1 - left / S.durationMs);
+      arc.style.stroke = left < 5000 ? '#e5484d' : '#f5b014';
+      num.textContent = Math.ceil(left / 1000);
+    }
+  }
+  requestAnimationFrame(tick);
+})();
+
+function renderScores() {
+  const max = Math.max(1, ...S.players.map(p => p.score));
+  const last = S.qNum >= S.qTotal;
+  app.innerHTML = topbar(`<span class="pill">Nach Frage ${S.qNum} / ${S.qTotal}</span>`) + `
+    <div class="board"><h2>${last ? 'Gleich kommt die Siegerehrung …' : 'Zwischenstand'}</h2>
+      <div class="rows">${S.players.map((p, i) => {
+        const gain = p.result ? p.result.gain : 0;
+        return `<div class="row" style="--pc:${p.color};animation-delay:${i * 0.07}s"><span class="pos">${i + 1}.</span><span class="av">${p.avatar}</span>
+          <span style="min-width:14vw">${esc(p.name)}</span><span class="bar"><i style="width:${(prevScores[p.id] || 0) / max * 100}%" data-w="${p.score / max * 100}"></i></span>
+          <span class="plus">${gain ? '+' + gain : ''}</span><span class="pts" data-from="${p.score - gain}" data-to="${p.score}">${p.score - gain}</span></div>`;
+      }).join('')}</div></div>`;
+  setTimeout(() => {
+    document.querySelectorAll('.bar i').forEach(i => { i.style.width = i.dataset.w + '%'; });
+    countUp(document.querySelectorAll('.pts'));
+  }, 400);
+}
+
+function countUp(els) {
+  const t0 = performance.now();
+  (function step(t) {
+    const k = Math.min(1, (t - t0) / 1200), e = 1 - Math.pow(1 - k, 3);
+    els.forEach(el => { const a = +el.dataset.from, b = +el.dataset.to; el.textContent = Math.round(a + (b - a) * e); });
+    if (k < 1) requestAnimationFrame(step);
+  })(t0);
+}
+
+function renderEnd() {
+  const P = S.players, order = [1, 0, 2], heights = ['34vh', '24vh', '17vh'];
+  app.innerHTML = topbar(`<span class="pill">Spiel vorbei</span>`) + `
+    <div class="board"><h2>🏆 ${P[0] ? esc(P[0].name) + ' gewinnt!' : 'Spiel vorbei'}</h2>
+      <div class="podium">${order.filter(i => P[i]).map(i => `
+        <div class="step" style="--pc:${P[i].color};animation-delay:${(2 - i) * 0.35}s">
+          <div class="who"><div class="big">${P[i].avatar}</div>${esc(P[i].name)}</div>
+          <div class="block" style="height:${heights[i]}">${i + 1}<small>${P[i].score} Punkte</small></div></div>`).join('')}
+      </div>
+      <div class="others">${P.slice(3).map((p, i) => `<span>${i + 4}. ${p.avatar} ${esc(p.name)} – ${p.score}</span>`).join(' · ')}</div>
+      <div class="hint">👑 Neue Runde am Handy starten – oder <b>Leertaste</b></div>
+    </div>`;
+  confetti();
+}
+
+function confetti() {
+  const colors = ['#e5484d', '#3e8ef7', '#f5b014', '#2fb36d', '#cc5de8', '#fff'];
+  for (let i = 0; i < 120; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.left = Math.random() * 100 + 'vw';
+    c.style.background = colors[i % colors.length];
+    c.style.animationDuration = 2.5 + Math.random() * 3 + 's';
+    c.style.animationDelay = Math.random() * 1.5 + 's';
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 8000);
+  }
+}
+</script>
+</body>
+</html>
