@@ -47,15 +47,40 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now quizabend.service
 
 echo "==> Vollbild-Browser beim Login starten …"
-chmod +x "$DIR/raspberry-pi/kiosk.sh"
+KIOSK="$DIR/raspberry-pi/kiosk.sh"
+chmod +x "$KIOSK" "$DIR/raspberry-pi/check.sh"
+# Je nach Raspberry-Pi-OS-Version läuft ein anderer Desktop. Wir tragen uns überall ein;
+# kiosk.sh sorgt selbst dafür, dass der Browser nur einmal startet.
+
+# 1) Standard-Autostart (XDG)
 mkdir -p "$HOME/.config/autostart"
 cat > "$HOME/.config/autostart/quizabend-kiosk.desktop" <<DESKTOP
 [Desktop Entry]
 Type=Application
 Name=QuizAbend Kiosk
-Exec=$DIR/raspberry-pi/kiosk.sh
+Exec=$KIOSK
 X-GNOME-Autostart-enabled=true
 DESKTOP
+
+# Hilfsfunktion: eigene Autostart-Datei anlegen (Systemvorlage übernehmen, damit Desktop und Leiste bleiben)
+add_line() { # datei vorlage zeile
+  mkdir -p "$(dirname "$1")"
+  [ -f "$1" ] || { [ -f "$2" ] && cp "$2" "$1"; } || true
+  grep -qF "quizabend" "$1" 2>/dev/null || echo "$3" >> "$1"
+}
+
+# 2) labwc (aktueller Standard-Desktop)
+add_line "$HOME/.config/labwc/autostart" /etc/xdg/labwc/autostart "$KIOSK &"
+
+# 3) LXDE / X11 (ältere Versionen, oft auf Pi 3)
+add_line "$HOME/.config/lxsession/LXDE-pi/autostart" /etc/xdg/lxsession/LXDE-pi/autostart "@$KIOSK"
+
+# 4) Wayfire (Bookworm 2023/24)
+WF="$HOME/.config/wayfire.ini"
+if [ -f "$WF" ] && ! grep -q quizabend "$WF"; then
+  if grep -q '^\[autostart\]' "$WF"; then sed -i "/^\[autostart\]/a quizabend = $KIOSK" "$WF"
+  else printf '\n[autostart]\nquizabend = %s\n' "$KIOSK" >> "$WF"; fi
+fi
 
 if command -v raspi-config >/dev/null; then
   echo "==> Automatisch in den Desktop einloggen, Bildschirmschoner aus …"
@@ -66,4 +91,5 @@ fi
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 echo
 echo "Fertig! Nach einem Neustart (sudo reboot) zeigt der Fernseher das Quiz."
+echo "Klappt es nicht:  ./raspberry-pi/check.sh  ausführen und die Ausgabe weitergeben."
 echo "Handys verbinden sich über den QR-Code oder http://${IP:-<IP-des-Pi>}:3000/"
