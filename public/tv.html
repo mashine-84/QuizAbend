@@ -19,6 +19,7 @@
                 radial-gradient(ellipse at 100% 100%, #5b1f6e 0%, transparent 50%), var(--bg);
     font-size: 1.6vw;
     --row: 13vh;   /* einheitliche Höhe für Antwort-Kacheln und Zuordnungszeilen */
+    --rowfont: min(2.3vw, 4vh);  /* einheitliche Schrift dafür */
   }
   #app { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 3vh 4vw 4.5vh; }
   .brand { font-weight: 900; letter-spacing: -0.02em; }
@@ -64,10 +65,9 @@
   .chip.bad { background: rgba(229,72,77,.3); opacity: 1; }
   .chip .gain { color: #8ff0b5; margin-left: .3vw; }
   .answers { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(0, var(--row)); align-content: center; gap: 1.4vh 1.6vw; }
-  .ans { border-radius: 1.4vw; display: flex; align-items: center; gap: 1.6vw; padding: 0 2vw; font-size: 2.6vw; font-weight: 800; box-shadow: 0 .8vh 0 rgba(0,0,0,.25); transition: opacity .4s, transform .4s, filter .4s; position: relative; }
-  .ans.long { font-size: 2vw; } .ans.xlong { font-size: 1.6vw; }
-  .answers.col .ans.long { font-size: 1.8vw; } .answers.col .ans.xlong { font-size: 1.45vw; }
-  .ans .shape { font-size: 3vw; width: 4vw; text-align: center; opacity: .9; }
+  .ans { border-radius: 1.4vw; display: flex; align-items: center; gap: 1.6vw; padding: 0 1.6vw; font-size: var(--rowfont); font-weight: 800; line-height: 1.1; box-shadow: 0 .8vh 0 rgba(0,0,0,.25); transition: opacity .4s, transform .4s, filter .4s; position: relative; }
+  .long .ans, .long .mrow { font-size: calc(var(--rowfont) * .8); } .xlong .ans, .xlong .mrow { font-size: calc(var(--rowfont) * .65); }
+  .ans .shape { font-size: var(--rowfont); width: min(4.4vw, 7vh); flex: none; text-align: center; opacity: .9; }
   .ans .count { margin-left: auto; background: rgba(0,0,0,.25); border-radius: 99px; padding: .2vw 1.1vw; font-size: 2vw; }
   .voters { display: flex; flex-wrap: wrap; gap: .5vw; margin-left: auto; max-width: 50%; justify-content: flex-end; }
   .vav { width: 3.6vw; height: 3.6vw; border-radius: 50%; display: grid; place-items: center; font-size: 2.2vw; background: var(--pc); border: .25vw solid #fff; animation: pop .45s cubic-bezier(.2,1.6,.4,1) both; }
@@ -96,8 +96,6 @@
   .imgbox { background: rgba(255,255,255,.06); border-radius: 1.4vw; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 0; animation: pop .5s both; }
   .imgbox img { max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: contain; display: block; }
   .answers.col { grid-template-columns: 1fr; grid-template-rows: none; grid-auto-rows: minmax(0, var(--row)); gap: 1.4vh; min-height: 0; }
-  .answers.col .ans { font-size: 2.2vw; padding: 0 1.4vw; }
-  .answers.col .ans .shape { font-size: 2.2vw; width: 3vw; }
   .answers.col .vav { width: 3vw; height: 3vw; font-size: 1.8vw; }
   .estq { flex: 1; display: grid; grid-template-columns: 1.5fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 1.6vw; min-height: 0; }
   .estq.noimg { grid-template-columns: 1fr; justify-items: center; }
@@ -116,8 +114,7 @@
   .erow.truth .ev { margin-left: 0; }
   .erow.truth span:last-child { margin-left: auto; color: var(--d); text-transform: uppercase; font-size: 1.4vw; letter-spacing: .1em; }
   .mlist { flex: 1; min-height: 0; display: grid; grid-auto-rows: minmax(0, var(--row)); align-content: center; gap: 1.4vh; max-height: 100%; }
-  .mrow { display: grid; grid-template-columns: 5vw 1fr 1.3fr; align-items: center; gap: 1.4vw; background: rgba(255,255,255,.08); border-radius: 1.2vw; padding: 0 1.4vw; min-height: 0; height: 100%; font-size: min(2.5vw, 4.4vh); font-weight: 800; line-height: 1.1; animation: slide .45s both; transition: background .4s; overflow: hidden; }
-  .mlist.n5 .mrow, .mlist.n6 .mrow { font-size: min(2.2vw, 3.8vh); }
+  .mrow { display: grid; grid-template-columns: 5vw 1fr 1.3fr; align-items: center; gap: 1.4vw; background: rgba(255,255,255,.08); border-radius: 1.2vw; padding: 0 1.4vw; min-height: 0; height: 100%; font-size: var(--rowfont); font-weight: 800; line-height: 1.1; animation: slide .45s both; transition: background .4s; overflow: hidden; }
   .mnum { width: min(4.4vw, 7vh); height: min(4.4vw, 7vh); border-radius: 50%; background: var(--c); color: #1b1440; display: grid; place-items: center; font-weight: 900; }
   .mright { display: flex; align-items: center; gap: 1vw; min-width: 0; }
   .mright .qm { color: rgba(255,255,255,.25); }
@@ -125,6 +122,7 @@
   .mright .none { color: rgba(255,255,255,.5); font-size: 1.4vw; font-weight: 700; }
   .mrow .vav { width: min(3.2vw, 5.4vh); height: min(3.2vw, 5.4vh); font-size: min(1.9vw, 3.2vh); border-width: .2vw; }
   .mrow.done { background: rgba(47,179,109,.32); }
+  .mans.l { font-size: .8em; } .mans.xl { font-size: .62em; }
   .mans { animation: pop .45s cubic-bezier(.2,1.6,.4,1) both; }
   .pbar { height: 1.2vh; background: rgba(255,255,255,.1); border-radius: 99px; overflow: hidden; }
   .pbar i { display: block; height: 100%; width: 100%; background: var(--c); }
@@ -304,6 +302,8 @@ function chips() {
 }
 
 const avatarHtml = (p, delay) => `<span class="vav" title="${esc(p.name)}" style="--pc:${p.color};animation-delay:${delay}s">${p.avatar}</span>`;
+// Schriftgröße nach dem längsten Text der Frage – alle Kacheln/Zeilen einer Frage gleich groß
+const sizeCls = list => { const m = Math.max(...list.map(s => String(s).length)); return m > 52 ? 'xlong' : m > 36 ? 'long' : ''; };
 const mrow = (i, t, right, delay) => `<div class="mrow" id="mrow${i}" style="animation-delay:${delay || 0}s"><span class="mnum">${i + 1}</span><span class="mterm">${esc(t)}</span><span class="mright" id="mr${i}">${right}</span></div>`;
 
 // ---------- Ankündigung (Bilderrätsel, Schätzfrage, Zuordnung) ----------
@@ -319,7 +319,7 @@ function renderPreview() {
   const q = S.question;
   app.innerHTML = qTop() + `<div class="qwrap fade">
     <div class="qcard compact"><div class="cat">${esc(q.category)}</div><div class="qtext soft">Merkt euch diese Begriffe – gleich kommt die Frage …</div></div>
-    <div class="mlist n${q.left.length}">${q.left.map((t, i) => mrow(i, t, '', i * 0.15)).join('')}</div>
+    <div class="mlist n${q.left.length} ${sizeCls(q.left)}">${q.left.map((t, i) => mrow(i, t, '', i * 0.15)).join('')}</div>
     <div class="pbar"><i id="pbar"></i></div></div>`;
 }
 
@@ -335,14 +335,14 @@ function renderMain() {
   const img = q.image ? `<div class="imgbox"><img src="${q.image}" alt=""></div>` : '';
   let body = '';
   if (q.kind === 'choice') {
-    const lenCls = a => a.length > 38 ? 'xlong' : a.length > 22 ? 'long' : '';
-    const tiles = q.answers.map((a, i) => `<div class="ans c${i} ${lenCls(a)}" style="animation:pop .4s ${i * 0.08}s both"><span class="shape">${SHAPES[i]}</span><span class="atext">${esc(a)}</span><span class="voters"></span></div>`).join('');
-    body = q.image ? `<div class="imgq">${img}<div class="answers col">${tiles}</div></div>` : `<div class="answers">${tiles}</div>`;
+    const tiles = q.answers.map((a, i) => `<div class="ans c${i}" style="animation:pop .4s ${i * 0.08}s both"><span class="shape">${SHAPES[i]}</span><span class="atext">${esc(a)}</span><span class="voters"></span></div>`).join('');
+    const sz = sizeCls(q.answers);
+    body = q.image ? `<div class="imgq">${img}<div class="answers col ${sz}">${tiles}</div></div>` : `<div class="answers ${sz}">${tiles}</div>`;
   } else if (q.kind === 'estimate') {
     body = `<div class="estq ${q.image ? '' : 'noimg'}">${img}<div class="estpanel" id="est">
       <div class="esthint">${q.year ? '📅 Jahreszahl am Handy eingeben!' : '🔢 Schätzt am Handy!'}${q.unit && !q.year ? `<small>Antwort in ${esc(q.unit)}</small>` : ''}${tolText(q) ? `<small>${tolText(q)}</small>` : ''}</div></div></div>`;
   } else if (q.kind === 'match') {
-    body = `<div class="mlist n${q.left.length}">${q.left.map((t, i) => mrow(i, t, '<span class="qm">?</span>')).join('')}</div>`;
+    body = `<div class="mlist n${q.left.length} ${sizeCls(q.left)}">${q.left.map((t, i) => mrow(i, t, '<span class="qm">?</span>')).join('')}</div>`;
   }
   app.innerHTML = qTop() + `<div class="qwrap ${S.phase === 'question' ? 'fade' : ''}">${head}${mid}${body}</div>`;
   updateMain();
@@ -376,7 +376,8 @@ function updateMain() {
       if (!row || row.classList.contains('done')) continue;
       const right = S.players.filter(p => p.result && p.result.pairs && p.result.pairs[i]);
       row.classList.add('done');
-      document.getElementById('mr' + i).innerHTML = `<span class="mans">${esc(q.right[q.solution[i]])}</span>
+      const ans = q.right[q.solution[i]];
+      document.getElementById('mr' + i).innerHTML = `<span class="mans ${ans.length > 36 ? 'xl' : ans.length > 22 ? 'l' : ''}">${esc(ans)}</span>
         <span class="voters">${right.length ? right.map((p, k) => avatarHtml(p, 0.3 + k * 0.1)).join('') : '<span class="none">keiner</span>'}</span>`;
     }
   }
