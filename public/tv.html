@@ -298,7 +298,7 @@ function renderIntro() {
   const q = S.question;
   app.innerHTML = qTop() + `<div class="intro">
     <div class="iicon">${q.icon || '❓'}</div><div class="ilabel">${esc(q.label)}</div>
-    <div class="icat">${esc(q.category)} ${stars(q.level)}</div><div class="inum" id="inum"></div></div>`;
+    <div class="icat">${esc(q.category)}</div><div class="inum" id="inum"></div></div>`;
 }
 
 // ---------- Zuordnen: erst nur die Begriffe ----------
@@ -313,7 +313,7 @@ function renderPreview() {
 // ---------- Frage + Auflösung ----------
 function renderMain() {
   const q = S.question;
-  const head = `<div class="qcard ${q.image || q.kind === 'match' ? 'compact' : ''}"><div class="cat">${esc(q.category)} ${stars(q.level)}</div><div class="qtext">${esc(q.text)}</div></div>`;
+  const head = `<div class="qcard ${q.image || q.kind === 'match' ? 'compact' : ''}"><div class="cat">${esc(q.category)}</div><div class="qtext">${esc(q.text)}</div></div>`;
   const mid = `<div class="mid">
       <div class="timer"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="10"/>
         <circle id="arc" cx="50" cy="50" r="44" fill="none" stroke="#f5b014" stroke-width="10" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="0"/></svg>
