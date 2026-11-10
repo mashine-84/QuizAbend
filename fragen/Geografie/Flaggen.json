@@ -1,0 +1,14 @@
+{
+  "paket": "Flaggen",
+  "fragen": [
+    {"frage": "Zu welchem Land gehört diese Flagge?", "antworten": ["Frankreich", "Niederlande", "Russland", "Italien"], "schwierigkeit": 1, "bild": "flagge-01.svg"},
+    {"frage": "Zu welchem Land gehört diese Flagge?", "antworten": ["Japan", "Bangladesch", "Südkorea", "China"], "schwierigkeit": 1, "bild": "flagge-02.svg"},
+    {"frage": "Zu welchem Land gehört diese Flagge?", "antworten": ["Schweiz", "Dänemark", "Österreich", "Norwegen"], "schwierigkeit": 1, "bild": "flagge-03.svg"},
+    {"frage": "Zu welchem Land gehört diese Flagge?", "antworten": ["Schweden", "Finnland", "Norwegen", "Dänemark"], "schwierigkeit": 1, "bild": "flagge-04.svg"},
+    {"frage": "Zu welchem Land gehört diese Flagge?", "antworten": ["Ukraine", "Schweden", "Rumänien", "Kasachstan"], "schwierigkeit": 1, "bild": "flagge-05.svg"},
+    {"frage": "Zu welchem Land gehört diese Flagge?", "antworten": ["Österreich", "Lettland", "Polen", "Dänemark"], "schwierigkeit": 2, "bild": "flagge-06.svg"},
+    {"frage": "Zu welchem Land gehört diese Flagge?", "antworten": ["Griechenland", "Israel", "Finnland", "Uruguay"], "schwierigkeit": 2, "bild": "flagge-07.svg"},
+    {"frage": "Zu welchem Land gehört diese Flagge?", "antworten": ["Niederlande", "Luxemburg", "Frankreich", "Russland"], "schwierigkeit": 3, "bild": "flagge-08.svg"},
+    {"frage": "Zu welchem Land gehört diese Flagge?", "antworten": ["Kolumbien", "Ecuador", "Venezuela", "Rumänien"], "schwierigkeit": 3, "bild": "flagge-09.svg"}
+  ]
+}

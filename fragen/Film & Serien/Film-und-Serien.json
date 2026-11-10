@@ -1,0 +1,26 @@
+{
+  "paket": "Film & Serien",
+  "fragen": [
+    {"frage": "Wie heißt der Zauberschüler mit der blitzförmigen Narbe?", "antworten": ["Harry Potter", "Frodo Beutlin", "Luke Skywalker", "Percy Jackson"], "schwierigkeit": 1},
+    {"frage": "In welcher Filmreihe heißt es „Möge die Macht mit dir sein“?", "antworten": ["Star Wars", "Star Trek", "Matrix", "Der Herr der Ringe"], "schwierigkeit": 1},
+    {"frage": "Welcher Hobbit trägt den Einen Ring nach Mordor?", "antworten": ["Frodo Beutlin", "Bilbo Beutlin", "Samweis Gamdschie", "Peregrin Tuk"], "schwierigkeit": 1},
+    {"frage": "Welcher Agent trägt die Nummer 007?", "antworten": ["James Bond", "Jason Bourne", "Ethan Hunt", "Jack Ryan"], "schwierigkeit": 1},
+    {"frage": "Welche gelbe Familie lebt in Springfield?", "antworten": ["Die Simpsons", "Family Guy", "Die Flintstones", "American Dad"], "schwierigkeit": 1},
+    {"frage": "Wie heißt der junge Löwe in „Der König der Löwen“?", "antworten": ["Simba", "Mufasa", "Nala", "Scar"], "schwierigkeit": 1},
+    {"frage": "Wer spielte den Terminator?", "antworten": ["Arnold Schwarzenegger", "Sylvester Stallone", "Bruce Willis", "Dolph Lundgren"], "schwierigkeit": 1},
+    {"frage": "Wer spielte Jack in „Titanic“?", "antworten": ["Leonardo DiCaprio", "Brad Pitt", "Matt Damon", "Johnny Depp"], "schwierigkeit": 2},
+    {"frage": "In welcher Stadt spielt die Serie „Friends“?", "antworten": ["New York", "Los Angeles", "Chicago", "Boston"], "schwierigkeit": 2},
+    {"frage": "Wie heißt der Chemielehrer in „Breaking Bad“?", "antworten": ["Walter White", "Jesse Pinkman", "Saul Goodman", "Hank Schrader"], "schwierigkeit": 2},
+    {"frage": "Welche Krimireihe startete 1970 und läuft sonntags im Ersten?", "antworten": ["Tatort", "Der Alte", "Derrick", "SOKO München"], "schwierigkeit": 2},
+    {"frage": "Wer führte Regie bei „Der weiße Hai“ und „E.T.“?", "antworten": ["Steven Spielberg", "George Lucas", "James Cameron", "Ridley Scott"], "schwierigkeit": 2},
+    {"frage": "Wie viele Filme hat Peter Jacksons „Der Herr der Ringe“-Reihe?", "antworten": ["3", "2", "4", "6"], "schwierigkeit": 2},
+    {"frage": "In welcher Welt spielt „Game of Thrones“?", "antworten": ["Westeros", "Mittelerde", "Narnia", "Hogwarts"], "schwierigkeit": 2},
+    {"frage": "Wie heißt das Raumschiff von Captain Kirk?", "antworten": ["Enterprise", "Millennium Falke", "Galactica", "Nostromo"], "schwierigkeit": 2},
+    {"frage": "Welcher deutsche Film gewann 2007 den Oscar als bester fremdsprachiger Film?", "antworten": ["Das Leben der Anderen", "Good Bye, Lenin!", "Der Untergang", "Lola rennt"], "schwierigkeit": 3},
+    {"frage": "In welchem Jahr kam der erste „Star Wars“-Film in die Kinos?", "schaetzen": 1977, "schwierigkeit": 2},
+    {"frage": "Wie viele Oscars gewann der Film „Titanic“?", "schaetzen": 11, "schwierigkeit": 3},
+    {"frage": "Aus welchem Film stammt welche Figur?", "zuordnen": {"Jack Sparrow": "Fluch der Karibik", "Hannibal Lecter": "Das Schweigen der Lämmer", "Marty McFly": "Zurück in die Zukunft", "Vito Corleone": "Der Pate"}, "schwierigkeit": 2},
+    {"frage": "Wer spielte welche Rolle?", "zuordnen": {"Daniel Radcliffe": "Harry Potter", "Keanu Reeves": "Neo", "Harrison Ford": "Indiana Jones", "Robert Downey Jr.": "Iron Man"}, "schwierigkeit": 2},
+    {"frage": "In welchem Ort spielt welche Serie?", "zuordnen": {"Stranger Things": "Hawkins", "Breaking Bad": "Albuquerque", "The Office": "Scranton", "Lindenstraße": "München"}, "schwierigkeit": 3}
+  ]
+}
