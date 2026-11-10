@@ -78,6 +78,9 @@ function normalizeQuestion(q, dir, packName, packLevel) {
     const pairs = Array.isArray(q.zuordnen) ? q.zuordnen : Object.entries(q.zuordnen);
     if (pairs.length < 2 || pairs.length > 6 || pairs.some(p => !Array.isArray(p) || p.length !== 2 || !p[0] || !p[1]))
       throw new Error('"zuordnen" braucht 2 bis 6 Paare, z. B. {"Barack Obama": "Michelle"}');
+    const lefts = pairs.map(p => String(p[0])), rights = pairs.map(p => String(p[1]));
+    if (new Set(lefts).size !== lefts.length || new Set(rights).size !== rights.length)
+      throw new Error('bei "zuordnen" darf kein Begriff doppelt vorkommen');
     return { ...base, kind: 'match', pairs: pairs.map(([a, b]) => [String(a), String(b)]) };
   }
   if (q.schaetzen !== undefined) {

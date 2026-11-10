@@ -1,0 +1,24 @@
+{
+  "paket": "Fußball",
+  "fragen": [
+    {"frage": "Wie lange dauert ein reguläres Fußballspiel ohne Nachspielzeit?", "antworten": ["90 Minuten", "80 Minuten", "100 Minuten", "120 Minuten"], "schwierigkeit": 1},
+    {"frage": "In welchem Land fand die Fußball-WM 2014 statt?", "antworten": ["Brasilien", "Argentinien", "Südafrika", "Russland"], "schwierigkeit": 1},
+    {"frage": "Gegen wen gewann Deutschland das WM-Finale 2014?", "antworten": ["Argentinien", "Brasilien", "Niederlande", "Frankreich"], "schwierigkeit": 1},
+    {"frage": "Welcher Verein ist in Gelsenkirchen zu Hause?", "antworten": ["FC Schalke 04", "Borussia Dortmund", "VfL Bochum", "MSV Duisburg"], "schwierigkeit": 1},
+    {"frage": "Wie heißt das Stadion des FC Bayern München?", "antworten": ["Allianz Arena", "Olympiastadion", "Signal Iduna Park", "Veltins-Arena"], "schwierigkeit": 1},
+    {"frage": "Welche Karte bedeutet einen Platzverweis?", "antworten": ["Rot", "Gelb", "Grün", "Blau"], "schwierigkeit": 1},
+    {"frage": "Wie viele Mannschaften spielen in der Fußball-Bundesliga?", "antworten": ["18", "16", "20", "22"], "schwierigkeit": 2},
+    {"frage": "Wie weit ist der Elfmeterpunkt von der Torlinie entfernt?", "antworten": ["11 m", "9,15 m", "12 m", "16,5 m"], "schwierigkeit": 2},
+    {"frage": "In welchem Jahr wurde Deutschland zum ersten Mal Fußball-Weltmeister?", "antworten": ["1954", "1974", "1990", "1966"], "schwierigkeit": 2},
+    {"frage": "In welcher Stadt fand das WM-Finale 1954 („Das Wunder von …“) statt?", "antworten": ["Bern", "Zürich", "Basel", "Genf"], "schwierigkeit": 2},
+    {"frage": "Wer schoss das Siegtor im WM-Finale 2014?", "antworten": ["Mario Götze", "Thomas Müller", "Miroslav Klose", "André Schürrle"], "schwierigkeit": 2},
+    {"frage": "Wie viele Spieler darf eine Mannschaft in einem Bundesligaspiel regulär einwechseln?", "antworten": ["5", "3", "4", "6"], "schwierigkeit": 2},
+    {"frage": "Wie hoch ist ein Fußballtor?", "antworten": ["2,44 m", "2,24 m", "2,50 m", "2,64 m"], "schwierigkeit": 3},
+    {"frage": "Welches Land gewann die erste Fußball-WM 1930?", "antworten": ["Uruguay", "Argentinien", "Brasilien", "Italien"], "schwierigkeit": 3},
+    {"frage": "Wie breit ist ein Fußballtor?", "schaetzen": 7.32, "schwierigkeit": 3, "einheit": "m"},
+    {"frage": "In welchem Jahr startete die erste Saison der Fußball-Bundesliga?", "schaetzen": 1963, "schwierigkeit": 3},
+    {"frage": "Wie viele Zuschauer passen ins Londoner Wembley-Stadion?", "schaetzen": 90000, "schwierigkeit": 3},
+    {"frage": "Welcher Verein spielt in welchem Stadion?", "zuordnen": {"FC Bayern München": "Allianz Arena", "Borussia Dortmund": "Signal Iduna Park", "FC Schalke 04": "Veltins-Arena", "Hertha BSC": "Olympiastadion Berlin"}, "schwierigkeit": 2},
+    {"frage": "Welcher Spitzname gehört zu welchem Verein?", "zuordnen": {"FC Schalke 04": "Die Königsblauen", "Borussia Mönchengladbach": "Die Fohlen", "1. FC Köln": "Die Geißböcke", "1. FC Kaiserslautern": "Die Roten Teufel"}, "schwierigkeit": 3}
+  ]
+}
