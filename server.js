@@ -17,7 +17,13 @@ const VOTES_MS = 3500;         // erst zeigen, wer was gewählt hat …
 const REVEAL_MS = 5000;        // … dann die Lösung
 const MATCH_STEP_MS = 2200;    // Zuordnen: Paar für Paar auflösen
 const SCORES_MS = 6000;
-const SCORES_EVERY = Number(process.env.RANGLISTE) || 5; // Rangliste nur alle X Fragen (und am Ende)
+const SCORES_EVERY = Number(process.env.RANGLISTE) || 5; // Rangliste nur alle X Fragen (und am Blockende)
+const BLOCK_MS = 4500;         // Ankündigung eines neuen Frageblocks
+const SPECIAL_MS = 3500;       // Animation "Spezialfrage"
+
+// Schwierigkeit: Gewichte (Stufe 1/2/3) am Anfang, in der Mitte und am Ende des Spiels.
+// Dazwischen wird linear übergeblendet – über alle Blöcke hinweg.
+const DIFFICULTY_CURVE = [[94, 5, 1], [50, 35, 15], [15, 35, 50]];
 const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
 
@@ -26,7 +32,7 @@ const SETTINGS_FILE = path.join(__dirname, 'einstellungen.json');
 const IMAGE_TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml' };
 
 const COLORS = ['#ff4d6d', '#4dabf7', '#ffd43b', '#51cf66', '#cc5de8', '#ff922b', '#22d3ee', '#f783ac'];
-const AVATARS = ['🦊', '🐼', '🐸', '🦁', '🐙', '🐵', '🦄', '🐧'];
+const AVATARS = ['🦊', '🐼', '🐸', '🦁', '🐙', '🐵', '🦄', '🐧', '🐶', '🐱', '🐯', '🐨', '🐷', '🐮', '🐰', '🐻', '🐲', '🦉', '🐝', '🦖', '🐢', '🦀', '🐳', '🦩'];
 
 function shuffle(arr) {
   const a = arr.slice();
@@ -58,10 +64,12 @@ function resolveImage(dir, name) {
   return null;
 }
 
-function normalizeQuestion(q, dir, packName) {
+function normalizeQuestion(q, dir, packName, packLevel) {
   if (!q || typeof q !== 'object') throw new Error('ist kein gültiger Eintrag');
   if (!q.frage) throw new Error('das Feld "frage" fehlt');
-  const base = { category: q.kategorie || packName, text: String(q.frage), timeMs: Number(q.zeit) > 0 ? Number(q.zeit) * 1000 : null, image: null };
+  const level = Number(q.schwierigkeit ?? packLevel ?? 1);
+  if (![1, 2, 3].includes(level)) throw new Error('"schwierigkeit" muss 1, 2 oder 3 sein');
+  const base = { category: q.kategorie || packName, text: String(q.frage), level, timeMs: Number(q.zeit) > 0 ? Number(q.zeit) * 1000 : null, image: null };
   if (q.bild) {
     base.image = resolveImage(dir, String(q.bild));
     if (!base.image) throw new Error(`Bild "${q.bild}" nicht gefunden (in den Ordner "bilder" neben der Datei legen)`);
@@ -94,14 +102,15 @@ function loadPacks() {
     if (!Array.isArray(list)) { errors.push({ file: rel, error: 'keine Liste "fragen" gefunden' }); return; }
     const questions = [];
     list.forEach((q, i) => {
-      try { questions.push(normalizeQuestion(q, path.dirname(rel), name)); }
+      try { questions.push(normalizeQuestion(q, path.dirname(rel), name, !Array.isArray(raw) ? raw.schwierigkeit : undefined)); }
       catch (e) { errors.push({ file: rel, error: `Frage ${i + 1}: ${e.message}` }); }
     });
     const kinds = {
       choice: questions.some(q => q.kind === 'choice' && !q.image), image: questions.some(q => q.image),
       estimate: questions.some(q => q.kind === 'estimate'), match: questions.some(q => q.kind === 'match'),
     };
-    found.push({ id: rel.replace(/\\/g, '/').replace(/\.json$/i, ''), group, name, questions, kinds });
+    const levels = [1, 2, 3].map(l => questions.filter(q => q.level === l).length);
+    found.push({ id: rel.replace(/\\/g, '/').replace(/\.json$/i, ''), group, name, questions, kinds, levels });
   };
   if (fs.existsSync(FRAGEN_DIR)) {
     for (const e of fs.readdirSync(FRAGEN_DIR, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name, 'de'))) {
@@ -116,16 +125,43 @@ function loadPacks() {
   if (errors.length) console.log('  ⚠️  Probleme in Fragendateien:\n' + errors.map(e => `     ${e.file}: ${e.error}`).join('\n'));
 }
 
-// ---------- Einstellungen (welche Pakete aktiv sind) ----------
-let settings = { disabled: [], perGame: DEFAULT_PER_GAME };
-try { settings = { ...settings, ...JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) }; } catch (_) {}
+// ---------- Einstellungen: Frageblöcke (je mit eigener Paketauswahl) + Spezialfrage ----------
+const MAX_BLOCKS = 6;
+let settings = { blocks: [{ count: DEFAULT_PER_GAME, disabled: [] }], special: { on: false, mult: 2 } };
+try {
+  const raw = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+  if (Array.isArray(raw.blocks)) settings.blocks = raw.blocks;
+  else if (raw.disabled) settings.blocks = [{ count: raw.perGame || DEFAULT_PER_GAME, disabled: raw.disabled }]; // alte Version
+  if (raw.special) settings.special = raw.special;
+} catch (_) {}
 function saveSettings() { try { fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2)); } catch (_) {} }
-const isEnabled = p => !settings.disabled.includes(p.id);
-const activePool = () => packs.filter(isEnabled).flatMap(p => p.questions);
+
+function cleanSettings(input) {
+  const blocks = (Array.isArray(input.blocks) ? input.blocks : []).slice(0, MAX_BLOCKS).map(b => ({
+    count: Math.max(1, Math.min(50, Math.round(Number(b && b.count)) || DEFAULT_PER_GAME)),
+    disabled: Array.isArray(b && b.disabled) ? b.disabled.filter(x => typeof x === 'string') : [],
+  }));
+  const sp = input.special || {};
+  return { blocks: blocks.length ? blocks : settings.blocks,
+    special: { on: !!sp.on, mult: [2, 3, 4].includes(Number(sp.mult)) ? Number(sp.mult) : 2 } };
+}
+
+const blockPacks = b => packs.filter(p => !b.disabled.includes(p.id));
+const blockPool = b => blockPacks(b).flatMap(p => p.questions);
+
+function blockSummary(b) {
+  const ps = blockPacks(b), groups = [...new Set(ps.map(p => p.group))];
+  const allOfGroup = g => packs.filter(p => p.group === g).every(p => ps.includes(p));
+  // Kurzname: ganze Hauptkategorien oder einzelne Pakete
+  const names = groups.flatMap(g => allOfGroup(g) ? [g] : ps.filter(p => p.group === g).map(p => p.name));
+  const available = blockPool(b).length;
+  return { count: b.count, available, plays: Math.min(b.count, available), packs: ps.length, names };
+}
 
 function packSummary() {
-  return { enabledPacks: packs.filter(isEnabled).length, totalPacks: packs.length, questions: activePool().length,
-    perGame: settings.perGame, errors: packErrors.length };
+  const blocks = settings.blocks.map(blockSummary);
+  return { blocks, totalPacks: packs.length, questions: blocks.reduce((s, b) => s + b.plays, 0),
+    special: settings.special, errors: packErrors.length };
 }
 
 function packList() {
@@ -133,9 +169,24 @@ function packList() {
   for (const p of packs) {
     let g = groups.find(x => x.name === p.group);
     if (!g) groups.push(g = { name: p.group, packs: [] });
-    g.packs.push({ id: p.id, name: p.name, count: p.questions.length, kinds: p.kinds, enabled: isEnabled(p) });
+    g.packs.push({ id: p.id, name: p.name, count: p.questions.length, kinds: p.kinds, levels: p.levels });
   }
-  return { groups, errors: packErrors, perGame: settings.perGame };
+  return { groups, errors: packErrors, settings, summary: packSummary() };
+}
+
+// Wahrscheinlichkeit der Schwierigkeitsstufen für Frage g (0-basiert) von total
+function levelWeights(g, total) {
+  const t = total <= 1 ? 0 : g / (total - 1);
+  const [a, b] = t <= 0.5 ? [DIFFICULTY_CURVE[0], DIFFICULTY_CURVE[1]] : [DIFFICULTY_CURVE[1], DIFFICULTY_CURVE[2]];
+  const u = t <= 0.5 ? t * 2 : (t - 0.5) * 2;
+  return a.map((x, i) => x + (b[i] - x) * u);
+}
+
+function pickWeighted(weights) {
+  const sum = weights.reduce((s, w) => s + w, 0);
+  let r = Math.random() * sum;
+  for (let i = 0; i < weights.length; i++) { r -= weights[i]; if (r < 0) return i; }
+  return weights.length - 1;
 }
 
 // =====================================================================
@@ -193,13 +244,33 @@ function prepareQuestion(q) {
   return out;
 }
 
+function buildGame() {
+  // Fragen für alle Blöcke ziehen: Schwierigkeit nach Spielfortschritt, keine Frage doppelt
+  const plan = settings.blocks.map((b, bi) => ({ bi, ...blockSummary(b), pool: blockPool(b) })).filter(b => b.plays > 0);
+  const total = plan.reduce((s, b) => s + b.plays, 0);
+  const used = new Set(), out = [];
+  plan.forEach((b, n) => {
+    for (let k = 0; k < b.plays; k++) {
+      const left = b.pool.filter(q => !used.has(q));
+      if (!left.length) break;
+      const byLevel = [1, 2, 3].map(l => left.filter(q => q.level === l));
+      const w = levelWeights(out.length, total).map((x, i) => byLevel[i].length ? x : 0);
+      const list = byLevel[pickWeighted(w)];
+      const q = list[Math.floor(Math.random() * list.length)];
+      used.add(q);
+      out.push({ ...prepareQuestion(q), block: n, blockCount: plan.length, blockNames: b.names });
+    }
+  });
+  return out;
+}
+
 function startGame() {
   loadPacks();
-  const pool = activePool();
-  if (!pool.length) return false;
+  const questions = buildGame();
+  if (!questions.length) return false;
   for (const p of players.values()) { p.score = 0; p.streak = 0; }
   state = newGameState();
-  state.questions = shuffle(pool).slice(0, settings.perGame).map(prepareQuestion);
+  state.questions = questions;
   nextQuestion();
   return true;
 }
@@ -210,8 +281,14 @@ function nextQuestion() {
   state.answers = {};
   state.results = {};
   state.step = 0;
-  const q = currentQuestion();
-  if (q.label) setPhase('intro', INTRO_MS, afterIntro); // neue Fragearten werden angekündigt
+  state.special = false;
+  const q = currentQuestion(), prev = state.questions[state.idx - 1];
+  if (q.blockCount > 1 && (!prev || prev.block !== q.block)) setPhase('block', BLOCK_MS, beginQuestion); // neuer Block
+  else beginQuestion();
+}
+
+function beginQuestion() {
+  if (currentQuestion().label) setPhase('intro', INTRO_MS, afterIntro); // neue Fragearten werden angekündigt
   else startAnswering();
 }
 
@@ -227,6 +304,19 @@ function startAnswering() {
 }
 
 function endAnswering() {
+  // Spezialfrage: genau einmal pro Spiel. Chance steigt linear von 1 % (erste Frage) auf 100 % (letzte Frage)
+  if (settings.special.on && !state.specialDone) {
+    const k = state.idx, n = state.questions.length;
+    const chance = n <= 1 ? 1 : 0.01 + 0.99 * k / (n - 1);
+    if (Math.random() < chance) {
+      state.special = true; state.specialDone = true;
+      return setPhase('special', SPECIAL_MS, showAnswers);
+    }
+  }
+  showAnswers();
+}
+
+function showAnswers() {
   if (currentQuestion().kind === 'match') reveal();
   else setPhase('votes', VOTES_MS, reveal);
 }
@@ -277,6 +367,14 @@ function scoreQuestion() {
 
 function reveal() {
   scoreQuestion();
+  if (state.special) {
+    const m = settings.special.mult;
+    for (const [id, r] of Object.entries(state.results)) {
+      const p = players.get(id);
+      if (p && r.gain) { p.score += r.gain * (m - 1); r.gain *= m; }
+      r.mult = m;
+    }
+  }
   const q = currentQuestion();
   if (q.kind === 'match') {
     state.step = 0;
@@ -291,7 +389,9 @@ function reveal() {
 
 function afterReveal() {
   const last = state.idx >= state.questions.length - 1;
-  if (last || (state.idx + 1) % SCORES_EVERY === 0) showScores();
+  const next = state.questions[state.idx + 1];
+  const blockEnd = next && next.block !== currentQuestion().block;
+  if (last || blockEnd || (state.idx + 1) % SCORES_EVERY === 0) showScores();
   else nextQuestion();
 }
 
@@ -305,9 +405,11 @@ function advance() {
   const q = currentQuestion();
   switch (state.phase) {
     case 'lobby': if (connectedCount() >= MIN_PLAYERS) startGame(); break;
+    case 'block': beginQuestion(); break;
     case 'intro': afterIntro(); break;
     case 'preview': startAnswering(); break;
     case 'question': endAnswering(); break;
+    case 'special': showAnswers(); break;
     case 'votes': reveal(); break;
     case 'reveal':
       if (q.kind === 'match' && state.step < q.left.length) { state.step = q.left.length; setPhase('reveal', REVEAL_MS, afterReveal); }
@@ -348,12 +450,14 @@ function baseView() {
     phase: ph, vip: vipId(), minPlayers: MIN_PLAYERS, maxPlayers: MAX_PLAYERS,
     players: ranking(), qNum: state.idx + 1, qTotal: state.questions.length,
     remainingMs: state.phaseEnds ? Math.max(0, state.phaseEnds - Date.now()) : 0, phaseMs: state.phaseMs,
-    packs: packSummary(),
+    packs: packSummary(), avatars: AVATARS,
+    block: q ? { num: q.block + 1, total: q.blockCount, names: q.blockNames } : null,
+    special: state.special && ['special', 'votes', 'reveal'].includes(ph) ? { mult: settings.special.mult } : null,
   };
-  if (q && ['intro', 'preview', 'question', 'votes', 'reveal'].includes(ph)) {
-    const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category };
+  if (q && ['intro', 'preview', 'question', 'special', 'votes', 'reveal'].includes(ph)) {
+    const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category, level: q.level };
     if (ph !== 'intro' && q.kind === 'match') vq.left = q.left;
-    if (['question', 'votes', 'reveal'].includes(ph)) {
+    if (['question', 'special', 'votes', 'reveal'].includes(ph)) {
       vq.text = q.text; vq.image = q.image;
       if (q.kind === 'choice') vq.answers = q.answers;
       if (q.kind === 'match') vq.right = q.right;
@@ -518,8 +622,11 @@ const server = http.createServer(async (req, res) => {
       return json(res, 409, { error: 'Der Name ist schon vergeben.' });
     const slot = freeSlot();
     if (slot < 0) return json(res, 409, { error: 'Das Spiel ist voll (max. 8 Spieler).' });
+    const taken = new Set([...players.values()].map(p => p.avatar));
+    let avatar = AVATARS.includes(body.avatar) ? body.avatar : AVATARS.find(a => !taken.has(a));
+    if (taken.has(avatar)) return json(res, 409, { error: 'Dieses Emoji hat schon jemand – bitte ein anderes wählen.', avatarTaken: true });
     const id = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-    players.set(id, { id, name, slot, color: COLORS[slot], avatar: AVATARS[slot], score: 0, streak: 0, connected: false, joinedAt: Date.now() });
+    players.set(id, { id, name, slot, color: COLORS[slot], avatar, score: 0, streak: 0, connected: false, joinedAt: Date.now() });
     broadcast();
     return json(res, 200, { id });
   }
@@ -549,13 +656,10 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, packList());
   }
 
-  if (req.method === 'POST' && p === '/api/pakete') {
+  if (req.method === 'POST' && p === '/api/einstellungen') {
     const body = await readBody(req);
     if (body.id !== vipId() || state.phase !== 'lobby') return json(res, 403, { ok: false });
-    const disabled = new Set(settings.disabled);
-    for (const [packId, on] of Object.entries(body.set || {})) on ? disabled.delete(packId) : disabled.add(packId);
-    settings.disabled = [...disabled];
-    if (body.perGame) settings.perGame = Math.max(1, Math.min(50, Math.round(Number(body.perGame)) || DEFAULT_PER_GAME));
+    settings = cleanSettings(body.settings || {});
     saveSettings();
     broadcast();
     return json(res, 200, packList());
@@ -583,7 +687,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log('\n  🎉 QuizAbend läuft!\n');
   console.log(`  📺 Fernseher (auf diesem Gerät öffnen):  ${tvUrl}`);
   console.log(`  📱 Handys (im selben WLAN):              ${joinInfo().url}`);
-  console.log(`  📚 ${s.enabledPacks} von ${s.totalPacks} Fragenpaketen aktiv, ${s.questions} Fragen\n`);
+  console.log(`  📚 ${s.totalPacks} Fragenpakete, ${s.blocks.length} Block/Blöcke, ${s.questions} Fragen pro Spiel\n`);
   console.log('  Beenden mit Strg+C\n');
   if (!process.env.NO_BROWSER) {
     const cmd = process.platform === 'win32' ? `start "" "${tvUrl}"` : process.platform === 'darwin' ? `open "${tvUrl}"` : `xdg-open "${tvUrl}"`;

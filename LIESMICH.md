@@ -13,7 +13,7 @@ Lade Node.js (LTS-Version) von https://nodejs.org herunter und installiere es.
    - **Mac:** Rechtsklick auf `start-mac.command` → Öffnen
    - Oder im Terminal im Ordner: `node server.js`
 3. Der Browser öffnet die TV-Ansicht. Laptop per HDMI an den Fernseher, **F** drücken für Vollbild.
-4. Alle scannen den QR-Code mit dem Handy (selbes WLAN wie der Laptop!) und geben ihren Namen ein.
+4. Alle scannen den QR-Code mit dem Handy (selbes WLAN wie der Laptop!), geben ihren Namen ein und wählen ein Emoji. Namen und Emojis gibt es nur einmal.
 5. Wer zuerst beigetreten ist (👑), startet das Spiel am Handy, oder du drückst die **Leertaste** am Laptop.
 
 **Steuerung am Laptop:** Leertaste/Enter = weiter (überspringt Wartezeiten) · F = Vollbild
@@ -43,18 +43,33 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 - **Autostart abschalten:** `sudo systemctl disable quizabend` und `rm ~/.config/autostart/quizabend-kiosk.desktop`
 
 ## Ablauf und Punkte
-- Pro Runde kommen zufällige Fragen aus den gewählten Paketen, standardmäßig 10.
+- Ein Spiel besteht aus einem oder mehreren **Frageblöcken**, jeder mit eigener Paketauswahl und Fragenanzahl.
+- **Schwierigkeit:** Am Anfang kommen fast nur leichte Fragen, schwere werden mit jeder Frage wahrscheinlicher, über alle Blöcke hinweg:
+
+  | Spielfortschritt | ★ leicht | ★★ mittel | ★★★ schwer |
+  |---|---|---|---|
+  | erste Frage | 94 % | 5 % | 1 % |
+  | Mitte | 50 % | 35 % | 15 % |
+  | letzte Frage | 15 % | 35 % | 50 % |
+
+  Dazwischen wird gleichmäßig übergeblendet. Fehlt in einem Block eine Stufe, verteilen sich ihre Prozente auf die anderen Stufen.
+- **⭐ Spezialfrage** (an- und abschaltbar): Genau einmal pro Spiel zählt eine zufällige Frage doppelt, dreifach oder vierfach. Verraten wird das erst nach dem Antworten. Die Chance liegt bei der ersten Frage bei 1 % und steigt dann gleichmäßig bis 100 % bei der letzten Frage.
 - **Auswahlfrage:** Richtig = 500 bis 1000 Punkte, je schneller, desto mehr.
 - **Bilderrätsel und Schätzfragen** werden mit einem Countdown angekündigt. Erst danach erscheinen Bild und Frage.
 - **Schätzfrage:** Je näher dran, desto mehr Punkte (bis 800). Wer am nächsten dran ist, bekommt +200 dazu.
 - **Zuordnung:** Erst erscheinen nur die Begriffe, dann die Frage. Am Handy ordnest du die Partner den Zahlen zu. Aufgelöst wird Paar für Paar, Punkte gibt es pro richtigem Paar.
 - Wer mehrere Fragen in Folge richtig hat, bekommt bis zu +150 Serienbonus.
 - Ist die Zeit um, zeigt der Fernseher erst, wer was gewählt hat. Danach kommt die Auflösung.
-- Die Rangliste erscheint nach jeder 5. Frage und am Ende der Runde, mit den Punkten seit der letzten Rangliste.
+- Die Rangliste erscheint nach jeder 5. Frage, am Ende jedes Blocks und am Spielende, jeweils mit den Punkten seit der letzten Rangliste.
 - Handy-Akku leer oder Seite neu geladen? Einfach wieder öffnen, der Spielstand bleibt erhalten.
 
-## Fragenpakete auswählen
-Der 👑-Spieler tippt in der Lobby auf **📚 Fragenpakete**. Dort hakt er Pakete einzeln oder eine ganze Hauptkategorie auf einmal ab oder an und stellt ein, wie viele Fragen eine Runde hat. Die Auswahl bleibt gespeichert. Fehler in einer Fragendatei, zum Beispiel ein fehlendes Komma, werden dort mit Dateiname und Zeile angezeigt.
+## Einstellungen am Handy (👑)
+Der 👑-Spieler tippt in der Lobby auf **⚙️ Einstellungen**:
+- **Anzahl Blöcke** (1 bis 6). Antippen eines Blocks öffnet seine Einstellungen: wie viele Fragen er hat und welche Pakete er nutzt. Pakete lassen sich einzeln oder als ganze Hauptkategorie an- und abhaken. Neben jedem Paket steht, wie viele leichte, mittlere und schwere Fragen es enthält.
+- **Spezialfrage:** an/aus und der Multiplikator ×2, ×3 oder ×4.
+- Fehler in Fragendateien, zum Beispiel ein fehlendes Komma, erscheinen dort mit Dateiname und Zeile.
+
+Die Einstellungen bleiben gespeichert (`einstellungen.json`).
 
 ## Eigene Fragen und Pakete
 Jede Datei ist ein **Paket**, jeder Ordner darüber eine **Hauptkategorie**:
@@ -73,7 +88,7 @@ Eine Paketdatei sieht so aus, und die Frageart ergibt sich aus den Feldern:
 {
   "paket": "Fußball",
   "fragen": [
-    {"frage": "Wie viele Spieler hat ein Team auf dem Feld?", "antworten": ["11", "10", "12", "9"]},
+    {"frage": "Wie viele Spieler hat ein Team auf dem Feld?", "antworten": ["11", "10", "12", "9"], "schwierigkeit": 1},
 
     {"bild": "trikot.jpg", "frage": "Welcher Verein trägt dieses Trikot?", "antworten": ["Schalke", "Dortmund", "Bayern", "Köln"]},
 
@@ -92,7 +107,10 @@ Eine Paketdatei sieht so aus, und die Frageart ergibt sich aus den Feldern:
 | Schätzfrage | `"schaetzen": 330` statt Antworten, optional mit `"einheit": "m"`. Geht mit oder ohne Bild. |
 | Zuordnung | `"zuordnen": {"Begriff": "Partner", ...}` mit 2 bis 6 Paaren. Die Reihenfolge wird im Spiel gemischt. |
 
-Optional bei jeder Frage: `"kategorie": "Flaggen"` (sonst gilt der Paketname) und `"zeit": 30` (Sekunden).
+Optional bei jeder Frage:
+- `"schwierigkeit": 1`, `2` oder `3` für leicht, mittel oder schwer (ohne Angabe gilt 1). Gilt sie für ein ganzes Paket, kannst du `"schwierigkeit": 2` auch oben neben `"paket"` schreiben.
+- `"kategorie": "Flaggen"`, sonst gilt der Paketname.
+- `"zeit": 30` in Sekunden.
 Achte auf die Kommas zwischen den Einträgen. Neue oder geänderte Dateien erscheinen beim nächsten Öffnen der Paketauswahl.
 
 ## Einstellungen (optional, beim Start setzen)
