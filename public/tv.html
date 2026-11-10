@@ -214,7 +214,6 @@ function qTop() {
   return topbar(`<span id="spb"></span>${badge(S.question)}<span class="pill">${b}Frage ${S.qNum} / ${S.qTotal}</span>`);
 }
 const IN_Q = ['intro', 'preview', 'question', 'special', 'votes', 'reveal'];
-const stars = l => `<span class="stars" title="Schwierigkeit ${l}">${'★'.repeat(l)}${'☆'.repeat(3 - l)}</span>`;
 const fmt = n => Math.abs(n) >= 10000 ? n.toLocaleString('de-DE') : String(n).replace('.', ',');
 
 function render() {
