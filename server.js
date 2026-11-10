@@ -10,7 +10,8 @@ const { exec } = require('child_process');
 const PORT = Number(process.env.PORT) || 3000;
 const QUESTIONS_PER_GAME = Number(process.env.FRAGEN) || 10;
 const QUESTION_TIME_MS = (Number(process.env.SEKUNDEN) || 20) * 1000;
-const REVEAL_MS = 5000;
+const VOTES_MS = 3500;   // erst zeigen, wer was gewählt hat …
+const REVEAL_MS = 5000;  // … dann die richtige Antwort
 const SCORES_MS = 6000;
 const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
@@ -81,7 +82,15 @@ function nextQuestion() {
   state.results = {};
   state.startedAt = Date.now();
   state.endsAt = state.startedAt + QUESTION_TIME_MS;
-  timer = setTimeout(reveal, QUESTION_TIME_MS);
+  timer = setTimeout(showVotes, QUESTION_TIME_MS);
+  broadcast();
+}
+
+function showVotes() {
+  // Zeit um: alle sehen, wer was gewählt hat – die Lösung kommt danach
+  clearTimer();
+  state.phase = 'votes';
+  timer = setTimeout(reveal, VOTES_MS);
   broadcast();
 }
 
@@ -117,7 +126,8 @@ function showScores() {
 function advance() {
   // "Weiter"-Knopf: überspringt Wartezeiten
   if (state.phase === 'lobby') { if (connectedCount() >= MIN_PLAYERS) startGame(); }
-  else if (state.phase === 'question') reveal();
+  else if (state.phase === 'question') showVotes();
+  else if (state.phase === 'votes') reveal();
   else if (state.phase === 'reveal') showScores();
   else if (state.phase === 'scores') {
     if (state.idx >= state.questions.length - 1) { clearTimer(); state.phase = 'end'; broadcast(); }
@@ -158,9 +168,12 @@ function baseView() {
   if (q && state.phase !== 'lobby' && state.phase !== 'end') {
     v.question = { category: q.category, text: q.text, answers: q.answers };
     if (state.phase !== 'question') {
-      v.question.correct = q.correct;
-      v.question.counts = q.answers.map((_, i) => Object.values(state.answers).filter(a => a.choice === i).length);
+      // wer hat was gewählt (in Reihenfolge der Antworten)
+      const byTime = Object.entries(state.answers).sort((a, b) => a[1].at - b[1].at);
+      v.question.voters = q.answers.map((_, i) => byTime.filter(([, a]) => a.choice === i).map(([id]) => id));
+      v.question.counts = v.question.voters.map(l => l.length);
     }
+    if (state.phase !== 'question' && state.phase !== 'votes') v.question.correct = q.correct;
   }
   return v;
 }
@@ -256,7 +269,7 @@ const server = http.createServer(async (req, res) => {
         if (state.phase === 'lobby') setTimeout(() => {
           if (state.phase === 'lobby' && players.has(pl.id) && !players.get(pl.id).connected) { players.delete(pl.id); broadcast(); }
         }, 20000);
-        if (state.phase === 'question' && allAnswered()) reveal();
+        if (state.phase === 'question' && allAnswered()) showVotes();
       }
       broadcast();
     });
@@ -287,7 +300,7 @@ const server = http.createServer(async (req, res) => {
     if (!pl || state.phase !== 'question' || state.answers[pl.id] || !(choice >= 0 && choice < currentQuestion().answers.length))
       return json(res, 409, { ok: false });
     state.answers[pl.id] = { choice, at: Date.now() };
-    if (allAnswered()) reveal(); else broadcast();
+    if (allAnswered()) showVotes(); else broadcast();
     return json(res, 200, { ok: true });
   }
 
