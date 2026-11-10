@@ -45,7 +45,7 @@
   .hint b { color: var(--ink); }
 
   /* Frage */
-  .qwrap { flex: 1; display: flex; flex-direction: column; gap: 2.5vh; padding-top: 1vh; }
+  .qwrap { flex: 1; display: flex; flex-direction: column; gap: 2.5vh; padding-top: 1vh; min-height: 0; }
   .qcard { background: #fff; color: #1b1440; border-radius: 1.6vw; padding: 4vh 3vw; text-align: center; box-shadow: 0 1vh 0 rgba(0,0,0,.25); }
   .cat { display: inline-block; font-size: 1.3vw; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #6a5acd; margin-bottom: 1.2vh; }
   .qtext { font-size: 3.4vw; font-weight: 900; line-height: 1.15; letter-spacing: -0.01em; }
@@ -72,6 +72,55 @@
   .ans.win { transform: scale(1.03); box-shadow: 0 0 0 .4vw #fff, 0 .8vh 0 rgba(0,0,0,.25); }
   .ans.win::after { content: "✓"; position: absolute; right: -1vw; top: -1.6vw; width: 3.6vw; height: 3.6vw; border-radius: 50%; background: #fff; color: var(--d); display: grid; place-items: center; font-size: 2.4vw; font-weight: 900; }
   .c0 { background: var(--a); } .c1 { background: var(--b); } .c2 { background: var(--c); } .c3 { background: var(--d); }
+
+
+  /* Fragearten */
+  .tright { display: flex; gap: 1vw; align-items: center; }
+  .tbadge { background: var(--c); color: #1b1440; border-radius: 99px; padding: .4em 1.1em; font-weight: 900; }
+  .packs { margin-top: 2.5vh; text-align: center; font-size: 1.4vw; color: var(--muted); }
+  .packs.warn, .warnc { color: #ffb4b4; font-weight: 700; }
+  .intro { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5vh; text-align: center; }
+  .iicon { font-size: 9vw; line-height: 1; animation: pop .6s cubic-bezier(.2,1.6,.4,1) both; }
+  .ilabel { font-size: 6vw; font-weight: 900; letter-spacing: -0.02em; color: var(--c); animation: fade .5s .15s both; }
+  .icat { font-size: 2.2vw; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: .12em; }
+  .inum { margin-top: 3vh; width: 13vw; height: 13vw; border-radius: 50%; background: rgba(255,255,255,.1); display: grid; place-items: center; font-size: 7vw; font-weight: 900; }
+  .qcard.compact { padding: 2.2vh 3vw; }
+  .qcard.compact .qtext { font-size: 2.8vw; }
+  .qtext.soft { color: #6a5acd; }
+  .imgq { flex: 1; display: grid; grid-template-columns: 1.4fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 1.6vw; min-height: 0; }
+  .imgbox { background: rgba(255,255,255,.06); border-radius: 1.4vw; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 0; animation: pop .5s both; }
+  .imgbox img { max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: contain; display: block; }
+  .answers.col { grid-template-columns: 1fr; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 1.2vh; min-height: 0; }
+  .answers.col .ans { font-size: 2.2vw; padding: 0 1.4vw; }
+  .answers.col .ans .shape { font-size: 2.2vw; width: 3vw; }
+  .answers.col .vav { width: 3vw; height: 3vw; font-size: 1.8vw; }
+  .estq { flex: 1; display: grid; grid-template-columns: 1.5fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 1.6vw; min-height: 0; }
+  .estq.noimg { grid-template-columns: 1fr; justify-items: center; }
+  .estpanel { width: 100%; background: rgba(255,255,255,.06); border-radius: 1.4vw; padding: 2vh 1.4vw; display: flex; flex-direction: column; justify-content: center; min-height: 0; overflow: hidden; }
+  .estq.noimg .estpanel { width: 60vw; }
+  .esthint { text-align: center; font-size: 2.6vw; font-weight: 900; }
+  .esthint small { display: block; font-size: 1.6vw; color: var(--muted); font-weight: 700; margin-top: 1vh; }
+  .elist { display: flex; flex-direction: column; gap: 1vh; }
+  .erow { display: flex; align-items: center; gap: 1vw; background: rgba(255,255,255,.08); border-radius: 99px; padding: .5vh 1.4vw .5vh .5vw; font-size: 1.8vw; font-weight: 800; animation: slide .4s both; }
+  .erow .vav { width: 3vw; height: 3vw; font-size: 1.8vw; border-width: .2vw; animation: none; }
+  .erow .ev { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .erow .eg { color: #8ff0b5; min-width: 5vw; text-align: right; font-size: 1.5vw; }
+  .erow.best { background: rgba(47,179,109,.45); }
+  .erow.truth { background: #fff; color: #1b1440; padding: 1vh 1.6vw; font-size: 2.2vw; animation: pop .5s both; }
+  .erow.truth .ev { margin-left: 0; }
+  .erow.truth span:last-child { margin-left: auto; color: var(--d); text-transform: uppercase; font-size: 1.4vw; letter-spacing: .1em; }
+  .mlist { flex: 1; display: flex; flex-direction: column; gap: 1.4vh; justify-content: center; }
+  .mrow { display: grid; grid-template-columns: 5vw 1fr 1.3fr; align-items: center; gap: 1.4vw; background: rgba(255,255,255,.08); border-radius: 1.2vw; padding: 1.3vh 1.4vw; font-size: 2.5vw; font-weight: 800; animation: slide .45s both; transition: background .4s; }
+  .mnum { width: 4.4vw; height: 4.4vw; border-radius: 50%; background: var(--c); color: #1b1440; display: grid; place-items: center; font-weight: 900; }
+  .mright { display: flex; align-items: center; gap: 1vw; min-height: 4vw; }
+  .mright .qm { color: rgba(255,255,255,.25); }
+  .mright .voters { margin-left: auto; max-width: none; }
+  .mright .none { color: rgba(255,255,255,.5); font-size: 1.4vw; font-weight: 700; }
+  .mrow .vav { width: 3.2vw; height: 3.2vw; font-size: 1.9vw; border-width: .2vw; }
+  .mrow.done { background: rgba(47,179,109,.32); }
+  .mans { animation: pop .45s cubic-bezier(.2,1.6,.4,1) both; }
+  .pbar { height: 1.2vh; background: rgba(255,255,255,.1); border-radius: 99px; overflow: hidden; }
+  .pbar i { display: block; height: 100%; width: 100%; background: var(--c); }
 
   /* Rangliste */
   .board { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 2vh; }
@@ -123,7 +172,7 @@ let cursorTimer;
 function wakeCursor() { document.body.classList.remove('nocursor'); clearTimeout(cursorTimer); cursorTimer = setTimeout(() => document.body.classList.add('nocursor'), 2000); }
 addEventListener('mousemove', wakeCursor); addEventListener('DOMContentLoaded', wakeCursor);
 const app = document.getElementById('app');
-let S = null, lastKey = '', deadline = 0, seen = new Set(), prevScores = {};
+let S = null, lastKey = '', lastPhase = '', lastQ = 0, deadline = 0, seen = new Set(), prevScores = {};
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const es = new EventSource('/events?role=tv');
@@ -137,23 +186,36 @@ document.addEventListener('keydown', e => {
   if (e.key === 'f' || e.key === 'F') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); }
 });
 
+function badge(q) { return q && q.label ? `<span class="tbadge">${q.icon || ''} ${esc(q.label)}</span>` : ''; }
 function topbar(right) {
-  return `<div class="topbar"><div class="brand" style="font-size:2vw">Quiz<span>Abend</span></div><div>${right || ''}</div></div>`;
+  return `<div class="topbar"><div class="brand" style="font-size:2vw">Quiz<span>Abend</span></div><div class="tright">${right || ''}</div></div>`;
 }
+function qTop() { return topbar(`${badge(S.question)}<span class="pill">Frage ${S.qNum} / ${S.qTotal}</span>`); }
+const IN_Q = ['intro', 'preview', 'question', 'votes', 'reveal'];
+const fmt = n => Math.abs(n) >= 10000 ? n.toLocaleString('de-DE') : String(n).replace('.', ',');
 
 function render() {
-  const inQ = S.phase === 'question' || S.phase === 'votes' || S.phase === 'reveal';
-  const key = (inQ ? 'Q' : S.phase) + ':' + S.qNum;
+  const inQ = IN_Q.includes(S.phase);
+  const stage = S.phase === 'intro' || S.phase === 'preview' ? S.phase : 'main';
+  const key = inQ ? `Q:${S.qNum}:${stage}` : S.phase + ':' + S.qNum;
   const fresh = key !== lastKey;
-  if (S.phase === 'question' && (fresh || Math.abs(Date.now() + S.remainingMs - deadline) > 1200)) deadline = Date.now() + S.remainingMs;
-  if (S.phase === 'question' && fresh) prevScores = Object.fromEntries(S.players.map(p => [p.id, p.score]));
-  lastKey = key;
+  if (inQ && S.qNum !== lastQ) { prevScores = Object.fromEntries(S.players.map(p => [p.id, p.score])); lastQ = S.qNum; }
+  if (S.remainingMs && (S.phase !== lastPhase || Math.abs(Date.now() + S.remainingMs - deadline) > 1200)) deadline = Date.now() + S.remainingMs;
+  lastKey = key; lastPhase = S.phase;
 
   document.getElementById('status').style.display = (!KIOSK && (S.phase === 'lobby' || S.phase === 'end')) ? '' : 'none';
-  if (S.phase === 'lobby') return renderLobby();
-  if (inQ) return fresh ? renderQuestion() : updateQuestion();
+  if (S.phase === 'lobby') { lastQ = 0; return renderLobby(); }
+  if (stage === 'intro') return fresh ? renderIntro() : null;
+  if (stage === 'preview') return fresh ? renderPreview() : null;
+  if (inQ) return fresh ? renderMain() : updateMain();
   if (S.phase === 'scores') return fresh ? renderScores() : null;
   if (S.phase === 'end') return fresh ? renderEnd() : null;
+}
+
+function packLine() {
+  const k = S.packs || {};
+  if (!k.questions) return `<div class="packs warn">⚠️ Keine Fragen aktiv – 👑 wählt am Handy Fragenpakete aus</div>`;
+  return `<div class="packs">📚 ${k.enabledPacks} von ${k.totalPacks} Paketen · ${k.questions} Fragen · ${Math.min(k.perGame, k.questions)} pro Runde${k.errors ? ` · <span class="warnc">⚠️ ${k.errors} Fehler in Fragendateien (Details am Handy des 👑)</span>` : ''}</div>`;
 }
 
 function renderLobby() {
@@ -176,70 +238,137 @@ function renderLobby() {
       </div>
       <div>
         <div class="slots">${slots.join('')}</div>
+        ${packLine()}
         <div class="hint">${need > 0 ? `Noch <b>${need}</b> Spieler${need > 1 ? '' : ''} nötig …` : `👑 <b>${esc((S.players.find(p => p.id === S.vip) || {}).name || '')}</b> startet das Spiel am Handy – oder <b>Leertaste</b> drücken`}</div>
       </div>
     </div>`;
 }
 
 function chips() {
+  const q = S.question || {};
+  const hideResult = q.kind === 'match' && S.phase === 'reveal' && q.step < (q.left || []).length;
   return S.players.filter(p => p.connected || p.answered).map(p => {
     let cls = p.answered ? 'done' : '', extra = '';
-    if (S.phase === 'reveal' && p.result) {
-      cls = p.result.correct ? 'ok' : 'bad';
-      extra = p.result.correct ? `<span class="gain">+${p.result.gain}</span>` : (p.result.answered ? ' ✗' : ' –');
+    if (S.phase === 'reveal' && p.result && !hideResult) {
+      cls = p.result.correct ? 'ok' : (p.result.gain ? 'done' : 'bad');
+      extra = p.result.gain ? `<span class="gain">+${p.result.gain}</span>` : (p.result.answered ? ' ✗' : ' –');
     }
     return `<div class="chip ${cls}" style="--pc:${p.color}"><span class="dot">${p.avatar}</span>${esc(p.name)}${extra}</div>`;
   }).join('');
 }
 
-function renderQuestion() {
+const avatarHtml = (p, delay) => `<span class="vav" title="${esc(p.name)}" style="--pc:${p.color};animation-delay:${delay}s">${p.avatar}</span>`;
+const mrow = (i, t, right, delay) => `<div class="mrow" id="mrow${i}" style="animation-delay:${delay || 0}s"><span class="mnum">${i + 1}</span><span class="mterm">${esc(t)}</span><span class="mright" id="mr${i}">${right}</span></div>`;
+
+// ---------- Ankündigung (Bilderrätsel, Schätzfrage, Zuordnung) ----------
+function renderIntro() {
   const q = S.question;
-  app.innerHTML = topbar(`<span class="pill">Frage ${S.qNum} / ${S.qTotal}</span>`) + `
-    <div class="qwrap fade">
-      <div class="qcard"><div class="cat">${esc(q.category)}</div><div class="qtext">${esc(q.text)}</div></div>
-      <div class="mid">
-        <div class="timer"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="10"/>
-          <circle id="arc" cx="50" cy="50" r="44" fill="none" stroke="#f5b014" stroke-width="10" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="0"/></svg>
-          <div class="num" id="num"></div></div>
-        <div class="answered" id="chips">${chips()}</div>
-      </div>
-      <div class="answers" id="answers">${q.answers.map((a, i) => `<div class="ans c${i}" style="animation:pop .4s ${i * 0.08}s both"><span class="shape">${SHAPES[i]}</span><span>${esc(a)}</span><span class="voters"></span></div>`).join('')}</div>
-    </div>`;
-  updateQuestion();
+  app.innerHTML = qTop() + `<div class="intro">
+    <div class="iicon">${q.icon || '❓'}</div><div class="ilabel">${esc(q.label)}</div>
+    <div class="icat">${esc(q.category)}</div><div class="inum" id="inum"></div></div>`;
 }
 
-function updateQuestion() {
+// ---------- Zuordnen: erst nur die Begriffe ----------
+function renderPreview() {
   const q = S.question;
+  app.innerHTML = qTop() + `<div class="qwrap fade">
+    <div class="qcard compact"><div class="cat">${esc(q.category)}</div><div class="qtext soft">Merkt euch diese Begriffe – gleich kommt die Frage …</div></div>
+    <div class="mlist">${q.left.map((t, i) => mrow(i, t, '', i * 0.15)).join('')}</div>
+    <div class="pbar"><i id="pbar"></i></div></div>`;
+}
+
+// ---------- Frage + Auflösung ----------
+function renderMain() {
+  const q = S.question;
+  const head = `<div class="qcard ${q.image || q.kind === 'match' ? 'compact' : ''}"><div class="cat">${esc(q.category)}</div><div class="qtext">${esc(q.text)}</div></div>`;
+  const mid = `<div class="mid">
+      <div class="timer"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="10"/>
+        <circle id="arc" cx="50" cy="50" r="44" fill="none" stroke="#f5b014" stroke-width="10" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="0"/></svg>
+        <div class="num" id="num"></div></div>
+      <div class="answered" id="chips">${chips()}</div></div>`;
+  const img = q.image ? `<div class="imgbox"><img src="${q.image}" alt=""></div>` : '';
+  let body = '';
+  if (q.kind === 'choice') {
+    const tiles = q.answers.map((a, i) => `<div class="ans c${i}" style="animation:pop .4s ${i * 0.08}s both"><span class="shape">${SHAPES[i]}</span><span class="atext">${esc(a)}</span><span class="voters"></span></div>`).join('');
+    body = q.image ? `<div class="imgq">${img}<div class="answers col">${tiles}</div></div>` : `<div class="answers">${tiles}</div>`;
+  } else if (q.kind === 'estimate') {
+    body = `<div class="estq ${q.image ? '' : 'noimg'}">${img}<div class="estpanel" id="est">
+      <div class="esthint">🔢 Schätzt am Handy!${q.unit ? `<small>Antwort in ${esc(q.unit)}</small>` : ''}</div></div></div>`;
+  } else if (q.kind === 'match') {
+    body = `<div class="mlist">${q.left.map((t, i) => mrow(i, t, '<span class="qm">?</span>')).join('')}</div>`;
+  }
+  app.innerHTML = qTop() + `<div class="qwrap ${S.phase === 'question' ? 'fade' : ''}">${head}${mid}${body}</div>`;
+  updateMain();
+}
+
+function updateMain() {
+  const q = S.question;
+  const byId = Object.fromEntries(S.players.map(p => [p.id, p]));
   document.getElementById('chips').innerHTML = chips();
   if (S.phase === 'votes' || S.phase === 'reveal') {
-    const byId = Object.fromEntries(S.players.map(p => [p.id, p]));
+    const n = document.getElementById('num');
+    if (n) n.innerHTML = S.phase === 'reveal' ? '✓' : '<span class="timesup">Stopp!</span>';
+    const arc = document.getElementById('arc'); if (arc) arc.style.strokeDashoffset = 276.5;
+  }
+  if (q.kind === 'choice' && (S.phase === 'votes' || S.phase === 'reveal')) {
     document.querySelectorAll('.ans').forEach((el, i) => {
       const box = el.querySelector('.voters');
       if (!box.dataset.filled) {   // Emojis nacheinander auftauchen lassen
-        let n = 0;
-        box.innerHTML = (q.voters[i] || []).map(id => byId[id]).filter(Boolean)
-          .map(p => `<span class="vav" title="${esc(p.name)}" style="--pc:${p.color};animation-delay:${0.15 + (n++) * 0.12 + i * 0.05}s">${p.avatar}</span>`).join('');
+        let k = 0;
+        box.innerHTML = (q.voters[i] || []).map(id => byId[id]).filter(Boolean).map(p => avatarHtml(p, 0.15 + (k++) * 0.12 + i * 0.05)).join('');
         box.dataset.filled = '1';
       }
-      if (S.phase === 'reveal') {
-        el.classList.toggle('win', i === q.correct);
-        el.classList.toggle('dim', i !== q.correct);
-      }
+      if (S.phase === 'reveal') { el.classList.toggle('win', i === q.correct); el.classList.toggle('dim', i !== q.correct); }
     });
-    const n = document.getElementById('num');
-    if (n) n.innerHTML = S.phase === 'reveal' ? '✓' : '<span class="timesup">Stopp!</span>';
-    document.getElementById('arc').style.strokeDashoffset = 276.5;
+  }
+  if (q.kind === 'estimate' && (S.phase === 'votes' || S.phase === 'reveal')) renderEstimate(byId);
+  if (q.kind === 'match' && S.phase === 'reveal') {
+    for (let i = 0; i < q.step; i++) {
+      const row = document.getElementById('mrow' + i);
+      if (!row || row.classList.contains('done')) continue;
+      const right = S.players.filter(p => p.result && p.result.pairs && p.result.pairs[i]);
+      row.classList.add('done');
+      document.getElementById('mr' + i).innerHTML = `<span class="mans">${esc(q.right[q.solution[i]])}</span>
+        <span class="voters">${right.length ? right.map((p, k) => avatarHtml(p, 0.3 + k * 0.1)).join('') : '<span class="none">keiner</span>'}</span>`;
+    }
   }
 }
 
+function renderEstimate(byId) {
+  const q = S.question, box = document.getElementById('est');
+  if (!box || box.dataset.phase === S.phase) return;
+  box.dataset.phase = S.phase;
+  const unit = q.unit ? ' ' + esc(q.unit) : '';
+  const rows = q.guesses.map(g => ({ ...g }));
+  if (S.phase === 'reveal') {
+    let at = rows.findIndex(r => r.value > q.value); if (at < 0) at = rows.length;
+    rows.splice(at, 0, { truth: true, value: q.value });
+  }
+  if (!q.guesses.length && S.phase === 'votes') { box.innerHTML = '<div class="esthint">Niemand hat geschätzt 🤷</div>'; return; }
+  box.innerHTML = `<div class="elist">${rows.map((r, i) => {
+    if (r.truth) return `<div class="erow truth"><span class="ev">✓ ${fmt(r.value)}${unit}</span><span>richtig</span></div>`;
+    const p = byId[r.id]; if (!p) return '';
+    const res = S.phase === 'reveal' ? p.result : null;
+    return `<div class="erow ${res && res.correct ? 'best' : ''}" style="--pc:${p.color};animation-delay:${S.phase === 'votes' ? i * 0.15 : 0}s">
+      <span class="vav">${p.avatar}</span><span class="en">${esc(p.name)}</span><span class="ev">${fmt(r.value)}${unit}</span>
+      ${res ? `<span class="eg">${res.gain ? '+' + res.gain : ''}</span>` : ''}</div>`;
+  }).join('')}</div>`;
+}
+
 function tick() {
-  if (S && S.phase === 'question' && S.question) {
+  if (S && S.question) {
     const left = Math.max(0, deadline - Date.now());
-    const arc = document.getElementById('arc'), num = document.getElementById('num');
-    if (arc) {
-      arc.style.strokeDashoffset = 276.5 * (1 - left / S.durationMs);
-      arc.style.stroke = left < 5000 ? '#e5484d' : '#f5b014';
-      num.textContent = Math.ceil(left / 1000);
+    if (S.phase === 'question') {
+      const arc = document.getElementById('arc'), num = document.getElementById('num');
+      if (arc) {
+        arc.style.strokeDashoffset = 276.5 * (1 - left / S.phaseMs);
+        arc.style.stroke = left < 5000 ? '#e5484d' : '#f5b014';
+        num.textContent = Math.ceil(left / 1000);
+      }
+    } else if (S.phase === 'intro') {
+      const n = document.getElementById('inum'); if (n) n.textContent = Math.max(1, Math.ceil(left / 1000));
+    } else if (S.phase === 'preview') {
+      const b = document.getElementById('pbar'); if (b) b.style.width = (left / S.phaseMs * 100) + '%';
     }
   }
   if (!LITE) requestAnimationFrame(tick);
