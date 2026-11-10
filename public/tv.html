@@ -64,6 +64,10 @@
   .ans { border-radius: 1.4vw; display: flex; align-items: center; gap: 1.6vw; padding: 0 2vw; font-size: 2.6vw; font-weight: 800; box-shadow: 0 .8vh 0 rgba(0,0,0,.25); transition: opacity .4s, transform .4s, filter .4s; position: relative; }
   .ans .shape { font-size: 3vw; width: 4vw; text-align: center; opacity: .9; }
   .ans .count { margin-left: auto; background: rgba(0,0,0,.25); border-radius: 99px; padding: .2vw 1.1vw; font-size: 2vw; }
+  .voters { display: flex; flex-wrap: wrap; gap: .5vw; margin-left: auto; max-width: 50%; justify-content: flex-end; }
+  .vav { width: 3.6vw; height: 3.6vw; border-radius: 50%; display: grid; place-items: center; font-size: 2.2vw; background: var(--pc); border: .25vw solid #fff; animation: pop .45s cubic-bezier(.2,1.6,.4,1) both; }
+  .ans.votes { transform: none; }
+  .timesup { font-size: 2vw; font-weight: 900; color: var(--c); }
   .ans.dim { opacity: .25; filter: grayscale(.7); transform: scale(.97); }
   .ans.win { transform: scale(1.03); box-shadow: 0 0 0 .4vw #fff, 0 .8vh 0 rgba(0,0,0,.25); }
   .ans.win::after { content: "✓"; position: absolute; right: -1vw; top: -1.6vw; width: 3.6vw; height: 3.6vw; border-radius: 50%; background: #fff; color: var(--d); display: grid; place-items: center; font-size: 2.4vw; font-weight: 900; }
@@ -138,7 +142,8 @@ function topbar(right) {
 }
 
 function render() {
-  const key = S.phase + ':' + S.qNum;
+  const inQ = S.phase === 'question' || S.phase === 'votes' || S.phase === 'reveal';
+  const key = (inQ ? 'Q' : S.phase) + ':' + S.qNum;
   const fresh = key !== lastKey;
   if (S.phase === 'question' && (fresh || Math.abs(Date.now() + S.remainingMs - deadline) > 1200)) deadline = Date.now() + S.remainingMs;
   if (S.phase === 'question' && fresh) prevScores = Object.fromEntries(S.players.map(p => [p.id, p.score]));
@@ -146,7 +151,7 @@ function render() {
 
   document.getElementById('status').style.display = (!KIOSK && (S.phase === 'lobby' || S.phase === 'end')) ? '' : 'none';
   if (S.phase === 'lobby') return renderLobby();
-  if (S.phase === 'question' || S.phase === 'reveal') return fresh ? renderQuestion() : updateQuestion();
+  if (inQ) return fresh ? renderQuestion() : updateQuestion();
   if (S.phase === 'scores') return fresh ? renderScores() : null;
   if (S.phase === 'end') return fresh ? renderEnd() : null;
 }
@@ -198,7 +203,7 @@ function renderQuestion() {
           <div class="num" id="num"></div></div>
         <div class="answered" id="chips">${chips()}</div>
       </div>
-      <div class="answers" id="answers">${q.answers.map((a, i) => `<div class="ans c${i}" style="animation:pop .4s ${i * 0.08}s both"><span class="shape">${SHAPES[i]}</span><span>${esc(a)}</span><span class="count" style="display:none"></span></div>`).join('')}</div>
+      <div class="answers" id="answers">${q.answers.map((a, i) => `<div class="ans c${i}" style="animation:pop .4s ${i * 0.08}s both"><span class="shape">${SHAPES[i]}</span><span>${esc(a)}</span><span class="voters"></span></div>`).join('')}</div>
     </div>`;
   updateQuestion();
 }
@@ -206,19 +211,29 @@ function renderQuestion() {
 function updateQuestion() {
   const q = S.question;
   document.getElementById('chips').innerHTML = chips();
-  if (S.phase === 'reveal') {
+  if (S.phase === 'votes' || S.phase === 'reveal') {
+    const byId = Object.fromEntries(S.players.map(p => [p.id, p]));
     document.querySelectorAll('.ans').forEach((el, i) => {
-      el.classList.toggle('win', i === q.correct);
-      el.classList.toggle('dim', i !== q.correct);
-      const c = el.querySelector('.count'); c.style.display = ''; c.textContent = q.counts[i];
+      const box = el.querySelector('.voters');
+      if (!box.dataset.filled) {   // Emojis nacheinander auftauchen lassen
+        let n = 0;
+        box.innerHTML = (q.voters[i] || []).map(id => byId[id]).filter(Boolean)
+          .map(p => `<span class="vav" title="${esc(p.name)}" style="--pc:${p.color};animation-delay:${0.15 + (n++) * 0.12 + i * 0.05}s">${p.avatar}</span>`).join('');
+        box.dataset.filled = '1';
+      }
+      if (S.phase === 'reveal') {
+        el.classList.toggle('win', i === q.correct);
+        el.classList.toggle('dim', i !== q.correct);
+      }
     });
-    const n = document.getElementById('num'); if (n) n.textContent = '✓';
+    const n = document.getElementById('num');
+    if (n) n.innerHTML = S.phase === 'reveal' ? '✓' : '<span class="timesup">Stopp!</span>';
     document.getElementById('arc').style.strokeDashoffset = 276.5;
   }
 }
 
 function tick() {
-  if (S && S.phase === 'question') {
+  if (S && S.phase === 'question' && S.question) {
     const left = Math.max(0, deadline - Date.now());
     const arc = document.getElementById('arc'), num = document.getElementById('num');
     if (arc) {

@@ -123,6 +123,7 @@ function render() {
     if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
     return renderQuestion();
   }
+  if (S.phase === 'votes') return renderVotes();
   if (S.phase === 'reveal') return renderResult();
   if (S.phase === 'scores') return renderRank(false);
   if (S.phase === 'end') return renderRank(true);
@@ -160,6 +161,14 @@ function renderQuestion() {
 function renderWaiting(i) {
   main.innerHTML = `<div class="center"><div class="chosen c${i}">${SHAPES[i]}</div>
     <h1>Eingeloggt!</h1><p>Warte auf die anderen …</p></div>`;
+}
+
+function renderVotes() {
+  const a = S.me.myAnswer;
+  main.innerHTML = `<div class="center">
+    ${a !== null ? `<div class="chosen c${a}">${SHAPES[a]}</div>` : '<div class="big">⏰</div>'}
+    <h1>${a !== null ? 'Zeit ist um!' : 'Keine Antwort'}</h1>
+    <p>Schau auf den Fernseher 👀<br>Gleich kommt die Auflösung …</p></div>`;
 }
 
 function renderResult() {

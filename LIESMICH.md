@@ -45,7 +45,7 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 ## Ablauf und Punkte
 - 10 zufällige Fragen pro Runde, je 20 Sekunden.
 - Richtig = 500 bis 1000 Punkte (je schneller, desto mehr), dazu bis zu +150 Bonus für Serien.
-- Sobald alle geantwortet haben, geht es sofort zur Auflösung.
+- Sobald alle geantwortet haben (oder die Zeit um ist), zeigt der Fernseher erst, wer was gewählt hat – ein paar Sekunden später kommt die richtige Antwort.
 - Handy-Akku leer oder Seite neu geladen? Einfach wieder öffnen, der Spielstand bleibt erhalten.
 
 ## Eigene Fragen
