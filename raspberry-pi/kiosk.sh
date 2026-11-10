@@ -11,8 +11,8 @@ echo "--- $(date) Kiosk-Start (Sitzung: ${XDG_SESSION_TYPE:-?} ${XDG_CURRENT_DES
 # Auf Pi 4/5 kannst du LITE=0 probieren.
 LITE=1
 
-URL="http://localhost:3000/tv"
-[ "$LITE" = "1" ] && URL="$URL?lite=1"
+URL="http://localhost:3000/tv?kiosk=1"
+[ "$LITE" = "1" ] && URL="$URL&lite=1"
 
 # Warten, bis der Server läuft
 for _ in $(seq 1 60); do
@@ -31,4 +31,7 @@ EXTRA=""
 # shellcheck disable=SC2086
 exec "$BROWSER" $EXTRA --kiosk --noerrdialogs --disable-infobars --no-first-run \
   --password-store=basic --disable-session-crashed-bubble \
-  --check-for-update-interval=31536000 --disk-cache-dir=/tmp/quizabend-cache "$URL"
+  --check-for-update-interval=31536000 --disk-cache-dir=/tmp/quizabend-cache \
+  --disable-background-networking --disable-component-update --disable-sync \
+  --disable-features=Translate,MediaRouter,OptimizationHints --no-default-browser-check \
+  --renderer-process-limit=1 --disable-extensions "$URL"

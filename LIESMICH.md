@@ -32,6 +32,8 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 
 **Ohne Desktop (empfohlen für Pi 3):** Statt dem Setup oben `./raspberry-pi/setup.sh --ohne-desktop` ausführen. Der Pi startet dann keinen Desktop mehr, sondern bootet direkt ins Quiz. Das spart Leistung und ist zuverlässiger. Änderungen machst du dann per SSH vom Laptop aus (`ssh <benutzer>@<hostname>.local`). Zurück zum Desktop: `./raspberry-pi/setup.sh` ohne Option ausführen und neu starten.
 
+**Noch flüssiger (Pi 3):** `./raspberry-pi/setup.sh --ohne-desktop --720p` steuert den Fernseher mit 1280×720 an. Der Pi muss dann nur noch etwa halb so viele Bildpunkte berechnen, die Ansicht skaliert automatisch mit. Zurück zu voller Auflösung: Setup ohne `--720p` erneut ausführen.
+
 **Startet es nicht?** `./raspberry-pi/check.sh` ausführen, die Ausgabe zeigt, wo es hängt.
 
 - **Grafik:** Auf dem Pi läuft die TV-Ansicht im schonenden Modus (ohne Konfetti und Animationen), damit nichts ruckelt. Auf einem Pi 4/5 kannst du in `raspberry-pi/kiosk.sh` `LITE=0` setzen.

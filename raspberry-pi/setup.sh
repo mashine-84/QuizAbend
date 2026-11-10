@@ -7,15 +7,20 @@
 # Aufruf (ohne sudo):
 #   ./raspberry-pi/setup.sh                 mit Desktop: Quiz startet nach dem Desktop-Login
 #   ./raspberry-pi/setup.sh --ohne-desktop  ohne Desktop: Pi bootet direkt ins Quiz (empfohlen für Pi 3)
-# Zurück zum Desktop: einfach wieder ohne Option ausführen.
+#   zusätzlich --720p                       Fernseher mit 1280x720 ansteuern (deutlich flüssiger auf Pi 3)
+# Zurück zum Desktop bzw. zu voller Auflösung: einfach ohne die Option erneut ausführen.
 set -e
 
 MODE=desktop
-case "$1" in
-  --ohne-desktop|--no-desktop) MODE=kiosk ;;
-  ""|--mit-desktop) ;;
-  *) echo "Unbekannte Option: $1  (erlaubt: --ohne-desktop)"; exit 1 ;;
-esac
+RES=""
+for arg in "$@"; do
+  case "$arg" in
+    --ohne-desktop|--no-desktop) MODE=kiosk ;;
+    --mit-desktop) MODE=desktop ;;
+    --720p) RES=720 ;;
+    *) echo "Unbekannte Option: $arg  (erlaubt: --ohne-desktop, --720p)"; exit 1 ;;
+  esac
+done
 
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 USER_NAME="$(whoami)"
@@ -29,7 +34,7 @@ echo "==> Pakete installieren (dauert ein paar Minuten) …"
 sudo apt-get update
 sudo apt-get install -y nodejs curl
 if apt-cache show chromium >/dev/null 2>&1; then CHR=chromium; else CHR=chromium-browser; fi
-sudo apt-get install -y "$CHR"
+sudo apt-get install -y "$CHR" fonts-noto-color-emoji   # Emoji-Schrift für die Spieler-Icons
 sudo apt-get install -y unclutter >/dev/null 2>&1 || true   # versteckt den Mauszeiger (optional)
 [ "$MODE" = kiosk ] && sudo apt-get install -y cage          # Mini-Anzeige ohne Desktop
 
@@ -122,6 +127,17 @@ elif [ "$MODE" = kiosk ]; then
   printf '[Service]\nExecStart=\nExecStart=-/sbin/agetty --autologin %s --noclear %%I $TERM\n' "$USER_NAME" | \
     sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf >/dev/null
   sudo systemctl set-default multi-user.target
+fi
+
+# Auflösung: 720p entlastet den Pi 3 stark (die Ansicht skaliert automatisch mit)
+CMD=/boot/firmware/cmdline.txt; [ -f "$CMD" ] || CMD=/boot/cmdline.txt
+if [ -f "$CMD" ]; then
+  [ -f "$CMD.vor-quizabend" ] || sudo cp "$CMD" "$CMD.vor-quizabend"
+  sudo sed -i 's/ video=HDMI-A-1:1280x720@60//' "$CMD"
+  if [ "$RES" = 720 ]; then
+    echo "==> Fernseher auf 1280x720 einstellen …"
+    sudo sed -i '1 s/$/ video=HDMI-A-1:1280x720@60/' "$CMD"
+  fi
 fi
 
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
