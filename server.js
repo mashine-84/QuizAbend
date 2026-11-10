@@ -455,7 +455,7 @@ function baseView() {
     special: state.special && ['special', 'votes', 'reveal'].includes(ph) ? { mult: settings.special.mult } : null,
   };
   if (q && ['intro', 'preview', 'question', 'special', 'votes', 'reveal'].includes(ph)) {
-    const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category, level: q.level };
+    const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category }; // Schwierigkeit wird im Spiel nicht verraten
     if (ph !== 'intro' && q.kind === 'match') vq.left = q.left;
     if (['question', 'special', 'votes', 'reveal'].includes(ph)) {
       vq.text = q.text; vq.image = q.image;

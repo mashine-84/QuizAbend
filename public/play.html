@@ -111,7 +111,6 @@
   .lv { font-style: normal; margin-left: 6px; } .lv1 { color: #8ff0b5; } .lv2 { color: #ffd43b; } .lv3 { color: #ff8787; }
   .center.special h1 { color: var(--c); font-size: 40px; }
   .gain small { font-size: .6em; opacity: .85; }
-  .hostlv { color: var(--c); margin-left: 6px; letter-spacing: 1px; }
 </style>
 </head>
 <body>
@@ -186,9 +185,7 @@ function header() {
 
 function qline(extra) {
   const q = S.question;
-  // Schwierigkeit sieht nur der Gamemaster (👑)
-  const lv = S.me && S.me.isVip && q && q.level ? ` <span class="hostlv" title="nur für dich sichtbar">${'★'.repeat(q.level)}${'☆'.repeat(3 - q.level)}</span>` : '';
-  return `<div class="qline">${q && q.label ? `<span class="badge">${q.icon} ${esc(q.label)}</span>` : ''}Frage ${S.qNum} / ${S.qTotal}${extra ? ' · ' + extra : ''}${lv}</div>`;
+  return `<div class="qline">${q && q.label ? `<span class="badge">${q.icon} ${esc(q.label)}</span>` : ''}Frage ${S.qNum} / ${S.qTotal}${extra ? ' · ' + extra : ''}</div>`;
 }
 
 function render() {
