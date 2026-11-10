@@ -31,6 +31,7 @@ const FRAGEN_DIR = path.join(__dirname, 'fragen');
 const SETTINGS_FILE = path.join(__dirname, 'einstellungen.json');
 const IMAGE_TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml' };
 
+const VERSION = String(Date.now()); // ändert sich bei jedem Neustart -> Bildschirme laden neu
 const COLORS = ['#ff4d6d', '#4dabf7', '#ffd43b', '#51cf66', '#cc5de8', '#ff922b', '#22d3ee', '#f783ac'];
 const AVATARS = ['🦊', '🐼', '🐸', '🦁', '🐙', '🐵', '🦄', '🐧', '🐶', '🐱', '🐯', '🐨', '🐷', '🐮', '🐰', '🐻', '🐲', '🦉', '🐝', '🦖', '🐢', '🦀', '🐳', '🦩'];
 
@@ -461,7 +462,7 @@ function baseView() {
     phase: ph, vip: vipId(), minPlayers: MIN_PLAYERS, maxPlayers: MAX_PLAYERS,
     players: ranking(), qNum: state.idx + 1, qTotal: state.questions.length,
     remainingMs: state.phaseEnds ? Math.max(0, state.phaseEnds - Date.now()) : 0, phaseMs: state.phaseMs,
-    packs: packSummary(), avatars: AVATARS,
+    version: VERSION, packs: packSummary(), avatars: AVATARS,
     block: q ? { num: q.block + 1, total: q.blockCount, names: q.blockNames } : null,
     special: state.special && ['special', 'votes', 'reveal'].includes(ph) ? { mult: settings.special.mult } : null,
   };
