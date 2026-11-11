@@ -5,8 +5,10 @@ DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOG=/tmp/quizabend-kiosk.log
 
 # Unsichtbarer Mauszeiger: sonst zeichnet cage den Standard-Pfeil dauerhaft ins Bild
-[ -d "$HOME/.icons/quizabend-blank" ] || python3 "$DIR/raspberry-pi/blank-cursor.py" >>"$LOG" 2>&1
-export XCURSOR_THEME=quizabend-blank XCURSOR_SIZE=24 XCURSOR_PATH="$HOME/.icons:/usr/share/icons"
+# (cage lädt immer das Design "default" – darum ein eigener Suchpfad nur für den Kiosk)
+CURSOR_DIR="$HOME/.local/share/quizabend-cursor"
+[ -f "$CURSOR_DIR/default/cursors/left_ptr" ] || python3 "$DIR/raspberry-pi/blank-cursor.py" "$CURSOR_DIR" >>"$LOG" 2>&1
+export XCURSOR_PATH="$CURSOR_DIR" XCURSOR_THEME=default XCURSOR_SIZE=24
 
 # Ton über HDMI zum Fernseher: Der Pi wählt sonst oft die Klinkenbuchse.
 # HDMI-Ausgang als Standard setzen, laut stellen und Stummschaltung aufheben (PipeWire/wpctl).
