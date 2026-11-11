@@ -175,9 +175,6 @@
   @keyframes floatup { to { transform: translateY(-120vh) rotate(25deg); } }
   .pcount { font-size: 10vw; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; margin: 1vh 0; }
   .nextb { font-size: 2vw; margin-top: 1vh; } .nextb b { color: var(--c); }
-  .ptop { display: flex; gap: 1.2vw; margin-top: 2.5vh; flex-wrap: wrap; justify-content: center; }
-  .ptop span { background: rgba(255,255,255,.1); border-radius: 99px; padding: .6vh 1.4vw; font-size: 1.6vw; font-weight: 800; }
-  .ptop i { font-style: normal; margin-right: .4vw; } .ptop b { color: var(--c); margin-left: .5vw; }
   html.lite .floaty { display: none; }
 
   /* Overlays: angehalten / System */
@@ -447,16 +444,15 @@ const sfx = {
 
 // ---------- Pause zwischen den Blöcken ----------
 function renderBlockPause() {
-  const nb = S.nextBlock, top = S.players.slice(0, 3);
+  const nb = S.nextBlock;
   app.innerHTML = topbar(`<span class="pill">Pause</span>`) + `<div class="intro bpause">
     <div class="floaty">${['🍺', '🚻', '🍕', '🥤', '🍿', '☕'].map((e, i) => `<span style="left:${8 + i * 16}%;animation-delay:${i * 0.7}s">${e}</span>`).join('')}</div>
-    <div class="ilabel">Pause!</div>
+    <div class="ilabel">☕ Pause!</div>
     <div class="icat">Getränke holen · Klo · durchatmen</div>
     <div class="pcount" id="pcount">${S.phaseMs ? '' : '⏸'}</div>
     ${S.phaseMs ? '' : '<div class="icat">Es geht weiter, wenn alle zurück sind</div>'}
     ${nb ? `<div class="nextb">Gleich: <b>Block ${nb.num} von ${nb.total}</b>${nb.names && nb.names.length ? ` · ${esc(nb.names.join(', '))}` : ''}</div>` : ''}
-    <div class="ptop">${top.map((p, i) => `<span style="--pc:${p.color}"><i>${['🥇', '🥈', '🥉'][i]}</i>${p.avatar} ${esc(p.name)} <b>${p.score}</b></span>`).join('')}</div>
-    <div class="hint">👑 kann die Pause am Handy beenden oder verlängern</div></div>`;
+    </div>`;
   tick();
 }
 
