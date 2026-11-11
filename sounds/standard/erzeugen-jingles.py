@@ -2,8 +2,9 @@
 #   block-start.mp3   Ansage eines neuen Frageblocks (4,5 s)
 #   aufloesung.mp3    Auflösung einer Frage (ersetzt den alten Gong)
 #   siegerehrung.mp3  Siegerpodest (ersetzt die alte Fanfare)
+#   rangliste.mp3     Rangliste am Blockende (passt zum Balken-Aufbau und Einsortieren)
 # Aufruf: python3 erzeugen-jingles.py /tmp/out  (schreibt WAVs), dann z. B.
-#   for f in block-start aufloesung siegerehrung; do ffmpeg -i /tmp/out/$f.wav -b:a 128k $f.mp3; done
+#   for f in block-start aufloesung siegerehrung rangliste; do ffmpeg -i /tmp/out/$f.wav -b:a 128k $f.mp3; done
 import numpy as np, scipy.signal as sg, scipy.io.wavfile as wf, sys, os
 SR = 44100; BPM = 128; BAR = 240 / BPM; E8 = BAR / 8; S16 = BAR / 16
 note = lambda m: 440 * 2 ** ((m - 69) / 12)
@@ -140,3 +141,44 @@ T.add(T.lead(81, 2.2), t0, gain=0.14); T.add(T.lead(69, 2.2), t0, gain=0.07)
 for k, m in enumerate((69, 73, 76, 81, 85)):
     n = int(0.7 * SR); T.add(np.sin(2*np.pi*note(m + 12)*np.arange(n)/SR) * env(n, 0.003, 5), t0 + 0.07 * k, pan=-0.4 + 0.2 * k, gain=0.08)
 T.write(f'{out}/siegerehrung.wav', fade=0.6)
+
+# ---------- Rangliste: Spannung (a-Moll, wie die Pausenmusik) solange die Balken wachsen,
+# Schlag wenn der längste fertig ist (8,5 s), Whoosh beim Einsortieren, Auflösung in A-Dur (10,3 s) ----------
+T = Track(13.0, 24)
+GROW_END, SORT_START, SORT_END = 8.5, 9.0, 10.3
+x = 0.0; i = 0
+while x < GROW_END - 0.05:                                   # Achtel-Raster
+    T.add(T.tick(i % 2 == 0), x, pan=0.35 if i % 2 else -0.35, gain=0.11 + 0.07 * x / GROW_END)
+    m = 33 + (1 if x >= 6.0 else 0) + (1 if i % 8 == 6 else 0)          # Bass-Puls mit Halbton-Reibung, ab 6 s einen Halbton höher
+    nn = int(0.22 * SR); s = lp(saw(note(m), nn, (0, 0.004)), 400 + 600 * x / GROW_END) * env(nn, 0.004, 11)
+    s += np.sin(2*np.pi*note(m)*np.arange(nn)/SR) * env(nn, 0.004, 9) * 0.6
+    T.add(s, x, gain=0.28 + 0.08 * x / GROW_END)
+    if x >= 1.8 and i % 4 in (0, 1) and (i % 4 == 0 or x >= 4.5):        # Herzschlag
+        T.add(T.kick(), x, gain=(0.35 + 0.15 * x / GROW_END) * (1 if i % 4 == 0 else 0.6))
+    if x >= 3.6:                                             # Streicher-Ostinato (Moll), wie in der Pause
+        for j in range(2):
+            xx = x + j * S16; k = (2 * i + j) % 8
+            mm = 57 + (1 if xx >= 6.0 else 0) + [0, 3, 7, 3, 12, 7, 3, 7][k]
+            T.add(T.arp_note(mm, S16 * 0.95), xx, pan=-0.3 if k % 2 else 0.3, gain=0.05 + 0.04 * (xx - 3.6) / (GROW_END - 3.6))
+    x += E8; i += 1
+n = int(GROW_END * SR); tt = np.arange(n) / SR                      # dunkle Fläche, schwillt an
+dr = sum(lp(saw(note(m), n, (-0.006, 0, 0.006)), 900) for m in (45, 52, 57)) / 3
+T.add(dr * np.interp(tt, [0, 1, GROW_END - 0.3, GROW_END], [0, 0.08, 0.14, 0]), 0)
+T.add(T.riser(2.5), GROW_END - 2.5, gain=0.16)
+for k in range(8): T.add(T.snare(), GROW_END - 1.0 + k * 0.0625, gain=0.12 + 0.03 * k)
+for k in range(16): T.add(T.snare(), GROW_END - 0.5 + k * 0.03125, gain=0.2 + 0.015 * k)
+# Schlag: längster Balken fertig
+T.add(T.boom(0.7, (57, 64, 69), 1.2, 4), GROW_END)
+# Innehalten: hoher Tremolo-Ton
+n = int((SORT_END - GROW_END) * SR); tt = np.arange(n) / SR
+trem = lp(saw(note(76), n, (-0.003, 0.003)), 4000) * (0.6 + 0.4 * np.sin(2 * np.pi * 12 * tt))
+T.add(trem * np.interp(tt, [0, 0.2, tt[-1] - 0.05, tt[-1]], [0, 0.08, 0.12, 0]), GROW_END)
+# Whoosh beim Einsortieren
+T.add(T.riser(SORT_END - SORT_START, 9000), SORT_START, gain=0.2)
+# Auflösung in A-Dur
+T.add(T.boom(0.9, (57, 64, 69, 73, 76), 2.6, 2.6), SORT_END)
+T.add(T.stab((45, 57, 61, 64, 69, 73, 76), 2.7, 4200, 1.4), SORT_END, gain=0.34)
+T.add(T.clap(), SORT_END, gain=0.3)
+for k, m in enumerate((76, 81, 85, 88)):
+    nn = int(0.7 * SR); T.add(np.sin(2*np.pi*note(m)*np.arange(nn)/SR) * env(nn, 0.003, 5), SORT_END + 0.06 + k * S16 * 0.8, pan=-0.45 + 0.3 * k, gain=0.1)
+T.write(f'{out}/rangliste.wav', fade=0.5)
