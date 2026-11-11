@@ -89,7 +89,15 @@
   /* Paketauswahl */
   .settings { display: flex; flex-direction: column; gap: 12px; }
   .shead { display: flex; align-items: center; justify-content: space-between; }
-  .shead h2 { font-size: 24px; }
+  .shead h2 { font-size: 19px; flex: 1; min-width: 0; margin: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .burger { width: 44px; height: 44px; flex: none; border: none; border-radius: 12px; background: rgba(255,255,255,.1); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: pointer; }
+  .burger i { display: block; width: 20px; height: 2.5px; border-radius: 2px; background: #fff; transition: transform .2s, opacity .2s; }
+  .burger.open i:nth-child(1) { transform: translateY(7.5px) rotate(45deg); } .burger.open i:nth-child(2) { opacity: 0; } .burger.open i:nth-child(3) { transform: translateY(-7.5px) rotate(-45deg); }
+  .smenu { display: flex; flex-direction: column; gap: 6px; background: rgba(255,255,255,.06); border-radius: 14px; padding: 6px; }
+  .smenu button { display: flex; align-items: center; gap: 12px; text-align: left; font: inherit; color: #fff; background: none; border: none; border-radius: 10px; padding: 12px; cursor: pointer; }
+  .smenu button.on { background: rgba(245,176,20,.18); }
+  .smenu .si { font-size: 24px; }
+  .smenu b { display: block; font-size: 17px; } .smenu small { display: block; font-size: 13px; color: var(--muted); font-weight: 600; }
   .pergame { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px 14px; font-weight: 700; }
   .pergame span { flex: 1; }
   .pergame button { width: 42px; height: 42px; border-radius: 50%; border: none; font: inherit; font-size: 24px; font-weight: 900; background: rgba(255,255,255,.15); color: #fff; }
@@ -335,7 +343,7 @@ function renderLobby() {
 
 // ---------- Einstellungen für den Gamemaster ----------
 async function openSettings() {
-  ui.settings = true; ui.edit = null; lastKey = '';
+  ui.settings = true; ui.edit = null; ui.section = 'game'; ui.menu = false; lastKey = '';
   main.innerHTML = '<div class="center"><p>Lade Einstellungen …</p></div>';
   ui.packs = await fetch('/api/pakete').then(r => r.json()).catch(() => null);
   ui.hue = { st: (await hueCall('status')) || null };
@@ -477,8 +485,9 @@ function renderSettings() {
   if (!d) { main.innerHTML = '<div class="center"><p>Konnte die Einstellungen nicht laden.</p><button class="btn" onclick="closeSettings()">Zurück</button></div>'; return; }
   if (ui.edit !== null && cfg().blocks[ui.edit]) return renderBlockEditor();
   const c = cfg(), sum = d.summary;
-  main.innerHTML = `<div class="settings">
-    <div class="shead"><h2>⚙️ Einstellungen</h2><button class="btn sm" onclick="closeSettings()">Fertig</button></div>
+  const sec = SECTIONS.find(x => x.id === ui.section) || SECTIONS[0];
+  let body = '';
+  if (sec.id === 'game') body = `
     <h3>Frageblöcke</h3>
     ${stepper('Anzahl Blöcke', c.blocks.length, `setBlocks(${c.blocks.length - 1})`, `setBlocks(${c.blocks.length + 1})`)}
     ${c.blocks.map((b, i) => {
@@ -494,16 +503,31 @@ function renderSettings() {
     <label class="switch"><input type="checkbox" ${c.special.on ? 'checked' : ''} onchange="setSpecial(this.checked)"><span>Eine zufällige Spezialfrage pro Spiel</span></label>
     ${c.special.on ? `<div class="seg">${[2, 3, 4].map(m => `<button class="${c.special.mult === m ? 'on' : ''}" onclick="setMult(${m})">×${m}</button>`).join('')}</div>
       <p class="small">Erst nach dem Antworten wird verraten, dass es die Spezialfrage war. Die Punkte zählen dann ×${c.special.mult}.</p>` : ''}
-    <h3>🔊 Sounds</h3>
-    <label class="switch"><input type="checkbox" ${c.sound.on ? 'checked' : ''} onchange="cfg().sound.on = this.checked; saveCfg()"><span>Ticken, Gong und Fanfare am Fernseher</span></label>
     <h3>🍺 Pause nach jedem Block</h3>
     <label class="switch"><input type="checkbox" ${c.pause.on ? 'checked' : ''} onchange="cfg().pause.on = this.checked; saveCfg()"><span>Pausen-Bildschirm zwischen den Blöcken</span></label>
     ${c.pause.on ? stepper('Dauer in Minuten', c.pause.minutes || '∞', `setPause(-1)`, `setPause(1)`) + `<p class="small">${c.pause.minutes ? `Nach ${c.pause.minutes} Minuten geht es automatisch weiter.` : 'Die Pause läuft, bis du sie am Handy beendest.'} Du kannst sie jederzeit beenden oder verlängern.</p>` : ''}
-    ${hueSection()}
-    ${systemSection(d.system)}
-    ${d.errors.length ? `<div class="errors"><b>⚠️ Fehler in Fragendateien</b>${d.errors.map(e => `<div><code>${esc(e.file)}</code><br>${esc(e.error)}</div>`).join('')}</div>` : ''}
+    ${d.errors.length ? `<div class="errors"><b>⚠️ Fehler in Fragendateien</b>${d.errors.map(e => `<div><code>${esc(e.file)}</code><br>${esc(e.error)}</div>`).join('')}</div>` : ''}`;
+  else if (sec.id === 'integ') body = hueSection() || '<p class="small">Keine Integrationen verfügbar.</p>';
+  else body = `
+    <h3>🔊 Sound</h3>
+    <label class="switch"><input type="checkbox" ${c.sound.on ? 'checked' : ''} onchange="cfg().sound.on = this.checked; saveCfg()"><span>Musik und Sounds am Fernseher</span></label>
+    ${systemSection(d.system)}`;
+  main.innerHTML = `<div class="settings">
+    <div class="shead"><button class="burger ${ui.menu ? 'open' : ''}" onclick="toggleMenu()" aria-label="Menü"><i></i><i></i><i></i></button>
+      <h2>${sec.title}</h2><button class="btn sm" onclick="closeSettings()">Fertig</button></div>
+    ${ui.menu ? `<nav class="smenu">${SECTIONS.map(x => `<button class="${x.id === sec.id ? 'on' : ''}" onclick="showSection('${x.id}')">
+      <span class="si">${x.icon}</span><span><b>${x.title}</b><small>${x.sub}</small></span></button>`).join('')}</nav>` : ''}
+    ${body}
   </div>`;
 }
+// Hamburger-Menü der Einstellungen
+const SECTIONS = [
+  { id: 'game', icon: '🎲', title: 'Spieleinstellungen', sub: 'Frageblöcke, Spezialfrage, Pause' },
+  { id: 'integ', icon: '🧩', title: 'Integrationen', sub: 'Philips Hue' },
+  { id: 'system', icon: '🛠️', title: 'Systemeinstellungen', sub: 'Sound, Update, Neustart, Ausschalten' },
+];
+function toggleMenu() { ui.menu = !ui.menu; lastKey = ''; render(); }
+function showSection(id) { ui.section = id; ui.menu = false; lastKey = ''; render(); window.scrollTo(0, 0); }
 
 function renderBlockEditor() {
   const d = ui.packs, bi = ui.edit, b = cfg().blocks[bi], dis = new Set(b.disabled), s = d.summary.blocks[bi] || { available: 0 };
