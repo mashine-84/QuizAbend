@@ -265,9 +265,13 @@ function badge(q) { return q && q.label ? `<span class="tbadge">${q.icon || ''} 
 function topbar(right) {
   return `<div class="topbar"><div class="brand" style="font-size:2vw">Quiz<span>Abend</span></div><div class="tright">${right || ''}</div></div>`;
 }
+// Bei mehreren Blöcken zählt die Frage innerhalb des Blocks: "Block 1/2 · Frage 3/8"
+function qNumText() {
+  const b = S.block;
+  return b && b.total > 1 && b.len ? `Block ${b.num}/${b.total} · Frage ${b.q} / ${b.len}` : `Frage ${S.qNum} / ${S.qTotal}`;
+}
 function qTop() {
-  const b = S.block && S.block.total > 1 ? `Block ${S.block.num}/${S.block.total} · ` : '';
-  return topbar(`<span id="spb"></span>${badge(S.question)}<span class="pill">${b}Frage ${S.qNum} / ${S.qTotal}</span>`);
+  return topbar(`<span id="spb"></span>${badge(S.question)}<span class="pill">${qNumText()}</span>`);
 }
 const IN_Q = ['intro', 'media', 'preview', 'question', 'special', 'votes', 'reveal'];
 const fmt = n => Math.abs(n) >= 10000 ? n.toLocaleString('de-DE') : String(n).replace('.', ',');
@@ -306,7 +310,7 @@ function packLine() {
 
 function renderBlock() {
   const b = S.block;
-  app.innerHTML = topbar(`<span class="pill">Frage ${S.qNum} / ${S.qTotal}</span>`) + `<div class="intro">
+  app.innerHTML = topbar(`<span class="pill">Block ${S.block.num} / ${S.block.total}</span>`) + `<div class="intro">
     <div class="icat">Block ${b.num} von ${b.total}</div>
     <div class="ilabel">${b.num === 1 ? 'Los geht\'s!' : b.num === b.total ? 'Letzter Block!' : 'Nächster Block!'}</div>
     <div class="bnames">${b.names.map(n => `<span>${esc(n)}</span>`).join('')}</div></div>`;
@@ -723,7 +727,7 @@ if (LITE) setInterval(tick, 250); else tick();
 function renderScores() {
   const max = Math.max(1, ...S.players.map(p => p.score));
   const last = S.qNum >= S.qTotal;
-  app.innerHTML = topbar(`<span class="pill">Nach Frage ${S.qNum} / ${S.qTotal}</span>`) + `
+  app.innerHTML = topbar(`<span class="pill">Nach ${qNumText()}</span>`) + `
     <div class="board"><h2>${last ? 'Gleich kommt die Siegerehrung …' : 'Zwischenstand'}</h2>
       <div class="rows">${S.players.map((p, i) => {
         const gain = p.score - (prevScores[p.id] || 0); // Punkte seit der letzten Rangliste

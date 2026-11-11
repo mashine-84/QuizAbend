@@ -210,7 +210,7 @@ function header() {
 
 function qline(extra) {
   const q = S.question;
-  return `<div class="qline">${q && q.label ? `<span class="badge">${q.icon} ${esc(q.label)}</span>` : ''}Frage ${S.qNum} / ${S.qTotal}${extra ? ' · ' + extra : ''}</div>`;
+  return `<div class="qline">${q && q.label ? `<span class="badge">${q.icon} ${esc(q.label)}</span>` : ''}${S.block && S.block.total > 1 && S.block.len ? `Block ${S.block.num}/${S.block.total} · Frage ${S.block.q} / ${S.block.len}` : `Frage ${S.qNum} / ${S.qTotal}`}${extra ? ' · ' + extra : ''}</div>`;
 }
 
 function render() {
