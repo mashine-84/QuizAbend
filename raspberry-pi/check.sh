@@ -13,3 +13,7 @@ echo "== Kiosk-Log"; tail -n 15 /tmp/quizabend-kiosk.log 2>/dev/null || echo "ke
 echo "== Ton"
 if command -v wpctl >/dev/null; then wpctl status 2>&1 | sed -n '/Audio/,/Video/p' | head -25; else echo "wpctl (PipeWire) fehlt"; fi
 aplay -l 2>/dev/null | grep -i "^card" || echo "keine ALSA-Geräte gefunden"
+echo "== Adresse & WLAN"
+echo "Hostname: $(hostname)  ->  http://$(hostname).local"
+systemctl is-active quizabend-hotspot 2>/dev/null | sed 's/^/Hotspot-Dienst: /'
+nmcli -t -f NAME,DEVICE con show --active 2>/dev/null | sed 's/^/aktiv: /'

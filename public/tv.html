@@ -160,6 +160,33 @@
   .pbar.wide i { transition: width .2s linear; }
   html.lite .eq i { transform: scaleY(.6); }
 
+  /* Lobby: WLAN + Quiz */
+  .qrbox.two { gap: 2.5vw; }
+  .qstep { display: flex; flex-direction: column; align-items: center; gap: 1vh; text-align: center; }
+  .qr.sm { width: 12.5vw; height: 12.5vw; }
+  .qstep .url { font-size: 1.4vw; }
+  .qstep .url b { font-size: 1.6vw; color: var(--c); }
+  .url small { display: block; font-size: 1.3vw; color: var(--muted); margin-top: .4vh; font-weight: 700; }
+
+  /* Blockpause */
+  .bpause { position: relative; overflow: hidden; }
+  .floaty { position: absolute; inset: 0; pointer-events: none; }
+  .floaty span { position: absolute; bottom: -10vh; font-size: 5vw; opacity: .5; animation: floatup 9s linear infinite; }
+  @keyframes floatup { to { transform: translateY(-120vh) rotate(25deg); } }
+  .pcount { font-size: 10vw; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; margin: 1vh 0; }
+  .nextb { font-size: 2vw; margin-top: 1vh; } .nextb b { color: var(--c); }
+  .ptop { display: flex; gap: 1.2vw; margin-top: 2.5vh; flex-wrap: wrap; justify-content: center; }
+  .ptop span { background: rgba(255,255,255,.1); border-radius: 99px; padding: .6vh 1.4vw; font-size: 1.6vw; font-weight: 800; }
+  .ptop i { font-style: normal; margin-right: .4vw; } .ptop b { color: var(--c); margin-left: .5vw; }
+  html.lite .floaty { display: none; }
+
+  /* Overlays: angehalten / System */
+  .overlay { position: fixed; inset: 0; z-index: 70; background: rgba(20,16,43,.88); display: grid; place-items: center; }
+  .overlay.sys { z-index: 80; background: #14102b; }
+  .ovbox { text-align: center; }
+  .ovicon { font-size: 9vw; line-height: 1.1; }
+  .ovtitle { font-size: 4vw; font-weight: 900; margin: 1vh 0; }
+
   /* Rangliste */
   .board { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 2vh; }
   .board h2 { font-size: 3.6vw; font-weight: 900; margin-bottom: 3vh; }
@@ -252,11 +279,15 @@ function render() {
   const fresh = key !== lastKey;
   if (S.remainingMs && (S.phase !== lastPhase || Math.abs(Date.now() + S.remainingMs - deadline) > 1200)) deadline = Date.now() + S.remainingMs;
   if (S.phase !== 'media' && window.__stopAudio) { window.__stopAudio(); window.__stopAudio = null; }
+  if (S.phase === 'reveal' && lastPhase !== 'reveal') sfx.gong();      // Gong bei der Auflösung
+  if (S.phase === 'question' && lastPhase !== 'question') lastTickSec = null;
   lastKey = key; lastPhase = S.phase;
+  frozenOverlay(); systemOverlay();
 
   document.getElementById('status').style.display = (!KIOSK && (S.phase === 'lobby' || S.phase === 'end')) ? '' : 'none';
   if (S.phase === 'lobby') { prevScores = {}; return renderLobby(); }
   if (S.phase === 'block') return fresh ? renderBlock() : null;
+  if (S.phase === 'pause') return fresh ? renderBlockPause() : null;
   if (stage === 'intro') return fresh ? renderIntro() : null;
   if (stage === 'media') return fresh ? (S.question.audio ? renderAudio() : renderVideo()) : null;
   if (stage === 'preview') return fresh ? renderPreview() : null;
@@ -281,6 +312,22 @@ function renderBlock() {
     <div class="bnames">${b.names.map(n => `<span>${esc(n)}</span>`).join('')}</div></div>`;
 }
 
+const wifiEsc = s => String(s).replace(/([\\;,:"])/g, '\\$1');
+function joinBox() {
+  const j = S.join, w = j.wifi;
+  const addr = `<div class="url">Adresse:<b>${esc(j.url.replace(/\/$/, ''))}</b>${j.local ? `<small>oder ${esc(j.local)}</small>` : ''}</div>`;
+  if (!w) return `<p>QR-Code scannen oder Adresse im Handy-Browser öffnen.<br>Alle Handys müssen im selben WLAN sein.</p>
+    <div class="qrbox"><div class="qr">${QR.toSvg(j.url)}</div>${addr}</div>`;
+  // Eigenes WLAN des Pi: erst WLAN-QR, dann Quiz-QR
+  return `<p>Der Pi hat ein eigenes WLAN – erst verbinden, dann das Quiz öffnen.</p>
+    <div class="qrbox two">
+      <div class="qstep"><div class="qr sm">${QR.toSvg(`WIFI:T:WPA;S:${wifiEsc(w.ssid)};P:${wifiEsc(w.password)};;`)}</div>
+        <div class="url"><b>1. WLAN</b>${esc(w.ssid)}<small>Passwort: ${esc(w.password)}</small></div></div>
+      <div class="qstep"><div class="qr sm">${QR.toSvg(j.url)}</div>
+        <div class="url"><b>2. Quiz</b>${esc(j.url.replace(/^http:\/\//, '').replace(/\/$/, ''))}${j.local ? `<small>oder ${esc(j.local.replace(/^http:\/\//, ''))}</small>` : ''}</div></div>
+    </div>`;
+}
+
 function renderLobby() {
   const slots = [];
   for (let i = 0; i < S.maxPlayers; i++) {
@@ -296,12 +343,12 @@ function renderLobby() {
     <div class="lobby">
       <div class="join">
         <h1>Handy raus,<br><span>los geht's!</span></h1>
-        <p>QR-Code scannen oder Adresse im Handy-Browser öffnen.<br>Alle Handys müssen im selben WLAN sein.</p>
-        <div class="qrbox"><div class="qr">${QR.toSvg(S.join.url)}</div><div class="url">Adresse:<b>${esc(S.join.url.replace(/\/$/, ''))}</b></div></div>
+        ${joinBox()}
       </div>
       <div>
         <div class="slots">${slots.join('')}</div>
         ${packLine()}
+        ${soundHint()}
         <div class="hint">${need > 0 ? `Noch <b>${need}</b> Spieler${need > 1 ? '' : ''} nötig …` : `👑 <b>${esc((S.players.find(p => p.id === S.vip) || {}).name || '')}</b> startet das Spiel am Handy – oder <b>Leertaste</b> drücken`}</div>
       </div>
     </div>`;
@@ -331,6 +378,109 @@ function renderIntro() {
   app.innerHTML = qTop() + `<div class="intro">
     <div class="iicon">${q.icon || '❓'}</div><div class="ilabel">${esc(q.label)}</div>
     <div class="icat">${esc(q.category)}</div><div class="inum" id="inum"></div></div>`;
+}
+
+// ---------- Sounds (werden live erzeugt, keine Dateien nötig) ----------
+function soundOn() { return !S || !S.packs || !S.packs.sound || S.packs.sound.on; }
+function ctx() {
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  return audioCtx;
+}
+// Browser erlauben Ton oft erst nach einem Klick/Tastendruck (am Pi ist das freigeschaltet)
+addEventListener('click', () => { try { ctx(); } catch (_) {} }, { once: true });
+addEventListener('keydown', () => { try { ctx(); } catch (_) {} }, { once: true });
+function soundHint() {
+  if (KIOSK || !soundOn()) return '';
+  try { if (ctx().state === 'running') return ''; } catch (_) { return ''; }
+  return '<div class="packs">🔊 Für Sounds einmal auf diesen Bildschirm klicken</div>';
+}
+const sfx = {
+  tone(freq, start, dur, { type = 'sine', gain = 0.3, attack = 0.005, filter = null } = {}) {
+    const c = ctx(), o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, start);
+    g.gain.setValueAtTime(0, start); g.gain.linearRampToValueAtTime(gain, start + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+    let node = o;
+    if (filter) { const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = filter; node.connect(f); node = f; }
+    node.connect(g).connect(c.destination);
+    o.start(start); o.stop(start + dur + 0.05);
+    return o;
+  },
+  // Holzblock-Ticken, die letzte Sekunde höher und lauter
+  tick(last) {
+    if (!soundOn()) return;
+    try {
+      const c = ctx(), t = c.currentTime + 0.01;
+      this.tone(last ? 1760 : 1320, t, 0.09, { type: 'triangle', gain: last ? 0.5 : 0.32 });
+      this.tone(last ? 880 : 660, t, 0.05, { type: 'square', gain: 0.06, filter: 2500 });
+    } catch (_) {}
+  },
+  // Tiefer, warmer Gong mit Obertönen
+  gong() {
+    if (!soundOn()) return;
+    try {
+      const c = ctx(), t = c.currentTime + 0.02, base = 196;
+      [[1, 0.35, 2.8], [2.0, 0.16, 2.2], [2.76, 0.12, 1.8], [3.4, 0.08, 1.4], [5.4, 0.05, 0.9]]
+        .forEach(([r, g, d]) => this.tone(base * r, t, d, { gain: g, attack: 0.01 }));
+      this.tone(base * 4, t, 0.25, { type: 'triangle', gain: 0.08 }); // heller Anschlag
+    } catch (_) {}
+  },
+  // Kurze Siegerfanfare (Blechbläser-Klang)
+  fanfare() {
+    if (!soundOn()) return;
+    try {
+      const c = ctx(), t = c.currentTime + 0.05;
+      const brass = (f, s, d, g = 0.16) => this.tone(f, t + s, d, { type: 'sawtooth', gain: g, attack: 0.03, filter: 2200 });
+      brass(392, 0, 0.18); brass(392, 0.18, 0.18); brass(392, 0.36, 0.18);   // G G G
+      brass(523.25, 0.56, 0.5);                                              // C
+      brass(659.25, 1.06, 0.18); brass(587.33, 1.24, 0.18);                  // E D
+      [523.25, 659.25, 783.99, 1046.5].forEach(f => brass(f, 1.44, 1.6, 0.11)); // C-Dur-Akkord
+      this.tone(1046.5, t + 1.44, 1.6, { type: 'sine', gain: 0.08 });
+    } catch (_) {}
+  },
+};
+
+// ---------- Pause zwischen den Blöcken ----------
+function renderBlockPause() {
+  const nb = S.nextBlock, top = S.players.slice(0, 3);
+  app.innerHTML = topbar(`<span class="pill">Pause</span>`) + `<div class="intro bpause">
+    <div class="floaty">${['🍺', '🚻', '🍕', '🥤', '🍿', '☕'].map((e, i) => `<span style="left:${8 + i * 16}%;animation-delay:${i * 0.7}s">${e}</span>`).join('')}</div>
+    <div class="ilabel">Pause!</div>
+    <div class="icat">Getränke holen · Klo · durchatmen</div>
+    <div class="pcount" id="pcount">${S.phaseMs ? '' : '⏸'}</div>
+    ${S.phaseMs ? '' : '<div class="icat">Es geht weiter, wenn alle zurück sind</div>'}
+    ${nb ? `<div class="nextb">Gleich: <b>Block ${nb.num} von ${nb.total}</b>${nb.names && nb.names.length ? ` · ${esc(nb.names.join(', '))}` : ''}</div>` : ''}
+    <div class="ptop">${top.map((p, i) => `<span style="--pc:${p.color}"><i>${['🥇', '🥈', '🥉'][i]}</i>${p.avatar} ${esc(p.name)} <b>${p.score}</b></span>`).join('')}</div>
+    <div class="hint">👑 kann die Pause am Handy beenden oder verlängern</div></div>`;
+  tick();
+}
+
+// ---------- Spiel angehalten (Host) ----------
+function frozenOverlay() {
+  let ov = document.getElementById('frozen');
+  const v = document.getElementById('vid');
+  if (S.frozen && !ov) {
+    ov = document.createElement('div'); ov.id = 'frozen'; ov.className = 'overlay';
+    ov.innerHTML = '<div class="ovbox"><div class="ovicon">⏸</div><div class="ovtitle">Spiel angehalten</div><div class="icat">Gleich geht es weiter …</div></div>';
+    document.body.appendChild(ov);
+    if (v) v.pause();
+    if (audioCtx && audioCtx.state === 'running') audioCtx.suspend().catch(() => {});
+  } else if (!S.frozen && ov) {
+    ov.remove();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    if (v && v.paused && !v.ended) v.play().catch(() => {});
+  }
+}
+
+// ---------- Systemmeldung (Update, Neustart, Ausschalten) ----------
+function systemOverlay() {
+  let ov = document.getElementById('sysov');
+  if (S.system && !ov) {
+    ov = document.createElement('div'); ov.id = 'sysov'; ov.className = 'overlay sys';
+    ov.innerHTML = `<div class="ovbox"><div class="ovicon">${S.system.icon}</div><div class="ovtitle">${esc(S.system.text)}</div></div>`;
+    document.body.appendChild(ov);
+  } else if (!S.system && ov) ov.remove();
 }
 
 // ---------- Videofrage: Video im Vollbild, danach die Frage ----------
@@ -539,10 +689,21 @@ function renderEstimate(byId) {
   }).join('')}</div>`;
 }
 
+let lastTickSec = null;
 function tick() {
-  if (S && S.question) {
-    const left = Math.max(0, deadline - Date.now());
+  if (S && S.phase === 'pause') {
+    const el = document.getElementById('pcount');
+    if (el && S.phaseMs) {
+      const left = S.frozen ? S.remainingMs : Math.max(0, deadline - Date.now());
+      const sec = Math.ceil(left / 1000);
+      el.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+    }
+  } else if (S && S.question) {
+    const left = S.frozen ? S.remainingMs : Math.max(0, deadline - Date.now());
     if (S.phase === 'question') {
+      // Ticken in den letzten 5 Sekunden
+      const sec = Math.ceil(left / 1000);
+      if (!S.frozen && sec >= 1 && sec <= 5 && sec !== lastTickSec) { lastTickSec = sec; sfx.tick(sec === 1); }
       const arc = document.getElementById('arc'), num = document.getElementById('num');
       if (arc) {
         arc.style.strokeDashoffset = 276.5 * (1 - left / S.phaseMs);
@@ -588,6 +749,7 @@ function countUp(els) {
 }
 
 function renderEnd() {
+  sfx.fanfare();
   const P = S.players, order = [1, 0, 2], heights = ['34vh', '24vh', '17vh'];
   app.innerHTML = topbar(`<span class="pill">Spiel vorbei</span>`) + `
     <div class="board"><h2>🏆 ${P[0] ? esc(P[0].name) + ' gewinnt!' : 'Spiel vorbei'}</h2>

@@ -5,7 +5,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { exec } = require('child_process');
+const { exec, execFile } = require('child_process');
 
 const PORT = Number(process.env.PORT) || 3000;
 const DEFAULT_PER_GAME = Number(process.env.FRAGEN) || 10;
@@ -28,6 +28,8 @@ const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
 
 const FRAGEN_DIR = path.join(__dirname, 'fragen');
+const HOTSPOT_FILE = path.join(__dirname, 'hotspot.json'); // von raspberry-pi/setup.sh angelegt: {ssid, password}
+const UNDER_SYSTEMD = !!process.env.INVOCATION_ID;           // läuft als Dienst (Pi) -> Neustart nach Update automatisch
 const SETTINGS_FILE = path.join(__dirname, 'einstellungen.json');
 const VIDEO_TYPES = { '.mp4': 'video/mp4', '.m4v': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/mp4' };
 const AUDIO_TYPES = { '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.ogg': 'audio/ogg', '.opus': 'audio/ogg', '.wav': 'audio/wav' };
@@ -149,12 +151,14 @@ function loadPacks() {
 
 // ---------- Einstellungen: Frageblöcke (je mit eigener Paketauswahl) + Spezialfrage ----------
 const MAX_BLOCKS = 6;
-let settings = { blocks: [{ count: DEFAULT_PER_GAME, disabled: [] }], special: { on: false, mult: 2 } };
+let settings = { blocks: [{ count: DEFAULT_PER_GAME, disabled: [] }], special: { on: false, mult: 2 }, sound: { on: true }, pause: { on: true, minutes: 10 } };
 try {
   const raw = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
   if (Array.isArray(raw.blocks)) settings.blocks = raw.blocks;
   else if (raw.disabled) settings.blocks = [{ count: raw.perGame || DEFAULT_PER_GAME, disabled: raw.disabled }]; // alte Version
   if (raw.special) settings.special = raw.special;
+  if (raw.sound) settings.sound = raw.sound;
+  if (raw.pause) settings.pause = raw.pause;
 } catch (_) {}
 function saveSettings() { try { fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2)); } catch (_) {} }
 
@@ -163,9 +167,11 @@ function cleanSettings(input) {
     count: Math.max(1, Math.min(50, Math.round(Number(b && b.count)) || DEFAULT_PER_GAME)),
     disabled: Array.isArray(b && b.disabled) ? b.disabled.filter(x => typeof x === 'string') : [],
   }));
-  const sp = input.special || {};
+  const sp = input.special || {}, so = input.sound || {}, pa = input.pause || {};
   return { blocks: blocks.length ? blocks : settings.blocks,
-    special: { on: !!sp.on, mult: [2, 3, 4].includes(Number(sp.mult)) ? Number(sp.mult) : 2 } };
+    special: { on: !!sp.on, mult: [2, 3, 4].includes(Number(sp.mult)) ? Number(sp.mult) : 2 },
+    sound: { on: so.on === undefined ? true : !!so.on },
+    pause: { on: pa.on === undefined ? true : !!pa.on, minutes: Math.max(0, Math.min(60, Math.round(Number(pa.minutes ?? 10)))) } };
 }
 
 const blockPacks = b => packs.filter(p => !b.disabled.includes(p.id));
@@ -183,7 +189,7 @@ function blockSummary(b) {
 function packSummary() {
   const blocks = settings.blocks.map(blockSummary);
   return { blocks, totalPacks: packs.length, questions: blocks.reduce((s, b) => s + b.plays, 0),
-    special: settings.special, errors: packErrors.length };
+    special: settings.special, sound: settings.sound, pause: settings.pause, errors: packErrors.length };
 }
 
 function packList() {
@@ -193,7 +199,7 @@ function packList() {
     if (!g) groups.push(g = { name: p.group, packs: [] });
     g.packs.push({ id: p.id, name: p.name, count: p.questions.length, kinds: p.kinds, levels: p.levels });
   }
-  return { groups, errors: packErrors, settings, summary: packSummary() };
+  return { groups, errors: packErrors, settings, summary: packSummary(), system: systemInfo() };
 }
 
 // Wahrscheinlichkeit der Schwierigkeitsstufen für Frage g (0-basiert) von total
@@ -240,6 +246,8 @@ function freeSlot() {
 function clearTimer() { if (timer) { clearTimeout(timer); timer = null; } }
 function setPhase(phase, ms, next) {
   clearTimer();
+  state.frozen = null;
+  state.next = next || null;
   state.phase = phase;
   state.phaseMs = ms || 0;
   state.phaseEnds = ms ? Date.now() + ms : 0;
@@ -430,14 +438,45 @@ function afterReveal() {
   else nextQuestion();
 }
 
-function showScores() {
-  const last = state.idx >= state.questions.length - 1;
-  setPhase('scores', SCORES_MS, last ? () => setPhase('end') : nextQuestion);
+function isBlockEnd() {
+  const next = state.questions[state.idx + 1];
+  return !!next && next.block !== currentQuestion().block;
+}
+
+function afterScores() {
+  if (state.idx >= state.questions.length - 1) setPhase('end');
+  else if (isBlockEnd() && settings.pause.on) startBlockPause();
+  else nextQuestion();
+}
+
+function showScores() { setPhase('scores', SCORES_MS, afterScores); }
+
+// Pause zwischen zwei Blöcken (Bier holen, Klo …). 0 Minuten = bis der Host weiter drückt
+function startBlockPause() {
+  const ms = settings.pause.minutes * 60000;
+  setPhase('pause', ms, nextQuestion);
+}
+
+// Spiel jederzeit anhalten: Timer einfrieren und später an derselben Stelle weitermachen
+function freeze() {
+  if (state.frozen || ['lobby', 'end'].includes(state.phase)) return;
+  const remaining = state.phaseEnds ? Math.max(0, state.phaseEnds - Date.now()) : 0;
+  clearTimer();
+  state.frozen = { remaining, hadTimer: !!state.phaseEnds };
+  broadcast();
+}
+function unfreeze() {
+  const f = state.frozen;
+  if (!f) return;
+  if (state.phase === 'question') state.answerEnds = Date.now() + f.remaining; // Schnelligkeit fair weiterrechnen
+  if (f.hadTimer && f.remaining <= 0 && state.next) { state.frozen = null; return state.next(); }
+  setPhase(state.phase, f.hadTimer ? f.remaining : 0, state.next);
 }
 
 function advance() {
   // "Weiter"-Knopf (👑 am Handy oder Leertaste am TV): überspringt Wartezeiten
   const q = currentQuestion();
+  state.frozen = null;
   switch (state.phase) {
     case 'lobby': if (connectedCount() >= MIN_PLAYERS) startGame(); break;
     case 'block': beginQuestion(); break;
@@ -451,7 +490,8 @@ function advance() {
       if (q.kind === 'match' && state.step < q.left.length) { state.step = q.left.length; setPhase('reveal', REVEAL_MS, afterReveal); }
       else afterReveal();
       break;
-    case 'scores': if (state.idx >= state.questions.length - 1) setPhase('end'); else nextQuestion(); break;
+    case 'scores': afterScores(); break;
+    case 'pause': nextQuestion(); break;
     case 'end':
       for (const p of players.values()) { p.score = 0; p.streak = 0; }
       state = newGameState();
@@ -485,9 +525,11 @@ function baseView() {
   const v = {
     phase: ph, vip: vipId(), minPlayers: MIN_PLAYERS, maxPlayers: MAX_PLAYERS,
     players: ranking(), qNum: state.idx + 1, qTotal: state.questions.length,
-    remainingMs: state.phaseEnds ? Math.max(0, state.phaseEnds - Date.now()) : 0, phaseMs: state.phaseMs,
+    remainingMs: state.frozen ? state.frozen.remaining : state.phaseEnds ? Math.max(0, state.phaseEnds - Date.now()) : 0, phaseMs: state.phaseMs,
+    frozen: !!state.frozen, system: systemMsg,
     version: VERSION, packs: packSummary(), avatars: AVATARS,
     block: q ? { num: q.block + 1, total: q.blockCount, names: q.blockNames } : null,
+    nextBlock: (() => { const n = state.questions[state.idx + 1]; return n && q && n.block !== q.block ? { num: n.block + 1, total: n.blockCount, names: n.blockNames } : null; })(),
     special: state.special && ['special', 'votes', 'reveal'].includes(ph) ? { mult: settings.special.mult } : null,
   };
   if (q && ['intro', 'media', 'preview', 'question', 'special', 'votes', 'reveal'].includes(ph)) {
@@ -521,7 +563,7 @@ function baseView() {
 function viewFor(client, base) {
   if (client.role === 'tv') return { ...base, join: joinInfo() };
   const me = players.get(client.playerId);
-  return { ...base, me: me ? {
+  return { ...base, kicked: !me && kickedIds.has(client.playerId), me: me ? {
     id: me.id, name: me.name, color: me.color, avatar: me.avatar, score: me.score,
     rank: rankOf(me.id), isVip: vipId() === me.id,
     answer: state.answers[me.id] || null,
@@ -539,8 +581,16 @@ function broadcast() {
 }
 
 // ---------- Netzwerk-Infos ----------
+function hotspot() {
+  // Eigenes WLAN des Pi aktiv? (NetworkManager-Hotspot hat immer 10.42.0.1)
+  const active = Object.values(os.networkInterfaces()).flat().some(i => i && i.address === '10.42.0.1');
+  if (!active) return null;
+  try { const h = JSON.parse(fs.readFileSync(HOTSPOT_FILE, 'utf8')); return { ssid: h.ssid, password: h.password }; } catch (_) { return { ssid: 'QuizAbend', password: '' }; }
+}
+
 function lanIp() {
   if (process.env.HOST_IP) return process.env.HOST_IP;
+  if (hotspot()) return '10.42.0.1';
   const candidates = [];
   for (const [name, list] of Object.entries(os.networkInterfaces())) {
     for (const i of list || []) {
@@ -557,7 +607,51 @@ function lanIp() {
   return candidates[0] ? candidates[0].address : 'localhost';
 }
 
-function joinInfo() { return { url: `http://${lanIp()}:${PORT}/` }; }
+function joinInfo() {
+  const port = PORT === 80 ? '' : `:${PORT}`;
+  const host = os.hostname();
+  // Feste Adresse über mDNS (z. B. quizabend.local), nur wenn der Rechner einen sinnvollen Namen hat
+  const local = UNDER_SYSTEMD && host && !/^localhost$/i.test(host) && !host.includes('.') ? `http://${host.toLowerCase()}.local${port}` : null;
+  return { url: `http://${lanIp()}${port}/`, local, wifi: hotspot() };
+}
+
+// =====================================================================
+// System: Update holen, Pi neu starten / ausschalten (nur Host)
+// =====================================================================
+let systemMsg = null;      // wird allen Bildschirmen angezeigt, z. B. "Pi fährt herunter"
+const kickedIds = new Set();
+
+function systemInfo() {
+  return { canUpdate: fs.existsSync(path.join(__dirname, '.git')), canPower: process.platform === 'linux' && UNDER_SYSTEMD,
+    autoRestart: UNDER_SYSTEMD, hostname: os.hostname() };
+}
+
+function runSystem(action) {
+  return new Promise(resolve => {
+    if (action === 'update') {
+      execFile('git', ['pull', '--ff-only'], { cwd: __dirname, timeout: 60000 }, (err, out, errOut) => {
+        const text = (out + errOut).trim();
+        if (err) return resolve({ ok: false, text: text || String(err) });
+        const changed = !/already up to date|bereits aktuell/i.test(text);
+        if (changed && UNDER_SYSTEMD) {
+          systemMsg = { icon: '⬇️', text: 'Update installiert – QuizAbend startet neu …' };
+          broadcast();
+          setTimeout(() => process.exit(0), 1500); // systemd startet den Dienst neu, Bildschirme laden automatisch neu
+        }
+        resolve({ ok: true, changed, restart: changed && UNDER_SYSTEMD, text });
+      });
+    } else if (action === 'reboot' || action === 'poweroff') {
+      if (!systemInfo().canPower) return resolve({ ok: false, text: 'Nur auf dem Raspberry Pi (als Dienst) möglich.' });
+      systemMsg = action === 'reboot' ? { icon: '🔄', text: 'Pi startet neu …' }
+        : { icon: '⏻', text: 'Pi fährt herunter. In 30 Sekunden kann der Stecker raus.' };
+      broadcast();
+      setTimeout(() => execFile('sudo', ['-n', '/usr/bin/systemctl', action], (err, out, errOut) => {
+        if (err) { systemMsg = null; broadcast(); console.error('  System-Aktion fehlgeschlagen:', errOut || err.message); }
+      }), 1500);
+      resolve({ ok: true });
+    } else resolve({ ok: false, text: 'Unbekannte Aktion' });
+  });
+}
 
 // =====================================================================
 // HTTP
@@ -683,7 +777,7 @@ const server = http.createServer(async (req, res) => {
     const body = await readBody(req);
     const pl = players.get(body.id);
     const q = currentQuestion();
-    const answer = pl && state.phase === 'question' && !state.answers[pl.id] && validAnswer(q, body);
+    const answer = pl && state.phase === 'question' && !state.frozen && !state.answers[pl.id] && validAnswer(q, body);
     if (!answer) return json(res, 409, { ok: false });
     state.answers[pl.id] = { ...answer, at: Date.now() };
     if (allAnswered()) endAnswering(); else broadcast();
@@ -692,7 +786,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && (p === '/api/media' || p === '/api/video')) {
     const body = await readBody(req);
-    if (body.role === 'tv' && state.phase === 'media') {
+    if (body.role === 'tv' && state.phase === 'media' && !state.frozen) {
       if (body.event === 'info') console.log('  [TV-Medien]', JSON.stringify(body.info));
       else if (body.event === 'ended' || body.event === 'error') afterMedia();
       else if (body.event === 'duration' && Number(body.seconds) > 0) {
@@ -727,6 +821,41 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, packList());
   }
 
+  if (req.method === 'POST' && p === '/api/host') {
+    const body = await readBody(req);
+    if (body.role !== 'tv' && body.id !== vipId()) return json(res, 403, { ok: false });
+    const target = players.get(body.target);
+    switch (body.action) {
+      case 'pause': freeze(); break;
+      case 'resume': unfreeze(); break;
+      case 'extend': // Blockpause um 5 Minuten verlängern
+        if (state.phase === 'pause') setPhase('pause', (state.phaseEnds ? Math.max(0, state.phaseEnds - Date.now()) : 0) + 5 * 60000, state.next);
+        break;
+      case 'kick':
+        if (!target || target.id === body.id) return json(res, 400, { ok: false, error: 'Diesen Spieler kann man nicht entfernen.' });
+        players.delete(target.id); delete state.answers[target.id]; kickedIds.add(target.id);
+        if (state.phase === 'question' && allAnswered()) { endAnswering(); return json(res, 200, { ok: true }); }
+        break;
+      case 'rename': {
+        const name = String(body.name || '').replace(/\s+/g, ' ').trim().slice(0, 14);
+        if (!target || !name) return json(res, 400, { ok: false, error: 'Bitte einen Namen eingeben.' });
+        if ([...players.values()].some(p => p.id !== target.id && p.name.toLowerCase() === name.toLowerCase()))
+          return json(res, 409, { ok: false, error: 'Der Name ist schon vergeben.' });
+        target.name = name;
+        break;
+      }
+      default: return json(res, 400, { ok: false });
+    }
+    broadcast();
+    return json(res, 200, { ok: true });
+  }
+
+  if (req.method === 'POST' && p === '/api/system') {
+    const body = await readBody(req);
+    if (body.id !== vipId()) return json(res, 403, { ok: false });
+    return json(res, 200, await runSystem(body.action));
+  }
+
   if (req.method === 'POST' && p === '/api/leave') {
     const body = await readBody(req);
     if (players.has(body.id)) { players.delete(body.id); broadcast(); }
@@ -743,6 +872,12 @@ server.on('error', err => {
 });
 
 loadPacks();
+// Netzwerk ändert sich (z. B. eigenes WLAN startet nach dem Booten)? Dann TV-Lobby aktualisieren
+let lastJoin = '';
+setInterval(() => { const j = JSON.stringify(joinInfo()); if (j !== lastJoin) { lastJoin = j; broadcast(); } }, 10000);
+// Optional zusätzlich auf einem zweiten Port lauschen (am Pi: 80 und weiterhin 3000)
+const EXTRA_PORT = Number(process.env.EXTRA_PORT) || 0;
+if (EXTRA_PORT && EXTRA_PORT !== PORT) http.createServer(server.listeners('request')[0]).listen(EXTRA_PORT, '0.0.0.0').on('error', () => {});
 server.listen(PORT, '0.0.0.0', () => {
   const tvUrl = `http://localhost:${PORT}/tv`;
   const s = packSummary();

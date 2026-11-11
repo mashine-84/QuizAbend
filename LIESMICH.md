@@ -38,6 +38,9 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 
 - **Grafik:** Auf dem Pi läuft die TV-Ansicht im schonenden Modus (ohne Konfetti und Animationen), damit nichts ruckelt. Auf einem Pi 4/5 kannst du in `raspberry-pi/kiosk.sh` `LITE=0` setzen.
 - **Steuern ohne Tastatur:** Der 👑-Spieler startet und überspringt alles am Handy.
+- **Feste Adresse:** Das Setup nennt den Pi `quizabend`. Die Handys erreichen das Quiz dann auch über **http://quizabend.local**. Der QR-Code nutzt weiterhin die IP, das klappt auf jedem Handy. Mit `--name NAME` wählst du einen anderen Namen.
+- **Eigenes WLAN für unterwegs:** Findet der Pi beim Start kein bekanntes WLAN, macht er nach etwa 45 Sekunden ein eigenes WLAN „QuizAbend“ auf. Name und Passwort stehen mit WLAN-QR-Code auf dem Fernseher. Zu Hause verbindet er sich wie gewohnt mit deinem WLAN, dort funktionieren dann auch Updates. Mit Netzwerkkabel geht beides gleichzeitig. Abschalten mit `--ohne-hotspot`.
+- **Update, Neustart, Ausschalten:** Unter ⚙️ Einstellungen am Handy des 👑-Spielers. Bitte den Pi so ausschalten statt einfach den Stecker zu ziehen, das schont die SD-Karte.
 - **Fragen ändern:** Dateien im Ordner `fragen/` bearbeiten oder neue dazulegen. Ein Neustart ist nicht nötig, neue Pakete erscheinen beim nächsten Öffnen der Paketauswahl.
 - **Updates holen:** `cd QuizAbend && git pull && sudo systemctl restart quizabend`
 - **Autostart abschalten:** `sudo systemctl disable quizabend` und `rm ~/.config/autostart/quizabend-kiosk.desktop`
@@ -62,12 +65,22 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 - Wer mehrere Fragen in Folge richtig hat, bekommt bis zu +150 Serienbonus.
 - Ist die Zeit um, zeigt der Fernseher erst, wer was gewählt hat. Danach kommt die Auflösung.
 - Die Rangliste erscheint nach jeder 5. Frage, am Ende jedes Blocks und am Spielende, jeweils mit den Punkten seit der letzten Rangliste.
+- **🍺 Pause nach jedem Block** (abschaltbar): Pausen-Bildschirm mit Countdown, standardmäßig 10 Minuten. Der 👑-Spieler kann die Pause beenden oder um 5 Minuten verlängern. Bei „∞“ läuft sie, bis er weiter drückt.
+- **🔊 Sounds** (abschaltbar): Ticken in den letzten 5 Sekunden, Gong bei der Auflösung, Fanfare bei der Siegerehrung. Am Laptop braucht der Browser für Ton einmal einen Klick auf den Fernseher-Bildschirm.
 - Handy-Akku leer oder Seite neu geladen? Einfach wieder öffnen, der Spielstand bleibt erhalten.
+
+## Host-Steuerung während des Spiels (👑)
+Oben rechts am Handy des 👑-Spielers öffnet **🎛️** das Host-Menü:
+- **Spiel anhalten / fortsetzen:** Timer, Video und Ton stoppen, alle Bildschirme zeigen „Spiel angehalten“.
+- **Weiter / überspringen**
+- **Spieler umbenennen (✏️) oder entfernen (✖)**
 
 ## Einstellungen am Handy (👑)
 Der 👑-Spieler tippt in der Lobby auf **⚙️ Einstellungen**:
 - **Anzahl Blöcke** (1 bis 6). Antippen eines Blocks öffnet seine Einstellungen: wie viele Fragen er hat und welche Pakete er nutzt. Pakete lassen sich einzeln oder als ganze Hauptkategorie an- und abhaken. Neben jedem Paket steht, wie viele leichte, mittlere und schwere Fragen es enthält.
 - **Spezialfrage:** an/aus und der Multiplikator ×2, ×3 oder ×4.
+- **Sounds** an/aus, **Pause nach jedem Block** an/aus mit Dauer.
+- **System:** Update holen, Pi neu starten, Pi ausschalten.
 - Fehler in Fragendateien, zum Beispiel ein fehlendes Komma, erscheinen dort mit Dateiname und Zeile.
 
 Die Einstellungen bleiben gespeichert (`einstellungen.json`).
