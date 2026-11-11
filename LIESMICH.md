@@ -171,7 +171,7 @@ Das Quiz kann das Licht im Raum mitsteuern. Es braucht dafür nur die Hue Bridge
 1. „Bridge suchen“ tippen. Das braucht Internet; ohne Internet die IP der Bridge eintippen (Hue-App › Einstellungen › Bridges › ⓘ).
 2. Den runden Knopf oben auf der Bridge drücken und innerhalb von 30 Sekunden „Verbinden“ tippen.
 3. Den Bereich wählen: einen Entertainment-Bereich (z. B. „TV“), einen Raum oder eine Zone.
-4. Mit „Testen“ prüfen: Die Lampen leuchten kurz gold und pulsieren, danach ist alles wie vorher.
+4. Mit „Testen“ prüfen: Die Lampen pulsieren 3 Sekunden gold (mit „Test stoppen“ abbrechbar), danach ist alles wie vorher.
 
 **Was im Spiel passiert:**
 | Moment | Licht |
@@ -179,14 +179,14 @@ Das Quiz kann das Licht im Raum mitsteuern. Es braucht dafür nur die Hue Bridge
 | Intro, Block-Ansage, Rangliste | Lila, gedimmt |
 | Frage | Dunkles Blau-Lila, stark gedimmt (bei Video/Audio fast aus) |
 | Auflösung | Farbe der richtigen Antwort (rot, blau, gelb, grün); bei Schätz- und Zuordnungsfragen grün |
-| Spezialfrage | Gold, volle Helligkeit, pulsiert |
+| Spezialfrage | Gold, volle Helligkeit, pulsiert, solange der Spezialfrage-Screen zu sehen ist |
 | Pause zwischen den Blöcken | Hell und warmweiß |
 | Spiel angehalten | Warmweiß, halbe Helligkeit |
 | Siegerehrung | Farbe des Gewinners, pulsiert |
 | Zurück in der Lobby | Licht wie vor dem Spiel |
 
 - Lampen ohne Farbe werden nur gedimmt.
-- Die Bridge verträgt etwa 10 Befehle pro Sekunde. Bei vielen Lampen wechselt das Licht deshalb leicht nacheinander.
+- Das Quiz schickt jeden Lichtwechsel als einen Gruppenbefehl an den ganzen Bereich, so schalten alle Lampen gleichzeitig. Die Bridge erlaubt etwa einen Gruppenbefehl pro Sekunde; schnellere Effekte gehen erst mit dem Entertainment-Streaming (Variante 2).
 - Läuft gleichzeitig Hue Sync (App oder Sync Box) für denselben Bereich, ignoriert die Bridge die Befehle des Quiz. Hue Sync also vorher ausschalten.
 - Die Zugangsdaten liegen in `hue.json` im Quiz-Ordner (nicht in Git). „Verbindung trennen“ löscht sie.
 

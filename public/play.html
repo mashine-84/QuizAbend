@@ -394,7 +394,7 @@ function hueSection() {
       ${h.list ? Object.entries(groups).map(([g, l]) => `<p class="small"><b>${esc(g)}</b></p><div class="huelist">${l.map(t =>
         `<button class="btn sm ${st.target && st.target.id === t.id ? '' : 'ghost'}" onclick="hueSelect('${t.kind}','${esc(t.id)}')">${esc(t.name)}</button>`).join('')}</div>`).join('')
         : `<button class="btn ghost" onclick="hueTargets()">${st.target ? '🔁 Anderen Bereich wählen' : '💡 Bereich wählen'}</button>`}
-      ${st.target ? '<button class="btn ghost" onclick="hueTest()">✨ Testen</button>' : ''}
+      ${st.target ? (st.testing ? '<button class="btn danger" onclick="hueStopTest()">⏹ Test stoppen</button>' : '<button class="btn ghost" onclick="hueTest()">✨ Testen</button>') : ''}
       <button class="btn ghost sm" onclick="hueForget()">Verbindung trennen</button>`;
   }
   return `<h3>💡 Philips Hue <small>(Test)</small></h3>${body}${msg}`;
@@ -425,7 +425,12 @@ async function hueSelect(kind, target) {
   await hueRefresh(r.ok ? { ok: true, text: `Bereich gewählt: ${r.count} Lampen.` } : { ok: false, text: r.text });
 }
 async function hueEnable(on) { await hueCall('enable', { on }); hueRefresh(); }
-async function hueTest() { const r = await hueCall('test'); hueRefresh(r.ok ? { ok: true, text: 'Die Lampen sollten jetzt kurz gold pulsieren.' } : { ok: false, text: r.text }); }
+async function hueTest() {
+  const r = await hueCall('test');
+  await hueRefresh(r.ok ? { ok: true, text: 'Die Lampen pulsieren jetzt 3 Sekunden gold.' } : { ok: false, text: r.text });
+  if (r.ok) { clearTimeout(hueTest.t); hueTest.t = setTimeout(() => { if (ui.settings) hueRefresh({ ok: true, text: 'Test beendet, Licht wie vorher.' }); }, 3300); }
+}
+async function hueStopTest() { clearTimeout(hueTest.t); await hueCall('stoptest'); hueRefresh({ ok: true, text: 'Test gestoppt, Licht wie vorher.' }); }
 async function hueForget() {
   if (ui.confirm !== 'hue') { ui.confirm = 'hue'; ui.hue.msg = { ok: false, text: 'Nochmal auf „Verbindung trennen“ tippen zum Bestätigen.' }; lastKey = ''; render(); return; }
   ui.confirm = null; await hueCall('forget'); ui.hue.list = null; hueRefresh({ ok: true, text: 'Getrennt.' });

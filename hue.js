@@ -90,13 +90,14 @@ async function select(kind, id) {
     const all = ((await clip('GET', 'light')).json || {}).data || [];
     cfg.lights = all.filter(l => ids.includes(l.id)).map(l => ({ id: l.id, name: (l.metadata && l.metadata.name) || '', color: !!l.color, ct: !!l.color_temperature }));
     cfg.target = { kind, id, name: (item.metadata && item.metadata.name) || '' };
+    cfg.group = String(item.id_v1 || '').replace('/groups/', '') || null;   // für gleichzeitige Gruppenbefehle
     save();
     return { ok: true, count: cfg.lights.length };
   } catch (e) { return { ok: false, text: 'Bridge nicht erreichbar: ' + e.message }; }
 }
 
 function status() {
-  return { paired: !!cfg.appKey, ip: cfg.ip || null, enabled: !!cfg.enabled, target: cfg.target || null, lights: (cfg.lights || []).length };
+  return { paired: !!cfg.appKey, ip: cfg.ip || null, enabled: !!cfg.enabled, target: cfg.target || null, lights: (cfg.lights || []).length, testing: !!testTimer };
 }
 function enable(on) { cfg.enabled = !!on; save(); if (!on) restore(); return { ok: true }; }
 function forget() { restore(); cfg = {}; try { fs.unlinkSync(FILE); } catch (_) {} return { ok: true }; }
@@ -117,6 +118,28 @@ async function pump() {
 let warned = 0;
 function warn(e) { if (Date.now() - warned > 60000) { warned = Date.now(); console.error('Hue: Bridge nicht erreichbar –', e.message); } }
 
+// Gruppenbefehl: alle Lampen des Bereichs schalten gleichzeitig (wichtig für die Auflösung)
+let groupNext = null, groupBusy = false, groupLast = 0;
+function groupSend(body) {
+  groupNext = Object.assign(groupNext || {}, body);
+  if (!groupBusy) groupPump();
+}
+async function groupPump() {
+  groupBusy = true;
+  while (groupNext) {
+    const wait = groupLast + 1000 - Date.now();
+    if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    const body = groupNext; groupNext = null; groupLast = Date.now();
+    try { await request('PUT', cfg.ip, `/api/${cfg.appKey}/groups/${cfg.group}/action`, body, null); } catch (e) { warn(e); }
+  }
+  groupBusy = false;
+}
+async function ensureGroup() {
+  if (cfg.group || !cfg.target) return !!cfg.group;
+  await select(cfg.target.kind, cfg.target.id);   // ältere hue.json ohne Gruppen-ID
+  return !!cfg.group;
+}
+
 // Farbe (#rrggbb) -> CIE xy, wie Hue sie erwartet
 function xy(hex) {
   const v = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(c => c > 0.04045 ? Math.pow((c + 0.055) / 1.055, 2.4) : c / 12.92);
@@ -125,17 +148,16 @@ function xy(hex) {
   return { x: +(X / s).toFixed(4), y: +(Y / s).toFixed(4) };
 }
 
-// Stimmung auf alle Lampen: { color: '#rrggbb' } oder { mirek: 370 } (warmweiß), bri 1–100, ms Übergang, alert
-function apply({ color, mirek, bri, ms = 800, alert = false }) {
-  for (const l of cfg.lights || []) {
-    const body = { on: { on: true }, dimming: { brightness: bri }, dynamics: { duration: ms } };
-    if (color && l.color) body.color = { xy: xy(color) };
-    else if (mirek && l.ct) body.color_temperature = { mirek };
-    else if (color && l.ct) body.color_temperature = { mirek: 300 };
-    queue(l.id, body);
-    if (alert) setTimeout(() => queue(l.id, { alert: { action: 'breathe' } }), 400);
-  }
+// Stimmung auf den ganzen Bereich: { color: '#rrggbb' } oder { mirek: 370 } (warmweiß), bri 1–100, ms Übergang,
+// pulse = Lampen pulsieren lassen (wird mit dem nächsten Befehl wieder gestoppt)
+function apply({ color, mirek, bri, ms = 800, pulse = false }) {
+  if (!cfg.group) return;
+  const body = { on: true, bri: Math.max(1, Math.min(254, Math.round(bri * 2.54))), transitiontime: Math.round(ms / 100), alert: pulse ? 'lselect' : 'none' };
+  if (color) { const c = xy(color); body.xy = [c.x, c.y]; }
+  else if (mirek) body.ct = mirek;
+  groupSend(body);
 }
+function stopPulse() { if (cfg.group) groupSend({ alert: 'none' }); }
 
 // Zustand vor dem Spiel merken und danach wiederherstellen
 async function takeSnapshot() {
@@ -147,6 +169,7 @@ async function takeSnapshot() {
   } catch (e) { warn(e); snapshot = null; }
 }
 function restore() {
+  stopPulse();
   if (!snapshot) return;
   for (const s of snapshot) {
     const body = { on: { on: !!s.on }, dynamics: { duration: 1500 } };
@@ -165,6 +188,7 @@ const ANSWER = ['#e5484d', '#3e8ef7', '#f5b014', '#2fb36d'];   // Farben der Ant
 async function onPhase(phase, info = {}) {
   if (!cfg.enabled || !cfg.appKey || !(cfg.lights || []).length) return;
   if (phase === 'lobby') return restore();
+  if (!(await ensureGroup())) return;
   if (phase === 'opening' && !snapshot) await takeSnapshot();
   let mood, key = phase;
   switch (phase) {
@@ -172,12 +196,12 @@ async function onPhase(phase, info = {}) {
     case 'block': mood = { color: VIOLET, bri: 45, ms: 1000 }; break;
     case 'intro': case 'preview': case 'question': case 'votes': key = 'question'; mood = { color: DEEP, bri: 22, ms: 1200 }; break;
     case 'media': mood = { color: DEEP, bri: 8, ms: 1000 }; break;                       // Video/Audio: fast dunkel
-    case 'special': mood = { color: GOLD, bri: 100, ms: 300, alert: true }; break;
+    case 'special': mood = { color: GOLD, bri: 100, ms: 300, pulse: true }; break;     // pulsiert nur, solange der Screen da ist
     case 'reveal': key = 'reveal' + info.q; mood = { color: info.correct != null ? ANSWER[info.correct] : '#2fb36d', bri: 70, ms: 300 }; break;
     case 'scores': mood = { color: VIOLET, bri: 40, ms: 1500 }; break;
     case 'pause': mood = { mirek: 370, bri: 100, ms: 3000 }; break;                    // hell und warmweiß
     case 'frozen': mood = { mirek: 370, bri: 60, ms: 1500 }; break;
-    case 'end': mood = { color: info.winnerColor || GOLD, bri: 90, ms: 800, alert: true }; break;
+    case 'end': mood = { color: info.winnerColor || GOLD, bri: 90, ms: 800, pulse: true }; break;
     default: return;
   }
   if (key === lastMood) return;
@@ -185,13 +209,23 @@ async function onPhase(phase, info = {}) {
   apply(mood);
 }
 
-// Test: kurz Gold, dann zurück
+// Test: 3 Sekunden gold pulsieren, dann zurück; jederzeit abbrechbar
+let testTimer = null, testOwnsSnapshot = false;
 async function test() {
   if (!(cfg.lights || []).length) return { ok: false, text: 'Erst einen Bereich auswählen.' };
-  const had = snapshot; if (!had) await takeSnapshot();
-  apply({ color: GOLD, bri: 100, ms: 300, alert: true });
-  setTimeout(() => { if (!had) restore(); }, 4000);
+  if (!(await ensureGroup())) return { ok: false, text: 'Bereich hat keine Gruppe – bitte neu auswählen.' };
+  if (!testTimer && !snapshot) { await takeSnapshot(); testOwnsSnapshot = true; }
+  clearTimeout(testTimer);
+  apply({ color: GOLD, bri: 100, ms: 300, pulse: true });
+  testTimer = setTimeout(stopTest, 3000);
   return { ok: true };
 }
+function stopTest() {
+  if (!testTimer) return { ok: true };
+  clearTimeout(testTimer); testTimer = null;
+  if (testOwnsSnapshot) { testOwnsSnapshot = false; restore(); } else stopPulse();
+  return { ok: true };
+}
+function testing() { return !!testTimer; }
 
-module.exports = { status, discover, pair, targets, select, enable, forget, test, onPhase };
+module.exports = { status, discover, pair, targets, select, enable, forget, test, stopTest, testing, onPhase };
