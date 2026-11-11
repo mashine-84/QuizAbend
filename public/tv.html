@@ -112,6 +112,21 @@
   .erow.best { background: rgba(47,179,109,.45); }
   .erow.out { opacity: .45; }
   .erow.truth { background: #fff; color: #1b1440; padding: 1vh 1.6vw; font-size: 2.2vw; animation: pop .5s both; }
+  .eresult { display: flex; align-items: baseline; justify-content: center; gap: 1.2vw; margin-bottom: 2vh; }
+  .eresult .elabel { font-size: 1.8vw; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+  .eresult .ebig { font-size: 5.5vw; font-weight: 900; color: var(--c); font-variant-numeric: tabular-nums; min-width: 22vw; text-align: left; }
+  .eresult .ebig.landed { animation: pop .4s both; }
+  html.lite .eresult .ebig.landed { animation: pop .4s both !important; }
+  .elist.ehidden { visibility: hidden; }
+  .erow .ed { min-width: 9vw; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .erow.best .ed { color: #fff; }
+  .erow.ehead { background: none; font-size: 1.3vw; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; padding-top: 0; padding-bottom: 0; animation: none; }
+  .erow.ehead .ev { margin-left: auto; }
+  .erow.ehead .vav { visibility: hidden; }
+  .elist.many .erow { font-size: 1.35vw; padding-top: 0; padding-bottom: 0; } .elist.many .erow .vav { width: 2vw; height: 2vw; font-size: 1.2vw; } .elist.many { gap: .4vh; }
+  .eresult.many { margin-bottom: .6vh; } .eresult.many .ebig { font-size: 3.8vw; }
+  .estpanel.reveal { justify-content: flex-start; }
+  .erow .ev { min-width: 11vw; text-align: right; }
   .erow.truth .ev { margin-left: 0; }
   .erow.truth span:last-child { margin-left: auto; color: var(--d); text-transform: uppercase; font-size: 1.4vw; letter-spacing: .1em; }
   .mlist { flex: 1; min-height: 0; display: grid; grid-auto-rows: minmax(0, var(--row)); align-content: center; gap: 1.4vh; max-height: 100%; }
@@ -328,7 +343,7 @@ function render() {
   const fresh = key !== lastKey;
   if (S.remainingMs && (S.phase !== lastPhase || Math.abs(Date.now() + S.remainingMs - deadline) > 1200)) deadline = Date.now() + S.remainingMs;
   if (S.phase !== 'media' && window.__stopAudio) { window.__stopAudio(); window.__stopAudio = null; }
-  if (S.phase === 'reveal' && lastPhase !== 'reveal') shot(revealSound, 0.85);   // Treffer bei der Auflösung
+  if (S.phase === 'reveal' && lastPhase !== 'reveal' && !(S.question && S.question.kind === 'estimate')) shot(revealSound, 0.85);   // Treffer bei der Auflösung (Schätzfrage: erst wenn die Zahl steht)
   if (S.phase === 'lobby' && lastPhase !== 'lobby') [blockMusic, scoresMusic, revealSound, winSound, specialSound].forEach(t => { t.buf = null; }); // neu laden (falls Datei getauscht)
   if (soundOn()) [blockMusic, scoresMusic, revealSound, winSound, specialSound].forEach(t => t.load());
   if (S.phase === 'question' && lastPhase !== 'question') lastTickSec = null;
@@ -456,9 +471,11 @@ function renderLobby() {
     </div>`;
 }
 
+let estLanded = 0;   // Frage, bei der die Slotmaschine schon gelandet ist
 function chips() {
   const q = S.question || {};
-  const hideResult = q.kind === 'match' && S.phase === 'reveal' && q.step < (q.left || []).length;
+  const hideResult = (q.kind === 'match' && S.phase === 'reveal' && q.step < (q.left || []).length)
+    || (q.kind === 'estimate' && S.phase === 'reveal' && estLanded !== S.qNum);   // Schätzfrage: erst wenn die Zahl steht
   return S.players.filter(p => p.connected || p.answered).map(p => {
     let cls = p.answered ? 'done' : '', extra = '';
     if (S.phase === 'reveal' && p.result && !hideResult) {
@@ -757,20 +774,56 @@ function renderEstimate(byId) {
   if (!box || box.dataset.phase === S.phase) return;
   box.dataset.phase = S.phase;
   const unit = q.unit ? ' ' + esc(q.unit) : '';
-  const rows = q.guesses.map(g => ({ ...g }));
-  if (S.phase === 'reveal') {
-    let at = rows.findIndex(r => r.value > q.value); if (at < 0) at = rows.length;
-    rows.splice(at, 0, { truth: true, value: q.value });
-  }
   if (!q.guesses.length && S.phase === 'votes') { box.innerHTML = '<div class="esthint">Niemand hat geschätzt 🤷</div>'; return; }
-  box.innerHTML = `<div class="elist">${rows.map((r, i) => {
-    if (r.truth) return `<div class="erow truth"><span class="ev">✓ ${fmt(r.value)}${unit}</span><span>richtig</span></div>`;
-    const p = byId[r.id]; if (!p) return '';
-    const res = S.phase === 'reveal' ? p.result : null;
-    return `<div class="erow ${res && res.correct ? 'best' : ''} ${res && res.outOfRange ? 'out' : ''}" style="--pc:${p.color};animation-delay:${S.phase === 'votes' ? i * 0.15 : 0}s">
-      <span class="vav">${p.avatar}</span><span class="en">${esc(p.name)}</span><span class="ev">${fmt(r.value)}${unit}</span>
-      ${res ? `<span class="eg ${res.correct ? '' : res.gain ? 'mid' : 'no'}">${res.correct ? '✓' : res.gain ? '≈' : '✗'}</span>` : ''}</div>`;   // Punkte gibt's erst am Blockende
-  }).join('')}</div>`;
+  if (S.phase !== 'reveal') {
+    box.innerHTML = `<div class="elist">${q.guesses.map((r, i) => {
+      const p = byId[r.id]; if (!p) return '';
+      return `<div class="erow" style="--pc:${p.color};animation-delay:${i * 0.15}s"><span class="vav">${p.avatar}</span><span class="en">${esc(p.name)}</span><span class="ev">${fmt(r.value)}${unit}</span></div>`;
+    }).join('')}</div>`;
+    return;
+  }
+  // Auflösung: richtiger Wert groß oben (läuft wie eine Slotmaschine ein), darunter alle Schätzungen nach Abstand
+  const dist = r => Math.abs(r.value - q.value);
+  const rows = q.guesses.map(g => ({ ...g })).sort((x, y) => dist(x) - dist(y));
+  const sign = d => d === 0 ? '±0' : (d > 0 ? '+' : '−') + fmt(Math.abs(d));
+  const dunit = q.year ? ' J.' : unit;
+  box.classList.add('reveal');
+  box.innerHTML = `<div class="eresult ${rows.length > 3 ? 'many' : ''}"><span class="elabel">Richtig</span><span class="ebig" id="ebig">&nbsp;</span></div>
+    <div class="elist ehidden ${rows.length > 3 ? 'many' : ''}" id="elist">${rows.length ? `<div class="erow ehead"><span class="vav"></span><span class="en">Spieler</span><span class="ev">Schätzung</span><span class="ed">Abstand</span><span class="eg"></span></div>` : ''}${rows.map((r, i) => {
+      const p = byId[r.id]; if (!p) return '';
+      const res = p.result;
+      return `<div class="erow ${res && res.correct ? 'best' : ''} ${res && res.outOfRange ? 'out' : ''}" style="--pc:${p.color};animation-delay:${i * 0.12}s">
+        <span class="vav">${p.avatar}</span><span class="en">${esc(p.name)}</span><span class="ev">${fmt(r.value)}${unit}</span><span class="ed">${sign(r.value - q.value)}${dunit}</span>
+        ${res ? `<span class="eg ${res.correct ? '' : res.gain ? 'mid' : 'no'}">${res.correct ? '✓' : res.gain ? '≈' : '✗'}</span>` : '<span class="eg"></span>'}</div>`;   // Punkte gibt's erst am Blockende
+    }).join('')}</div>`;
+  slotRoll(document.getElementById('ebig'), q, unit, rows, () => {
+    const l = document.getElementById('elist'); if (l) l.classList.remove('ehidden');
+    estLanded = S.qNum; const c = document.getElementById('chips'); if (c) c.innerHTML = chips();
+    shot(revealSound, 0.85);
+  });
+}
+
+// Slotmaschine: erst schnell wechselnde Zahlen weit weg vom Ergebnis, dann immer langsamer und näher dran
+function slotRoll(el, q, unit, rows, done) {
+  const target = q.value, dec = (String(target).split('.')[1] || '').length;
+  const far = Math.max(Math.abs(target) * 0.6, ...rows.map(r => Math.abs(r.value - target)), 10);
+  const spread = Math.min(far, Math.abs(target) * 2 || far);
+  const DUR = 2800, t0 = performance.now();
+  let last = null;
+  const step = () => {
+    if (!document.contains(el)) return;
+    const p = Math.min(1, (performance.now() - t0) / DUR);
+    if (p >= 1) { el.textContent = fmt(target) + (q.unit ? ' ' + q.unit : ''); el.classList.add('landed'); return done(); }
+    const range = spread * Math.pow(1 - p, 2);
+    let v = target + (Math.random() * 2 - 1) * range;
+    if (q.year || !dec) v = Math.round(v); else v = +v.toFixed(dec);
+    if (target >= 0 && v < 0) v = Math.abs(v);
+    if (v === last) v = v + (dec ? Math.pow(10, -dec) : 1);
+    last = v; el.textContent = fmt(v) + (q.unit ? ' ' + q.unit : '');
+    if (soundOn()) try { sfx.tone(1500 + Math.random() * 300, ctx().currentTime + 0.005, 0.03, { type: 'triangle', gain: 0.07 }); } catch (_) {}
+    setTimeout(step, 40 + 360 * Math.pow(p, 2.2));   // 40 ms am Anfang, ~400 ms am Ende
+  };
+  step();
 }
 
 // ---------- Musik: Intro beim Spielstart + Spannungsmusik in der letzten Pausenminute ----------
