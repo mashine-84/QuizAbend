@@ -47,6 +47,35 @@
   .sysb .spin, .sysb > span { margin-right: .35em; }
   .center .big .reload { margin: 0 auto; color: var(--c); }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .pq { background: rgba(255,255,255,.07); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 6px; border: 2px solid transparent; }
+  .pq.sp { border-color: var(--c); }
+  .pqhead { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); font-weight: 700; }
+  .pqnum { width: 26px; height: 26px; border-radius: 50%; background: var(--c); color: #1b1440; display: grid; place-items: center; font-weight: 900; }
+  .pqlvl { margin-left: auto; color: var(--c); letter-spacing: 2px; }
+  .pqstar { color: var(--c); font-weight: 900; font-size: 14px; }
+  .pqtext { font-size: 17px; font-weight: 800; line-height: 1.3; }
+  .pqpack { font-size: 13px; color: var(--muted); }
+  .pqbtns { display: flex; gap: 6px; }
+  .pqbtns button { flex: 1; height: 44px; border: none; border-radius: 10px; background: rgba(255,255,255,.12); color: #fff; font: inherit; font-size: 20px; font-weight: 900; cursor: pointer; }
+  .pqbtns button:disabled { opacity: .3; }
+  .pqbtns button.on { background: var(--c); color: #1b1440; }
+  .pick { display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%; border: 2px solid transparent; border-radius: 12px; background: rgba(255,255,255,.07); color: #fff; font: inherit; font-size: 15px; font-weight: 700; padding: 10px 12px; cursor: pointer; }
+  .pick.cur { border-color: var(--c); } .pick:disabled { opacity: .35; }
+  .mod { display: flex; flex-direction: column; gap: 12px; padding-bottom: 90px; }
+  .mstatus { font-size: 15px; font-weight: 800; color: var(--c); }
+  .mq { background: rgba(255,255,255,.07); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .mcat { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 800; }
+  .mtext { font-size: 19px; font-weight: 900; line-height: 1.3; }
+  .msol { display: flex; flex-direction: column; gap: 6px; }
+  .msol div { background: rgba(255,255,255,.08); border-radius: 10px; padding: 8px 10px; font-weight: 700; }
+  .msol div.ok { background: rgba(47,179,109,.45); }
+  .msol span { opacity: .7; margin-right: 4px; }
+  .mans { background: rgba(255,255,255,.07); border-radius: 14px; padding: 12px; font-size: 15px; }
+  .mavs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .mavs span { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 20px; background: rgba(255,255,255,.08); opacity: .35; }
+  .mavs span.on { opacity: 1; background: var(--pc); }
+  .mbtn { position: fixed; left: 16px; right: 16px; bottom: 16px; width: auto; z-index: 5; }
+  .mbtn.ghost { background: #2c2552; }
   .later { font-size: 15px; opacity: .8; margin-top: 18px; }
   .res .gain { font-size: 30px; font-weight: 900; background: rgba(0,0,0,.18); padding: 8px 22px; border-radius: 99px; }
   .rank { font-size: 64px; font-weight: 900; color: var(--c); }
@@ -234,7 +263,7 @@ function header() {
   document.getElementById('hName').textContent = S.me.name + (S.me.isVip ? ' 👑' : '');
   const sorting = S.phase === 'scores' && Date.now() < scoresSince + SCORES_REVEAL_MS;
   if (!HIDE_PTS.includes(S.phase) && !sorting) shownScore = S.me.score;     // während eines Blocks bleibt der Stand vom letzten Blockende stehen
-  document.getElementById('hScore').textContent = shownScore + ' P';
+  document.getElementById('hScore').textContent = S.me.isHost ? '🎤 Gamemaster' : shownScore + ' P';
   document.getElementById('hostBtn').style.display = S.me.isVip && S.phase !== 'lobby' ? '' : 'none';
 }
 
@@ -251,7 +280,8 @@ function render() {
   const joinKey = me ? '' : S.players.map(p => p.avatar).join('');
   const hostKey = ui.host ? [S.players.map(p => p.id + p.name + p.connected).join(','), ui.renaming].join('|') : '';
   const key = [joinKey, hostKey, ui.host, S.frozen, JSON.stringify(S.system), S.kicked, S.phase, S.qNum, me ? me.id : '-', me && JSON.stringify(me.answer && (me.answer.choice ?? me.answer.value ?? me.answer.order)),
-    me && me.isVip, lobbyKey, S.question && S.question.step].join('|');
+    me && me.isVip, lobbyKey, S.question && S.question.step,
+    me && me.isHost ? S.players.map(p => (p.answered ? 1 : 0) + (p.connected ? 'c' : '')).join('') + JSON.stringify(me.hostQ) : ''].join('|');
   if (key === lastKey) return; // nichts Relevantes geändert (Eingaben nicht zerstören)
   const newQuestion = lastQ !== S.qNum || lastPh !== 'question';
   lastKey = key; lastQ = S.qNum; lastPh = S.phase;
@@ -264,6 +294,8 @@ function render() {
   if (S.phase !== 'lobby') ui.settings = false;
   if (S.phase === 'lobby') return ui.settings && me.isVip ? renderSettings() : renderLobby();
   if (S.phase === 'pause') return renderPause();
+  if (me.isHost) return renderModerator();
+  if (S.phase === 'locked') return renderInfo('🔒', me.answer ? 'Eingeloggt!' : 'Zeit ist um!', 'Der Gamemaster löst gleich auf – schau auf den Fernseher.');
   if (S.phase === 'opening') {
     renderInfo('🎬', 'Gleich geht\'s los!', 'Schau auf den Fernseher – dort siehst du, was euch heute erwartet.');
     if (me.isVip) main.querySelector('.center').insertAdjacentHTML('beforeend', '<button class="btn ghost" style="margin-top:3vh" onclick="advance()">⏭ Intro überspringen</button>');
@@ -329,12 +361,14 @@ function renderLobby() {
   const k = S.packs || {};
   const canStart = n >= S.minPlayers && k.questions > 0;
   const blocks = (k.blocks || []).filter(b => b.plays > 0).length;
+  const gm = S.me.isHost;
   main.innerHTML = `<div class="center">
-    <div class="big">${S.me.avatar}</div>
-    <h1>Du bist dabei!</h1>
-    <p>Schau auf den Fernseher.<br>${n} von max. ${S.maxPlayers} Spielern da.</p>
+    <div class="big">${gm ? '🎤' : S.me.avatar}</div>
+    <h1>${gm ? 'Du bist Gamemaster' : 'Du bist dabei!'}</h1>
+    <p>${gm ? 'Pub-Quiz: Du spielst nicht mit, sondern moderierst.<br>' : 'Schau auf den Fernseher.<br>'}${n} von max. ${S.maxPlayers} Spielern da.</p>
     ${S.me.isVip ? `
       <button class="btn" onclick="advance()" ${canStart ? '' : 'disabled'}>${canStart ? 'Alle da – Spiel starten!' : k.questions ? `Warte auf Mitspieler (min. ${S.minPlayers})` : 'Erst Fragenpakete wählen'}</button>
+      ${gm ? '<button class="btn ghost" onclick="openPlan()">📋 Fragen planen</button>' : ''}
       <button class="btn ghost" onclick="openSettings()">⚙️ Einstellungen${k.errors ? ' · ⚠️' : ''}</button>
       <p class="small">${blocks > 1 ? `${blocks} Blöcke · ` : ''}${k.questions} Fragen${k.special && k.special.on ? ` · ⭐ Spezialfrage ×${k.special.mult}` : ''}</p>`
       : `<p>Warte, bis 👑 das Spiel startet …</p>`}
@@ -343,7 +377,7 @@ function renderLobby() {
 
 // ---------- Einstellungen für den Gamemaster ----------
 async function openSettings() {
-  ui.settings = true; ui.edit = null; ui.section = 'game'; ui.menu = false; lastKey = '';
+  ui.settings = true; ui.edit = null; ui.section = 'game'; ui.menu = false; ui.planOpen = false; ui.pick = null; lastKey = '';
   main.innerHTML = '<div class="center"><p>Lade Einstellungen …</p></div>';
   ui.packs = await fetch('/api/pakete').then(r => r.json()).catch(() => null);
   ui.hue = { st: (await hueCall('status')) || null };
@@ -484,6 +518,7 @@ function renderSettings() {
   const d = ui.packs;
   if (!d) { main.innerHTML = '<div class="center"><p>Konnte die Einstellungen nicht laden.</p><button class="btn" onclick="closeSettings()">Zurück</button></div>'; return; }
   if (ui.edit !== null && cfg().blocks[ui.edit]) return renderBlockEditor();
+  if (ui.planOpen) return ui.pick ? renderPlanPick() : renderPlan();
   const c = cfg(), sum = d.summary;
   const sec = SECTIONS.find(x => x.id === ui.section) || SECTIONS[0];
   let body = '';
@@ -506,6 +541,10 @@ function renderSettings() {
     <h3>🍺 Pause nach jedem Block</h3>
     <label class="switch"><input type="checkbox" ${c.pause.on ? 'checked' : ''} onchange="cfg().pause.on = this.checked; saveCfg()"><span>Pausen-Bildschirm zwischen den Blöcken</span></label>
     ${c.pause.on ? stepper('Dauer in Minuten', c.pause.minutes || '∞', `setPause(-1)`, `setPause(1)`) + `<p class="small">${c.pause.minutes ? `Nach ${c.pause.minutes} Minuten geht es automatisch weiter.` : 'Die Pause läuft, bis du sie am Handy beendest.'} Du kannst sie jederzeit beenden oder verlängern.</p>` : ''}
+    <h3>🍻 Pub-Quiz-Modus</h3>
+    <label class="switch"><input type="checkbox" ${c.pub && c.pub.on ? 'checked' : ''} onchange="cfg().pub = { on: this.checked }; saveCfg()"><span>Ich moderiere und spiele nicht mit</span></label>
+    ${c.pub && c.pub.on ? `<p class="small">Du bist Gamemaster: Nach jeder Frage löst du per Knopf auf und schaltest zur nächsten Frage weiter. Vor dem Start kannst du die Fragen planen.</p>
+      <button class="btn ghost" onclick="openPlan()">📋 Fragen planen</button>` : ''}
     ${d.errors.length ? `<div class="errors"><b>⚠️ Fehler in Fragendateien</b>${d.errors.map(e => `<div><code>${esc(e.file)}</code><br>${esc(e.error)}</div>`).join('')}</div>` : ''}`;
   else if (sec.id === 'integ') body = hueSection() || '<p class="small">Keine Integrationen verfügbar.</p>';
   else body = `
@@ -520,6 +559,106 @@ function renderSettings() {
     ${body}
   </div>`;
 }
+// ---------- Pub-Quiz: Fragen planen (nur in der Lobby) ----------
+async function planCall(action, extra) {
+  const { data } = await post('/api/plan', { id: myId, action, ...(extra || {}) });
+  return data;
+}
+async function openPlan() {
+  if (!ui.settings) await openSettings();
+  ui.planOpen = true; ui.pick = null; ui.plan = null; lastKey = ''; render();
+  ui.plan = await planCall('get'); lastKey = ''; render();
+}
+function closePlan() { ui.planOpen = false; ui.pick = null; lastKey = ''; render(); }
+async function planDo(action, extra) {
+  const r = await planCall(action, extra);
+  if (r && r.ok && r.items) ui.plan = r; else if (r && r.text) alertMsg(r.text);
+  ui.pick = null; lastKey = ''; render();
+}
+function alertMsg(t) { ui.planMsg = t; setTimeout(() => { ui.planMsg = null; lastKey = ''; render(); }, 2500); }
+const lvlDots = l => '●'.repeat(l) + '○'.repeat(3 - l);
+function renderPlan() {
+  const pl = ui.plan;
+  const head = `<div class="shead"><button class="btn sm ghost" onclick="closePlan()">‹ Zurück</button><h2>Fragen planen</h2><button class="btn sm ghost" onclick="planDo('new')" title="Alle Fragen neu ziehen">🎲 Neu</button></div>`;
+  if (!pl) { main.innerHTML = `<div class="settings">${head}<p>Lade Fragen …</p></div>`; return; }
+  const last = pl.items.length - 1;
+  let html = '', curBi = -1, n = 0;
+  pl.items.forEach(it => {
+    if (it.bi !== curBi) { curBi = it.bi; n++; const b = pl.blocks[it.bi]; html += `<h3>Block ${n} · ${esc((b && b.names || []).join(', '))}</h3>`; }
+    html += `<div class="pq ${it.isSpecial ? 'sp' : ''}" id="pq${it.i}">
+      <div class="pqhead"><span class="pqnum">${it.i + 1}</span><span class="pqtype">${it.icon} ${esc(it.label)}</span><span class="pqlvl" title="Schwierigkeit">${lvlDots(it.level)}</span></div>
+      ${it.isSpecial ? '<div class="pqstar">⭐ Spezialfrage</div>' : ''}
+      <div class="pqtext">${esc(it.text)}</div><div class="pqpack">${esc(it.pack)}</div>
+      <div class="pqbtns">
+        <button onclick="planDo('move',{i:${it.i},dir:-1})" ${it.i === 0 ? 'disabled' : ''} aria-label="Nach oben">↑</button>
+        <button onclick="planDo('move',{i:${it.i},dir:1})" ${it.i === last ? 'disabled' : ''} aria-label="Nach unten">↓</button>
+        <button onclick="planDo('reroll',{i:${it.i}})" aria-label="Zufällig tauschen">🎲</button>
+        <button onclick="openPick(${it.i})" aria-label="Frage auswählen">📋</button>
+        ${pl.specialOn ? `<button class="${it.isSpecial ? 'on' : ''}" onclick="planDo('special',{i:${it.i}})" aria-label="Als Spezialfrage festlegen">⭐</button>` : ''}
+      </div></div>`;
+  });
+  main.innerHTML = `<div class="settings">${head}
+    <p class="small">↑ ↓ ändern die Reihenfolge (auch in den Nachbarblock), 🎲 zieht eine andere Frage, 📋 zeigt alle passenden Fragen${pl.specialOn ? ', ⭐ legt die Spezialfrage fest (ohne ⭐ wird sie wie gewohnt zufällig gewählt)' : '. Die Spezialfrage ist in den Spieleinstellungen aus'}.</p>
+    ${ui.planMsg ? `<div class="sysout bad">${esc(ui.planMsg)}</div>` : ''}${html}</div>`;
+}
+async function openPick(i) {
+  ui.pick = { i, list: null }; lastKey = ''; render();
+  const r = await planCall('candidates', { i });
+  ui.pick = { i, list: (r && r.list) || [], current: r && r.current }; lastKey = ''; render();
+}
+function renderPlanPick() {
+  const pk = ui.pick;
+  const head = `<div class="shead"><button class="btn sm ghost" onclick="ui.pick=null;lastKey='';render()">‹ Zurück</button><h2>Frage ${pk.i + 1} wählen</h2><span></span></div>`;
+  if (!pk.list) { main.innerHTML = `<div class="settings">${head}<p>Lade Fragen …</p></div>`; return; }
+  const groups = {};
+  pk.list.forEach(q => (groups[q.pack] = groups[q.pack] || []).push(q));
+  main.innerHTML = `<div class="settings">${head}${Object.entries(groups).map(([g, l]) => `<h3>${esc(g)}</h3>${l.map(q =>
+    `<button class="pick ${q.uid === pk.current ? 'cur' : ''}" ${q.used ? 'disabled' : ''} onclick="planDo('replace',{i:${pk.i},uid:'${esc(q.uid)}'})">
+      <span class="pqtype">${q.icon} ${lvlDots(q.level)}${q.uid === pk.current ? ' · aktuell' : q.used ? ' · schon im Plan' : ''}</span><span>${esc(q.text)}</span></button>`).join('')}`).join('')}</div>`;
+}
+
+// ---------- Pub-Quiz: Moderator-Ansicht (Host spielt nicht mit) ----------
+function modAction() {
+  const ph = S.phase, h = S.me.hostQ || {}, q = S.question || {};
+  if (ph === 'opening') return ['⏭ Intro überspringen', 'ghost'];
+  if (ph === 'block') return ['⏭ Weiter zur Frage', 'ghost'];
+  if (ph === 'intro' || ph === 'media' || ph === 'preview') return ['⏭ Überspringen', 'ghost'];
+  if (ph === 'question') return ['⏹ Antworten jetzt schließen', 'ghost'];
+  if (ph === 'locked') return ['🔍 Frage auflösen', ''];
+  if (ph === 'special' || ph === 'votes') return ['⏭ Überspringen', 'ghost'];
+  if (ph === 'reveal') {
+    if (q.kind === 'match' && q.step < (q.left || []).length) return ['⏩ Alle Paare aufdecken', 'ghost'];
+    return h.isLast ? ['🏆 Zur Siegerehrung', ''] : h.blockEnd ? ['📊 Zur Rangliste', ''] : ['➡ Nächste Frage', ''];
+  }
+  if (ph === 'scores') return ['⏭ Weiter', 'ghost'];
+  if (ph === 'end') return ['🔄 Neue Runde', ''];
+  return null;
+}
+const MOD_STATUS = {
+  opening: 'Intro läuft auf dem Fernseher', block: 'Block-Ansage', intro: 'Ansage der Frageart', media: 'Video/Audio läuft', preview: 'Vorschau der Begriffe',
+  question: 'Die Spieler antworten – nach Ablauf der Zeit löst du auf', locked: 'Zeit ist um – jetzt auflösen', special: 'Spezialfrage wird enthüllt', votes: 'Die Stimmen werden gezeigt',
+  reveal: 'Auflösung', scores: 'Zwischenstand wird gezeigt', end: 'Spiel vorbei',
+};
+function renderModerator() {
+  const ph = S.phase, h = S.me.hostQ, act = modAction();
+  const active = S.players.filter(p => p.connected), done = active.filter(p => p.answered).length;
+  let sol = '';
+  if (h) {
+    if (h.kind === 'choice') sol = `<div class="msol">${h.answers.map((a, i) => `<div class="${i === h.correct ? 'ok' : ''}"><span>${SHAPES[i]}</span> ${esc(a)}${i === h.correct ? ' ✓' : ''}</div>`).join('')}</div>`;
+    if (h.kind === 'estimate') sol = `<div class="msol"><div class="ok">Lösung: ${fmt(h.value)}${h.unit ? ' ' + esc(h.unit) : ''}${h.tolerance !== null && h.tolerance !== undefined ? ` <small>(Punkte bis ±${fmt(h.tolerance)})</small>` : ''}</div></div>`;
+    if (h.kind === 'match') sol = `<div class="msol">${h.pairs.map(([a, b], i) => `<div class="ok"><span>${i + 1}</span> ${esc(a)} → ${esc(b)}</div>`).join('')}</div>`;
+  }
+  const showAnswered = ['question', 'locked'].includes(ph);
+  main.innerHTML = `<div class="mod">
+    ${S.question && h ? qline() : ''}
+    <div class="mstatus">${esc(MOD_STATUS[ph] || '')}</div>
+    ${h ? `<div class="mq">${h.special ? '<div class="pqstar">⭐ Spezialfrage (die Spieler wissen es noch nicht)</div>' : ''}<div class="mcat">${esc(h.category)}</div><div class="mtext">${esc(h.text)}</div>${sol}</div>` : ''}
+    ${showAnswered ? `<div class="mans"><b>${done} von ${active.length}</b> haben geantwortet<div class="mavs">${active.map(p => `<span class="${p.answered ? 'on' : ''}" style="--pc:${p.color}">${p.avatar}</span>`).join('')}</div></div>` : ''}
+    ${ph === 'end' && S.players[0] ? `<div class="mq"><div class="mtext">🏆 ${esc(S.players[0].name)} gewinnt mit ${S.players[0].score} Punkten</div></div>` : ''}
+    ${act ? `<button class="btn ${act[1]} mbtn" onclick="advance()">${act[0]}</button>` : ''}
+  </div>`;
+}
+
 // Hamburger-Menü der Einstellungen
 const SECTIONS = [
   { id: 'game', icon: '🎲', title: 'Spieleinstellungen', sub: 'Frageblöcke, Spezialfrage, Pause' },
@@ -596,7 +735,8 @@ function renderPause() {
   clearInterval(pauseTimer);
   if (S.phaseMs && !S.frozen) pauseTimer = setInterval(() => {
     const el = document.getElementById('pc'); if (!el) return clearInterval(pauseTimer);
-    const s = Math.max(0, Math.ceil((end - Date.now() - 1500) / 1000));   // 1,5 s Nachlauf mit 0:00 (wie am TV) el.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    const s = Math.max(0, Math.ceil((end - Date.now() - 1500) / 1000));   // 1,5 s Nachlauf mit 0:00 (wie am TV)
+    el.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }, 250);
 }
 

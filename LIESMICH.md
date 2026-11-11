@@ -85,6 +85,8 @@ Der 👑-Spieler tippt in der Lobby auf **⚙️ Einstellungen**. Über das Men�
 - **Spezialfrage:** an/aus und der Multiplikator ×2, ×3 oder ×4.
 - **Pause nach jedem Block** an/aus mit Dauer.
 
+- **🍻 Pub-Quiz-Modus:** Der 👑-Spieler spielt nicht mit, sondern ist Gamemaster und moderiert (siehe unten).
+
 **Integrationen**
 - **Philips Hue** (siehe unten).
 
@@ -172,6 +174,22 @@ Die Erzeuger-Skripte liegen daneben. Jede Datei lässt sich ersetzen, hier am Be
 - **Vom Laptop auf den Pi kopieren:** `scp mein-song.mp3 <benutzer>@quizabend.local:QuizAbend/sounds/pause-finale.mp3`. Ein Neustart ist nicht nötig, die nächste Pause lädt die neue Datei.
 - **Länge:** Ideal sind genau 60 Sekunden. Ein längerer Song startet bei 1:00 von vorn und wird zum Pausenende ausgeblendet. Ein kürzerer startet so, dass er genau zum Pausenende aufhört.
 - Wird die Pause verlängert oder übersprungen, blendet die Musik aus. Ist „Sounds“ in den Einstellungen aus, bleibt es still.
+
+## 🍻 Pub-Quiz-Modus
+Einschalten unter ⚙️ Einstellungen › Spieleinstellungen › **Pub-Quiz-Modus**. Der 👑-Spieler wird zum **Gamemaster**: Er steht nicht in der Spielerliste, beantwortet keine Fragen und taucht nicht in der Rangliste auf. Auf dem Fernseher steht er in der Lobby als „🎤 Gamemaster“.
+
+**Vor dem Spiel – „📋 Fragen planen“** (in der Lobby oder in den Spieleinstellungen): Das Quiz zieht die Fragen wie gewohnt, der Gamemaster kann sie danach bearbeiten:
+- **↑ / ↓** ändern die Reihenfolge, auch über Blockgrenzen hinweg (die oberste Frage eines Blocks rutscht mit ↑ ans Ende des vorherigen Blocks).
+- **🎲** zieht eine andere Frage aus demselben Block, möglichst mit gleicher Schwierigkeit.
+- **📋** zeigt alle Fragen der Pakete des Blocks zum gezielten Auswählen.
+- **⭐** legt die Spezialfrage fest (nur wenn die Spezialfrage eingeschaltet ist). Ohne ⭐ wird sie wie gewohnt zufällig gewählt.
+- **🎲 Neu** zieht alle Fragen neu. Ändern sich Blöcke oder Pakete, wird der Plan ebenfalls neu gezogen.
+
+**Im Spiel** zeigt das Handy des Gamemasters die Frage **mit Lösung**, wie viele schon geantwortet haben, und unten immer einen großen Knopf mit dem nächsten Schritt:
+- Während die Spieler antworten: „⏹ Antworten jetzt schließen“ (optional, sonst läuft die Zeit ab).
+- Wenn die Zeit um ist oder alle geantwortet haben, wartet das Spiel: „🔍 Frage auflösen“.
+- Nach der Auflösung wartet das Spiel wieder: „➡ Nächste Frage“, am Blockende „📊 Zur Rangliste“, nach der letzten Frage „🏆 Zur Siegerehrung“.
+- Intro, Block-Ansage, Rangliste und Pause laufen weiter automatisch, lassen sich aber überspringen.
 
 ## 💡 Philips Hue (Test)
 Das Quiz kann das Licht im Raum mitsteuern. Es braucht dafür nur die Hue Bridge im selben Netz, keine Zusatzsoftware.

@@ -128,9 +128,9 @@ function loadPacks() {
     const list = Array.isArray(raw) ? raw : raw && raw.fragen;
     const name = (!Array.isArray(raw) && raw && raw.paket) || path.basename(rel, '.json');
     if (!Array.isArray(list)) { errors.push({ file: rel, error: 'keine Liste "fragen" gefunden' }); return; }
-    const questions = [];
+    const questions = [], packId = rel.replace(/\\/g, '/').replace(/\.json$/i, '');
     list.forEach((q, i) => {
-      try { questions.push(normalizeQuestion(q, path.dirname(rel), name, !Array.isArray(raw) ? raw.schwierigkeit : undefined)); }
+      try { questions.push({ ...normalizeQuestion(q, path.dirname(rel), name, !Array.isArray(raw) ? raw.schwierigkeit : undefined), uid: packId + '#' + i, pack: name }); }
       catch (e) { errors.push({ file: rel, error: `Frage ${i + 1}: ${e.message}` }); }
     });
     const kinds = {
@@ -155,7 +155,7 @@ function loadPacks() {
 
 // ---------- Einstellungen: Frageblöcke (je mit eigener Paketauswahl) + Spezialfrage ----------
 const MAX_BLOCKS = 6;
-let settings = { blocks: [{ count: DEFAULT_PER_GAME, disabled: [] }], special: { on: false, mult: 2 }, sound: { on: true }, pause: { on: true, minutes: 10 } };
+let settings = { blocks: [{ count: DEFAULT_PER_GAME, disabled: [] }], special: { on: false, mult: 2 }, sound: { on: true }, pause: { on: true, minutes: 10 }, pub: { on: false } };
 try {
   const raw = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
   if (Array.isArray(raw.blocks)) settings.blocks = raw.blocks;
@@ -163,6 +163,7 @@ try {
   if (raw.special) settings.special = raw.special;
   if (raw.sound) settings.sound = raw.sound;
   if (raw.pause) settings.pause = raw.pause;
+  if (raw.pub) settings.pub = raw.pub;
 } catch (_) {}
 function saveSettings() { try { fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2)); } catch (_) {} }
 
@@ -171,11 +172,12 @@ function cleanSettings(input) {
     count: Math.max(1, Math.min(50, Math.round(Number(b && b.count)) || DEFAULT_PER_GAME)),
     disabled: Array.isArray(b && b.disabled) ? b.disabled.filter(x => typeof x === 'string') : [],
   }));
-  const sp = input.special || {}, so = input.sound || {}, pa = input.pause || {};
+  const sp = input.special || {}, so = input.sound || {}, pa = input.pause || {}, pu = input.pub || {};
   return { blocks: blocks.length ? blocks : settings.blocks,
     special: { on: !!sp.on, mult: [2, 3, 4].includes(Number(sp.mult)) ? Number(sp.mult) : 2 },
     sound: { on: so.on === undefined ? true : !!so.on },
-    pause: { on: pa.on === undefined ? true : !!pa.on, minutes: Math.max(0, Math.min(60, Math.round(Number(pa.minutes ?? 10)))) } };
+    pause: { on: pa.on === undefined ? true : !!pa.on, minutes: Math.max(0, Math.min(60, Math.round(Number(pa.minutes ?? 10)))) },
+    pub: { on: !!pu.on } };
 }
 
 const blockPacks = b => packs.filter(p => !b.disabled.includes(p.id));
@@ -193,7 +195,7 @@ function blockSummary(b) {
 function packSummary() {
   const blocks = settings.blocks.map(blockSummary);
   return { blocks, totalPacks: packs.length, questions: blocks.reduce((s, b) => s + b.plays, 0),
-    special: settings.special, sound: settings.sound, pause: settings.pause, errors: packErrors.length };
+    special: settings.special, sound: settings.sound, pause: settings.pause, pub: settings.pub, errors: packErrors.length };
 }
 
 function packList() {
@@ -240,6 +242,12 @@ function vipId() {
   const list = [...players.values()].filter(p => p.connected).sort((a, b) => a.joinedAt - b.joinedAt);
   return list[0] ? list[0].id : null;
 }
+
+// ---------- Pub-Quiz-Modus: der Host (👑) spielt nicht mit, sondern moderiert ----------
+// Im Spiel gilt der Modus, der beim Start eingestellt war; der Host steht beim Start fest.
+const pubActive = () => state.phase === 'lobby' ? !!(settings.pub && settings.pub.on) : !!state.pub;
+const hostId = () => state.phase === 'lobby' || !state.hostId ? vipId() : state.hostId;
+const isPlayer = p => !(pubActive() && p.id === hostId());
 
 function freeSlot() {
   const used = new Set([...players.values()].map(p => p.slot));
@@ -311,7 +319,7 @@ function buildGame() {
       const list = byLevel[pickWeighted(w)];
       const q = list[Math.floor(Math.random() * list.length)];
       used.add(q);
-      out.push({ ...prepareQuestion(q), block: n, blockCount: plan.length, blockNames: b.names });
+      out.push({ ...prepareQuestion(q), block: n, bi: b.bi, blockCount: plan.length, blockNames: b.names });
     }
     // Nummer innerhalb des Blocks (für "Block 1/2 · Frage 3/8")
     const inBlock = out.filter(x => x.block === n);
@@ -320,12 +328,91 @@ function buildGame() {
   return out;
 }
 
+// ---------- Pub-Quiz: Fragenplan, den der Host vor dem Spiel bearbeiten kann ----------
+let pubPlan = null;   // { items: [{ uid, bi }], special: uid | null }
+const byUid = () => { const m = new Map(); packs.forEach(pk => pk.questions.forEach(q => m.set(q.uid, q))); return m; };
+function planValid() {
+  if (!pubPlan || !pubPlan.items.length) return false;
+  const m = byUid();
+  return pubPlan.items.every(it => m.has(it.uid) && it.bi < settings.blocks.length);
+}
+function planEnsure() {
+  if (planValid()) return;
+  pubPlan = { items: buildGame().map(q => ({ uid: q.uid, bi: q.bi })), special: null };
+}
+function planQuestions() {
+  const m = byUid(), out = [];
+  const bis = [...new Set(pubPlan.items.map(it => it.bi))].sort((a, b) => a - b);
+  bis.forEach((bi, n) => {
+    const names = blockSummary(settings.blocks[bi]).names;
+    pubPlan.items.filter(it => it.bi === bi).forEach(it => out.push({ ...prepareQuestion(m.get(it.uid)), block: n, bi, blockCount: bis.length, blockNames: names }));
+    const inBlock = out.filter(x => x.block === n);
+    inBlock.forEach((x, i) => { x.blockQ = i + 1; x.blockLen = inBlock.length; });
+  });
+  return out;
+}
+function planItemView(q, extra) {
+  const pq = prepareQuestion(q);
+  return { uid: q.uid, text: q.text, kind: q.kind, icon: pq.icon || '❓', label: pq.label || 'Quizfrage', level: q.level, pack: q.pack, category: q.category, ...extra };
+}
+function planView() {
+  const m = byUid();
+  return { ok: true, specialOn: settings.special.on, special: pubPlan.special,
+    blocks: settings.blocks.map((b, bi) => ({ bi, names: blockSummary(b).names })),
+    items: pubPlan.items.map((it, i) => planItemView(m.get(it.uid), { i, bi: it.bi, isSpecial: pubPlan.special === it.uid })) };
+}
+function planAction(body) {
+  planEnsure();
+  const items = pubPlan.items, i = Number(body.i), it = items[i];
+  const used = new Set(items.map(x => x.uid));
+  const poolOf = bi => blockPool(settings.blocks[bi] || { disabled: [] });
+  switch (body.action) {
+    case 'get': break;
+    case 'new': pubPlan = null; planEnsure(); break;
+    case 'reroll': {   // zufällige andere Frage aus demselben Block, möglichst gleiche Schwierigkeit
+      if (!it) return { ok: false };
+      const m = byUid(), cur = m.get(it.uid), free = poolOf(it.bi).filter(q => !used.has(q.uid));
+      if (!free.length) return { ok: false, text: 'Keine weiteren Fragen in diesem Block.' };
+      const same = free.filter(q => q.level === cur.level), list = same.length ? same : free;
+      const pick = list[Math.floor(Math.random() * list.length)];
+      if (pubPlan.special === it.uid) pubPlan.special = pick.uid;
+      it.uid = pick.uid;
+      break;
+    }
+    case 'candidates': {
+      if (!it) return { ok: false };
+      return { ok: true, i, current: it.uid, list: poolOf(it.bi).map(q => planItemView(q, { used: used.has(q.uid) && q.uid !== it.uid })) };
+    }
+    case 'replace': {
+      const q = byUid().get(String(body.uid));
+      if (!it || !q || (used.has(q.uid) && q.uid !== it.uid)) return { ok: false, text: 'Diese Frage ist schon im Plan.' };
+      if (pubPlan.special === it.uid) pubPlan.special = q.uid;
+      it.uid = q.uid;
+      break;
+    }
+    case 'move': {   // ↑/↓, über Blockgrenzen hinweg
+      const d = Number(body.dir) < 0 ? -1 : 1, nb = items[i + d];
+      if (!it || !nb) break;
+      if (nb.bi === it.bi) { items[i] = nb; items[i + d] = it; }
+      else it.bi = nb.bi;   // landet am Ende (↑) bzw. Anfang (↓) des Nachbarblocks
+      break;
+    }
+    case 'special': if (it) pubPlan.special = pubPlan.special === it.uid ? null : it.uid; break;
+    default: return { ok: false, text: 'Unbekannte Aktion' };
+  }
+  return planView();
+}
+
 function startGame() {
   loadPacks();
-  const questions = buildGame();
+  if (pubActive()) planEnsure();
+  const questions = pubActive() ? planQuestions() : buildGame();
   if (!questions.length) return false;
   for (const p of players.values()) { p.score = 0; p.streak = 0; }
+  const pub = pubActive(), host = vipId();
   state = newGameState();
+  state.pub = pub; state.hostId = pub ? host : null;
+  state.pubSpecial = pub && settings.special.on ? (pubPlan && pubPlan.special) || null : null;
   state.questions = questions;
   state.opening = openingInfo(questions);
   setPhase('opening', OPENING_MS, nextQuestion);
@@ -388,8 +475,13 @@ function startAnswering() {
 }
 
 function endAnswering() {
+  // Pub-Quiz: Antworten sind zu, aufgelöst wird erst auf Knopfdruck des Hosts
+  if (state.pub && state.phase === 'question') return setPhase('locked', 0, null);
   // Spezialfrage: genau einmal pro Spiel. Chance steigt linear von 1 % (erste Frage) auf 100 % (letzte Frage)
-  if (settings.special.on && !state.specialDone) {
+  if (settings.special.on && !state.specialDone && state.pubSpecial) {
+    // vom Host festgelegte Spezialfrage
+    if (currentQuestion().uid === state.pubSpecial) { state.special = true; state.specialDone = true; return setPhase('special', SPECIAL_MS, showAnswers); }
+  } else if (settings.special.on && !state.specialDone) {
     const k = state.idx, n = state.questions.length;
     const chance = n <= 1 ? 1 : 0.01 + 0.99 * k / (n - 1);
     if (Math.random() < chance) {
@@ -468,11 +560,11 @@ function reveal() {
     state.step = 0;
     const stepOn = () => {
       state.step++;
-      if (state.step >= q.left.length) setPhase('reveal', REVEAL_MS, afterReveal);
+      if (state.step >= q.left.length) setPhase('reveal', state.pub ? 0 : REVEAL_MS, afterReveal);
       else setPhase('reveal', MATCH_STEP_MS, stepOn);
     };
     setPhase('reveal', 1200, stepOn);
-  } else setPhase('reveal', q.kind === 'estimate' ? ESTIMATE_REVEAL_MS : REVEAL_MS, afterReveal);
+  } else setPhase('reveal', state.pub ? 0 : q.kind === 'estimate' ? ESTIMATE_REVEAL_MS : REVEAL_MS, state.pub ? null : afterReveal);
 }
 
 function afterReveal() {
@@ -527,17 +619,18 @@ function advance() {
   const q = currentQuestion();
   state.frozen = null;
   switch (state.phase) {
-    case 'lobby': if (connectedCount() >= MIN_PLAYERS) startGame(); break;
+    case 'lobby': if (connectedCount() >= minPlayers()) startGame(); break;
     case 'opening': nextQuestion(); break;
     case 'block': beginQuestion(); break;
     case 'intro': afterIntro(); break;
     case 'media': afterMedia(); break;
     case 'preview': startAnswering(); break;
     case 'question': endAnswering(); break;
+    case 'locked': endAnswering(); break;   // Pub-Quiz: Host löst auf
     case 'special': showAnswers(); break;
     case 'votes': reveal(); break;
     case 'reveal':
-      if (q.kind === 'match' && state.step < q.left.length) { state.step = q.left.length; setPhase('reveal', REVEAL_MS, afterReveal); }
+      if (q.kind === 'match' && state.step < q.left.length) { state.step = q.left.length; setPhase('reveal', state.pub ? 0 : REVEAL_MS, state.pub ? null : afterReveal); }
       else afterReveal();
       break;
     case 'scores': afterScores(); break;
@@ -550,10 +643,11 @@ function advance() {
   }
 }
 
-function connectedCount() { return [...players.values()].filter(p => p.connected).length; }
+function connectedCount() { return [...players.values()].filter(p => p.connected && isPlayer(p)).length; }
+const minPlayers = () => pubActive() ? 1 : MIN_PLAYERS;
 
 function allAnswered() {
-  const active = [...players.values()].filter(p => p.connected);
+  const active = [...players.values()].filter(p => p.connected && isPlayer(p));
   return active.length > 0 && active.every(p => state.answers[p.id]);
 }
 
@@ -561,7 +655,7 @@ function allAnswered() {
 // Ansichten für TV und Handy
 // =====================================================================
 function ranking() {
-  return [...players.values()]
+  return [...players.values()].filter(isPlayer)
     .sort((a, b) => b.score - a.score || a.joinedAt - b.joinedAt)
     .map(p => ({ id: p.id, name: p.name, color: p.color, avatar: p.avatar, score: p.score, connected: p.connected, joined: p.joinedAt,
       answered: !!state.answers[p.id], result: state.results[p.id] || null }));
@@ -573,7 +667,8 @@ function baseView() {
   const q = currentQuestion();
   const ph = state.phase;
   const v = {
-    phase: ph, vip: vipId(), minPlayers: MIN_PLAYERS, maxPlayers: MAX_PLAYERS,
+    phase: ph, vip: vipId(), minPlayers: minPlayers(), maxPlayers: MAX_PLAYERS,
+    pub: pubActive() ? { host: (() => { const h = players.get(hostId()); return h ? { id: h.id, name: h.name, avatar: h.avatar, color: h.color } : null; })() } : null,
     players: ranking(), qNum: state.idx + 1, qTotal: state.questions.length,
     remainingMs: state.frozen ? state.frozen.remaining : state.phaseEnds ? Math.max(0, state.phaseEnds - Date.now()) : 0, phaseMs: state.phaseMs,
     frozen: !!state.frozen, system: systemMsg,
@@ -583,11 +678,11 @@ function baseView() {
     nextBlock: (() => { const n = state.questions[state.idx + 1]; return n && q && n.block !== q.block ? { num: n.block + 1, total: n.blockCount, names: n.blockNames } : null; })(),
     special: state.special && ['special', 'votes', 'reveal'].includes(ph) ? { mult: settings.special.mult } : null,
   };
-  if (q && ['intro', 'media', 'preview', 'question', 'special', 'votes', 'reveal'].includes(ph)) {
+  if (q && ['intro', 'media', 'preview', 'question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
     const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category }; // Schwierigkeit wird im Spiel nicht verraten
     if (ph === 'media') { vq.video = q.video || null; vq.audio = q.audio || null; vq.audioOpts = q.audioOpts || null; }
     if (ph !== 'intro' && ph !== 'media' && q.kind === 'match') vq.left = q.left;
-    if (['question', 'special', 'votes', 'reveal'].includes(ph)) {
+    if (['question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
       vq.text = q.text; vq.image = q.image;
       if (q.kind === 'choice') vq.answers = q.answers;
       if (q.kind === 'match') vq.right = q.right;
@@ -617,9 +712,23 @@ function viewFor(client, base) {
   return { ...base, kicked: !me && kickedIds.has(client.playerId), me: me ? {
     id: me.id, name: me.name, color: me.color, avatar: me.avatar, score: me.score,
     rank: rankOf(me.id), isVip: vipId() === me.id,
+    isHost: pubActive() && hostId() === me.id, hostQ: pubActive() && hostId() === me.id ? hostSolution() : null,
     answer: state.answers[me.id] || null,
     result: state.results[me.id] || null,
   } : null };
+}
+
+// Pub-Quiz: Der Host sieht am Handy die Frage samt Lösung (zum Moderieren)
+function hostSolution() {
+  const q = currentQuestion();
+  if (!q || !['intro', 'media', 'preview', 'question', 'locked', 'special', 'votes', 'reveal'].includes(state.phase)) return null;
+  const out = { kind: q.kind, text: q.text, category: q.category, label: q.label || null, icon: q.icon || null, special: state.pubSpecial === q.uid };
+  if (q.kind === 'choice') { out.answers = q.answers; out.correct = q.correct; }
+  if (q.kind === 'estimate') { out.value = q.value; out.unit = q.unit; out.year = q.year; out.tolerance = q.tolerance; }
+  if (q.kind === 'match') out.pairs = q.left.map((l, i) => [l, q.right[q.solution[i]]]);
+  const next = state.questions[state.idx + 1];
+  out.isLast = !next; out.blockEnd = !!next && next.block !== q.block;
+  return out;
 }
 
 function send(client, data) {
@@ -847,7 +956,7 @@ const server = http.createServer(async (req, res) => {
     const body = await readBody(req);
     const pl = players.get(body.id);
     const q = currentQuestion();
-    const answer = pl && state.phase === 'question' && !state.frozen && !state.answers[pl.id] && validAnswer(q, body);
+    const answer = pl && isPlayer(pl) && state.phase === 'question' && !state.frozen && !state.answers[pl.id] && validAnswer(q, body);
     if (!answer) return json(res, 409, { ok: false });
     state.answers[pl.id] = { ...answer, at: Date.now() };
     if (allAnswered()) endAnswering(); else broadcast();
@@ -885,10 +994,21 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && p === '/api/einstellungen') {
     const body = await readBody(req);
     if (body.id !== vipId() || state.phase !== 'lobby') return json(res, 403, { ok: false });
+    const before = JSON.stringify(settings.blocks);
     settings = cleanSettings(body.settings || {});
+    if (JSON.stringify(settings.blocks) !== before) pubPlan = null;   // andere Blöcke/Pakete -> Fragenplan neu ziehen
+    if (pubPlan && pubPlan.special && !settings.special.on) pubPlan.special = null;
     saveSettings();
     broadcast();
     return json(res, 200, packList());
+  }
+
+  // Pub-Quiz: Fragenplan bearbeiten (nur 👑, nur in der Lobby)
+  if (req.method === 'POST' && p === '/api/plan') {
+    const body = await readBody(req);
+    if (body.id !== vipId() || state.phase !== 'lobby') return json(res, 403, { ok: false });
+    loadPacks();
+    return json(res, 200, planAction(body));
   }
 
   if (req.method === 'POST' && p === '/api/host') {
