@@ -929,6 +929,7 @@ const server = http.createServer(async (req, res) => {
     else if (a === 'select') r = await hue.select(body.kind, String(body.target || ''));
     else if (a === 'enable') r = hue.enable(body.on);
     else if (a === 'test') r = await hue.test();
+    else if (a === 'stoptest') r = hue.stopTest();
     else if (a === 'forget') r = hue.forget();
     else r = { ok: false, text: 'Unbekannte Aktion' };
     return json(res, 200, r);
