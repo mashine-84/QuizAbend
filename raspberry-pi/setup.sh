@@ -71,7 +71,7 @@ sudo systemctl enable --now quizabend.service
 echo "==> Vollbild-Browser beim Login starten …"
 KIOSK="$DIR/raspberry-pi/kiosk.sh"
 chmod +x "$KIOSK" "$DIR/raspberry-pi/check.sh" "$DIR/raspberry-pi/kiosk-cage.sh"
-python3 "$DIR/raspberry-pi/blank-cursor.py" || true   # unsichtbarer Mauszeiger für den Kiosk
+python3 "$DIR/raspberry-pi/blank-cursor.py" || true   # unsichtbarer Mauszeiger (nur für den Kiosk)
 # Je nach Raspberry-Pi-OS-Version läuft ein anderer Desktop. Wir tragen uns überall ein;
 # kiosk.sh sorgt selbst dafür, dass der Browser nur einmal startet.
 

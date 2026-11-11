@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Erzeugt ein unsichtbares Mauszeiger-Design ("quizabend-blank") für den Kiosk-Modus.
+"""Erzeugt ein unsichtbares Mauszeiger-Design für den Kiosk-Modus.
 
 cage/wlroots zeichnet sonst den Standard-Mauszeiger dauerhaft in die Bildmitte.
-Aufruf: python3 blank-cursor.py [Zielordner]   (Standard: ~/.icons)
+cage lädt immer das Design namens "default" (XCURSOR_THEME wird ignoriert). Darum legen
+wir ein unsichtbares "default" in einen eigenen Ordner, den nur der Kiosk über
+XCURSOR_PATH sieht. Der normale Desktop bleibt unverändert.
+
+Aufruf: python3 blank-cursor.py [Zielordner]   (Standard: ~/.local/share/quizabend-cursor)
 """
 import os, struct, sys
 
@@ -19,12 +23,12 @@ def xcursor(size=24):
     return header + toc + img
 
 def main():
-    base = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser("~/.icons")
-    theme = os.path.join(base, "quizabend-blank")
+    base = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser("~/.local/share/quizabend-cursor")
+    theme = os.path.join(base, "default")
     cur = os.path.join(theme, "cursors")
     os.makedirs(cur, exist_ok=True)
     with open(os.path.join(theme, "index.theme"), "w") as f:
-        f.write("[Icon Theme]\nName=quizabend-blank\nComment=Unsichtbarer Mauszeiger fuer QuizAbend\n")
+        f.write("[Icon Theme]\nName=default\nComment=Unsichtbarer Mauszeiger fuer QuizAbend\n")
     data = xcursor()
     for n in NAMES:
         with open(os.path.join(cur, n), "wb") as f:
