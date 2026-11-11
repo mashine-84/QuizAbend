@@ -260,8 +260,8 @@ function setPhase(phase, ms, next) {
   // Pause: in der letzten Minute das Licht langsam herunterdimmen (bei kurzer Pause nach dem Hellwerden)
   clearTimeout(hueDimTimer);
   if (phase === 'pause' && ms) hueDimTimer = setTimeout(() => {
-    if (state.phase === 'pause' && !state.frozen) hue.onPhase('pausedim', { ms: Math.max(0, state.phaseEnds - Date.now()) }).catch(() => {});
-  }, Math.max(3500, ms - 60000));
+    if (state.phase === 'pause' && !state.frozen) hue.onPhase('pausedim', { ms: Math.max(0, state.phaseEnds - Date.now() - PAUSE_GRACE_MS) }).catch(() => {});
+  }, Math.max(3500, ms - 60000 - PAUSE_GRACE_MS));
 }
 let hueDimTimer = null;
 
@@ -496,9 +496,11 @@ function afterScores() {
 function showScores() { setPhase('scores', SCORES_MS, afterScores); }
 
 // Pause zwischen zwei Blöcken (Bier holen, Klo …). 0 Minuten = bis der Host weiter drückt
+// Nach Ablauf bleibt 0:00 noch kurz stehen (Schlussschlag der Musik), erst dann geht es weiter
+const PAUSE_GRACE_MS = 1500;
 function startBlockPause() {
   const ms = settings.pause.minutes * 60000;
-  setPhase('pause', ms, nextQuestion);
+  setPhase('pause', ms ? ms + PAUSE_GRACE_MS : 0, nextQuestion);
 }
 
 // Spiel jederzeit anhalten: Timer einfrieren und später an derselben Stelle weitermachen
