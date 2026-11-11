@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { exec, execFile } = require('child_process');
+const hue = require('./hue');   // Philips Hue (optional, Proof of Concept)
 
 const PORT = Number(process.env.PORT) || 3000;
 const DEFAULT_PER_GAME = Number(process.env.FRAGEN) || 10;
@@ -255,6 +256,16 @@ function setPhase(phase, ms, next) {
   state.phaseEnds = ms ? Date.now() + ms : 0;
   if (ms && next) timer = setTimeout(next, ms);
   broadcast();
+  hueUpdate();
+}
+
+// Licht passend zur Phase (macht nichts, solange Hue nicht eingerichtet ist)
+function hueUpdate() {
+  const q = currentQuestion(), ph = state.frozen ? 'frozen' : state.phase;
+  const info = {};
+  if (ph === 'reveal' && q) { info.q = state.idx; info.correct = q.kind === 'choice' ? q.correct : null; }
+  if (ph === 'end') { const w = ranking()[0]; info.winnerColor = w && w.color; }
+  hue.onPhase(ph, info).catch(() => {});
 }
 
 function prepareQuestion(q) {
@@ -491,6 +502,7 @@ function freeze() {
   clearTimer();
   state.frozen = { remaining, hadTimer: !!state.phaseEnds };
   broadcast();
+  hueUpdate();
 }
 function unfreeze() {
   const f = state.frozen;
@@ -902,6 +914,24 @@ const server = http.createServer(async (req, res) => {
     const body = await readBody(req);
     if (body.id !== vipId()) return json(res, 403, { ok: false });
     return json(res, 200, await runSystem(body.action));
+  }
+
+  // Philips Hue einrichten (nur 👑)
+  if (req.method === 'POST' && p === '/api/hue') {
+    const body = await readBody(req);
+    if (body.id !== vipId()) return json(res, 403, { ok: false });
+    const a = body.action;
+    let r;
+    if (a === 'status') r = { ok: true, ...hue.status() };
+    else if (a === 'discover') r = { ok: true, ips: await hue.discover() };
+    else if (a === 'pair') r = await hue.pair(String(body.ip || '').trim());
+    else if (a === 'targets') r = await hue.targets();
+    else if (a === 'select') r = await hue.select(body.kind, String(body.target || ''));
+    else if (a === 'enable') r = hue.enable(body.on);
+    else if (a === 'test') r = await hue.test();
+    else if (a === 'forget') r = hue.forget();
+    else r = { ok: false, text: 'Unbekannte Aktion' };
+    return json(res, 200, r);
   }
 
   if (req.method === 'POST' && p === '/api/leave') {
