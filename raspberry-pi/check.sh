@@ -10,3 +10,6 @@ echo "== Ohne-Desktop-Modus"; grep -l "QuizAbend" ~/.profile ~/.bash_profile 2>/
 echo "== Autostart"; ls ~/.config/autostart/ 2>/dev/null; grep -l quizabend ~/.config/labwc/autostart ~/.config/lxsession/LXDE-pi/autostart ~/.config/wayfire.ini 2>/dev/null
 echo "== Browser";  command -v chromium chromium-browser || echo "Chromium fehlt"
 echo "== Kiosk-Log"; tail -n 15 /tmp/quizabend-kiosk.log 2>/dev/null || echo "kein Log – kiosk.sh wurde nicht gestartet"
+echo "== Ton"
+if command -v wpctl >/dev/null; then wpctl status 2>&1 | sed -n '/Audio/,/Video/p' | head -25; else echo "wpctl (PipeWire) fehlt"; fi
+aplay -l 2>/dev/null | grep -i "^card" || echo "keine ALSA-Geräte gefunden"

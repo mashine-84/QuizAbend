@@ -7,6 +7,22 @@ LOG=/tmp/quizabend-kiosk.log
 # Unsichtbarer Mauszeiger: sonst zeichnet cage den Standard-Pfeil dauerhaft ins Bild
 [ -d "$HOME/.icons/quizabend-blank" ] || python3 "$DIR/raspberry-pi/blank-cursor.py" >>"$LOG" 2>&1
 export XCURSOR_THEME=quizabend-blank XCURSOR_SIZE=24 XCURSOR_PATH="$HOME/.icons:/usr/share/icons"
+
+# Ton über HDMI zum Fernseher: Der Pi wählt sonst oft die Klinkenbuchse.
+# HDMI-Ausgang als Standard setzen, laut stellen und Stummschaltung aufheben (PipeWire/wpctl).
+hdmi_audio() {
+  command -v wpctl >/dev/null || { echo "Ton: wpctl fehlt" >>"$LOG"; return; }
+  for _ in $(seq 1 15); do wpctl status >/dev/null 2>&1 && break; sleep 1; done
+  local id
+  id=$(wpctl status 2>/dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -i 'hdmi' | grep -oE '[0-9]+\.' | head -1 | tr -d .)
+  if [ -n "$id" ]; then
+    wpctl set-default "$id"; wpctl set-mute "$id" 0; wpctl set-volume "$id" 1.0
+    echo "Ton: HDMI-Ausgang $id als Standard gesetzt" >>"$LOG"
+  else
+    echo "Ton: kein HDMI-Ausgang gefunden" >>"$LOG"; wpctl status >>"$LOG" 2>&1
+  fi
+}
+hdmi_audio
 fails=0
 while [ $fails -lt 5 ]; do
   start=$(date +%s)
