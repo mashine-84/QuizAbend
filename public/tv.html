@@ -323,8 +323,8 @@ function render() {
   if (S.remainingMs && (S.phase !== lastPhase || Math.abs(Date.now() + S.remainingMs - deadline) > 1200)) deadline = Date.now() + S.remainingMs;
   if (S.phase !== 'media' && window.__stopAudio) { window.__stopAudio(); window.__stopAudio = null; }
   if (S.phase === 'reveal' && lastPhase !== 'reveal') shot(revealSound, 0.85);   // Treffer bei der Auflösung
-  if (S.phase === 'lobby' && lastPhase !== 'lobby') [blockMusic, scoresMusic, revealSound, winSound].forEach(t => { t.buf = null; }); // neu laden (falls Datei getauscht)
-  if (soundOn()) [blockMusic, scoresMusic, revealSound, winSound].forEach(t => t.load());
+  if (S.phase === 'lobby' && lastPhase !== 'lobby') [blockMusic, scoresMusic, revealSound, winSound, specialSound].forEach(t => { t.buf = null; }); // neu laden (falls Datei getauscht)
+  if (soundOn()) [blockMusic, scoresMusic, revealSound, winSound, specialSound].forEach(t => t.load());
   if (S.phase === 'question' && lastPhase !== 'question') lastTickSec = null;
   lastKey = key; lastPhase = S.phase;
   frozenOverlay(); systemOverlay();
@@ -723,6 +723,7 @@ function specialOverlay() {
     d.innerHTML = `<div class="burst"></div><div class="sp-inner"><div class="sp-star">⭐</div>
       <div class="sp-title">Spezialfrage!</div><div class="sp-mult">×${S.special.mult} Punkte</div></div>`;
     document.body.appendChild(d);
+    shot(specialSound, 0.9);   // Alarm-Jingle zur Einblendung
     if (!LITE) confetti();
   }
   if (S.phase !== 'special' && ov) ov.remove();
@@ -800,7 +801,7 @@ function makeTrack(name) {
 const introMusic = makeTrack('quiz-intro');
 const blockMusic = makeTrack('block-start');
 const scoresMusic = makeTrack('rangliste');   // läuft synchron zum Balken-Aufbau und Einsortieren
-const revealSound = makeTrack('aufloesung'), winSound = makeTrack('siegerehrung');
+const revealSound = makeTrack('aufloesung'), winSound = makeTrack('siegerehrung'), specialSound = makeTrack('spezialfrage');
 // kurze Jingles einfach abspielen
 function shot(track, gain) {
   if (!soundOn() || !track.buf) return;

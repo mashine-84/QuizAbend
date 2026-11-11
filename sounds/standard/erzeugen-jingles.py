@@ -3,8 +3,9 @@
 #   aufloesung.mp3    Auflösung einer Frage (ersetzt den alten Gong)
 #   siegerehrung.mp3  Siegerpodest (ersetzt die alte Fanfare)
 #   rangliste.mp3     Rangliste am Blockende (passt zum Balken-Aufbau und Einsortieren)
+#   spezialfrage.mp3  Alarm, wenn die Spezialfrage eingeblendet wird
 # Aufruf: python3 erzeugen-jingles.py /tmp/out  (schreibt WAVs), dann z. B.
-#   for f in block-start aufloesung siegerehrung rangliste; do ffmpeg -i /tmp/out/$f.wav -b:a 128k $f.mp3; done
+#   for f in block-start aufloesung siegerehrung rangliste spezialfrage; do ffmpeg -i /tmp/out/$f.wav -b:a 128k $f.mp3; done
 import numpy as np, scipy.signal as sg, scipy.io.wavfile as wf, sys, os
 SR = 44100; BPM = 128; BAR = 240 / BPM; E8 = BAR / 8; S16 = BAR / 16
 note = lambda m: 440 * 2 ** ((m - 69) / 12)
@@ -182,3 +183,30 @@ T.add(T.clap(), SORT_END, gain=0.3)
 for k, m in enumerate((76, 81, 85, 88)):
     nn = int(0.7 * SR); T.add(np.sin(2*np.pi*note(m)*np.arange(nn)/SR) * env(nn, 0.003, 5), SORT_END + 0.06 + k * S16 * 0.8, pan=-0.45 + 0.3 * k, gain=0.1)
 T.write(f'{out}/rangliste.wav', fade=0.5)
+
+# ---------- Spezialfrage: Alarm im Stil der anderen Stücke (3,5 s, läuft mit der Einblendung) ----------
+T = Track(3.5, 25)
+T.add(T.boom(0.75, (57, 64, 69, 76), 1.4, 3.5), 0); T.add(T.clap(), 0, gain=0.35)
+def alarm(m, length):                                   # heller „Klaxon“-Ton: Säge + Rechteck, schnelles Vibrato
+    n = int(length * SR); tt = np.arange(n) / SR; f = note(m) * (1 + 0.012 * np.sin(2*np.pi*14*tt))
+    ph_ = np.cumsum(f) / SR
+    s = (2 * (ph_ % 1) - 1) * 0.6 + np.sign(np.sin(2*np.pi*ph_)) * 0.4
+    return lp(s, 5500) * env(n, 0.004, d=length)
+for k in range(16):                                     # 2 Takte lang: A5 / E5 im Wechsel, Sechzehntel
+    t = k * S16 * 1.0
+    if t >= 1.75: break
+    T.add(alarm(81 if k % 2 == 0 else 76, S16 * 0.9), t, pan=-0.25 if k % 2 else 0.25, gain=0.11 + 0.05 * (k % 4 == 0))
+for q in range(4): T.add(T.kick(), q * BAR / 4, gain=0.5)
+for q in (1, 3): T.add(T.clap(), q * BAR / 4, gain=0.3)
+for q in (1, 3, 5, 7): T.add(T.bass(45, E8 * 0.9), q * E8, gain=0.3)
+n = int(1.8 * SR); tt = np.arange(n) / SR                # Sirene im Hintergrund (zweimal hoch und runter)
+T.add(np.sin(2*np.pi*np.cumsum(700 + 500 * (0.5 - 0.5 * np.cos(2*np.pi*tt / 0.9))) / SR) * np.interp(tt, [0, .1, 1.6, 1.8], [0, .5, .5, 0]), 0, gain=0.07)
+T.add(T.pad((57, 61, 64), BAR, 2600), 0, gain=0.08)
+for k in range(8): T.add(T.snare(), BAR + k * S16 / 2, gain=0.15 + 0.03 * k)   # Wirbel
+T.add(T.riser(0.5, 9000), BAR - 0.05, gain=0.15)
+t0 = BAR + 0.47                                         # Schlussakkord
+T.add(T.boom(0.85, (57, 64, 69, 73, 76), 1.2, 3), t0)
+T.add(T.stab((45, 57, 61, 64, 69, 73, 76), 1.2, 4500, 2.5), t0, gain=0.33)
+for k, m in enumerate((81, 85, 88, 93)):
+    nn = int(0.5 * SR); T.add(np.sin(2*np.pi*note(m)*np.arange(nn)/SR) * env(nn, 0.003, 6), t0 + 0.05 + k * 0.06, pan=-0.45 + 0.3 * k, gain=0.09)
+T.write(f'{out}/spezialfrage.wav', fade=0.35)
