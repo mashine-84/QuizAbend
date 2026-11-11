@@ -18,6 +18,7 @@ const REVEAL_MS = 5000;        // … dann die Lösung
 const MATCH_STEP_MS = 2200;    // Zuordnen: Paar für Paar auflösen
 const SCORES_MS = 6000;
 const SCORES_EVERY = Number(process.env.RANGLISTE) || 5; // Rangliste nur alle X Fragen (und am Blockende)
+const OPENING_MS = 22500;      // Intro beim Spielstart (passt zur Intro-Musik: 12 Takte bei 128 BPM)
 const BLOCK_MS = 4500;         // Ankündigung eines neuen Frageblocks
 const SPECIAL_MS = 3500;       // Animation "Spezialfrage"
 
@@ -308,8 +309,30 @@ function startGame() {
   for (const p of players.values()) { p.score = 0; p.streak = 0; }
   state = newGameState();
   state.questions = questions;
-  nextQuestion();
+  state.opening = openingInfo(questions);
+  setPhase('opening', OPENING_MS, nextQuestion);
   return true;
+}
+
+// Was erwartet uns heute? Kategorien gemischt, damit die Reihenfolge nichts verrät
+function openingInfo(questions) {
+  const blocks = [];
+  questions.forEach(q => { blocks[q.block] = (blocks[q.block] || 0) + 1; });
+  const cats = shuffle([...new Set(questions.map(q => q.category).filter(Boolean))]);
+  const T = [
+    ['choice', '❓', 'Quizfragen', q => q.kind === 'choice' && !q.image && !q.video && !q.audio],
+    ['image', '🖼️', 'Bilderrätsel', q => q.image && !q.video && !q.audio],
+    ['estimate', '🔢', 'Schätzfragen', q => q.kind === 'estimate' && !q.image && !q.video && !q.audio],
+    ['match', '🔗', 'Zuordnung', q => q.kind === 'match' && !q.video && !q.audio],
+    ['video', '👀', 'Seh-Test', q => q.video],
+    ['audio', '🎧', 'Soundcheck', q => q.audio],
+  ];
+  const types = T.filter(([, , , f]) => questions.some(f)).map(([id, icon, label]) => ({ id, icon, label }));
+  return {
+    blocks: blocks.filter(Boolean), questions: questions.length, categories: cats, types,
+    special: settings.special && settings.special.on ? settings.special.mult : null,
+    pause: settings.pause && settings.pause.on && blocks.length > 1 ? settings.pause.minutes : null,
+  };
 }
 
 function nextQuestion() {
@@ -483,6 +506,7 @@ function advance() {
   state.frozen = null;
   switch (state.phase) {
     case 'lobby': if (connectedCount() >= MIN_PLAYERS) startGame(); break;
+    case 'opening': nextQuestion(); break;
     case 'block': beginQuestion(); break;
     case 'intro': afterIntro(); break;
     case 'media': afterMedia(); break;
@@ -531,6 +555,7 @@ function baseView() {
     players: ranking(), qNum: state.idx + 1, qTotal: state.questions.length,
     remainingMs: state.frozen ? state.frozen.remaining : state.phaseEnds ? Math.max(0, state.phaseEnds - Date.now()) : 0, phaseMs: state.phaseMs,
     frozen: !!state.frozen, system: systemMsg,
+    opening: state.phase === 'opening' ? state.opening : null,
     version: VERSION, packs: packSummary(), avatars: AVATARS,
     block: q ? { num: q.block + 1, total: q.blockCount, names: q.blockNames, q: q.blockQ, len: q.blockLen } : null,
     nextBlock: (() => { const n = state.questions[state.idx + 1]; return n && q && n.block !== q.block ? { num: n.block + 1, total: n.blockCount, names: n.blockNames } : null; })(),
@@ -707,18 +732,19 @@ function serveMedia(req, res, rel) {
   });
 }
 
-// Musik für die letzte Pausenminute: eigene Datei sounds/pause-finale.* hat Vorrang vor sounds/standard/
-function pauseMusicFile() {
+// Musik (Intro, letzte Pausenminute): eigene Datei sounds/<name>.* hat Vorrang vor sounds/standard/
+const MUSIC = ['pause-finale', 'quiz-intro'];
+function musicFile(name) {
   for (const dir of [SOUNDS_DIR, path.join(SOUNDS_DIR, 'standard')]) {
     for (const ext of Object.keys(AUDIO_TYPES)) {
-      const f = path.join(dir, 'pause-finale' + ext);
+      const f = path.join(dir, name + ext);
       if (fs.existsSync(f)) return f;
     }
   }
   return null;
 }
-function servePauseMusic(res) {
-  const f = pauseMusicFile();
+function serveMusic(res, name) {
+  const f = MUSIC.includes(name) && musicFile(name);
   if (!f) { res.writeHead(404); res.end(); return; }
   res.writeHead(200, { 'Content-Type': AUDIO_TYPES[path.extname(f).toLowerCase()], 'Cache-Control': 'no-store' });
   fs.createReadStream(f).pipe(res);
@@ -749,7 +775,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && p === '/tv') return serveFile(res, 'tv.html');
   if (req.method === 'GET' && p === '/qr.js') return serveFile(res, 'qr.js');
   if (req.method === 'GET' && p.startsWith('/media/')) return serveMedia(req, res, p.slice(7));
-  if (req.method === 'GET' && p === '/sounds/pause-finale') return servePauseMusic(res);
+  if (req.method === 'GET' && p.startsWith('/sounds/')) return serveMusic(res, p.slice(8));
 
   if (req.method === 'GET' && p === '/events') {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
