@@ -28,6 +28,12 @@ BROWSER="$(command -v chromium || command -v chromium-browser)"
 echo "Starte $BROWSER $URL"
 EXTRA=""
 [ -n "$WAYLAND_DISPLAY" ] && EXTRA="--ozone-platform=wayland"
+# Ton-Notlösung aus kiosk-cage.sh: direkt per ALSA auf HDMI statt über PipeWire
+if [ -n "$QUIZ_ALSA_DEVICE" ]; then
+  export PULSE_SERVER=unix:/nonexistent   # PulseAudio/PipeWire für Chromium abschalten -> ALSA
+  EXTRA="$EXTRA --alsa-output-device=$QUIZ_ALSA_DEVICE"
+  echo "Ton per ALSA: $QUIZ_ALSA_DEVICE"
+fi
 # shellcheck disable=SC2086
 exec "$BROWSER" $EXTRA --kiosk --noerrdialogs --disable-infobars --no-first-run \
   --password-store=basic --disable-session-crashed-bubble \
