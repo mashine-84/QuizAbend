@@ -393,8 +393,9 @@ function openingTick() {
 
 function renderBlock() {
   const b = S.block;
-  app.innerHTML = topbar(`<span class="pill">Block ${S.block.num} / ${S.block.total}</span>`) + `<div class="intro">
-    <div class="icat">Block ${b.num} von ${b.total}</div>
+  const one = b.total === 1;
+  app.innerHTML = topbar(one ? '' : `<span class="pill">Block ${b.num} / ${b.total}</span>`) + `<div class="intro">
+    <div class="icat">${one ? `${b.len} Fragen` : `Block ${b.num} von ${b.total}`}</div>
     <div class="ilabel">${b.num === 1 ? 'Los geht\'s!' : b.num === b.total ? 'Letzter Block!' : 'Nächster Block!'}</div>
     <div class="bnames">${b.names.map(n => `<span>${esc(n)}</span>`).join('')}</div></div>`;
 }
