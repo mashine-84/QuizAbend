@@ -250,7 +250,7 @@ function render() {
     if (me.isVip) main.querySelector('.center').insertAdjacentHTML('beforeend', '<button class="btn ghost" style="margin-top:3vh" onclick="advance()">⏭ Intro überspringen</button>');
     return;
   }
-  if (S.phase === 'block') return renderInfo('📦', `Block ${S.block.num} von ${S.block.total}`, `${esc(S.block.names.join(', '))}<br>Schau auf den Fernseher!`);
+  if (S.phase === 'block') return renderInfo('📦', S.block.total > 1 ? `Block ${S.block.num} von ${S.block.total}` : 'Los geht\'s!', `${esc(S.block.names.join(', '))}<br>Schau auf den Fernseher!`);
   if (S.phase === 'special') return renderInfo('⭐', 'Spezialfrage!', `Diese Frage zählt <b>×${S.special.mult}</b> Punkte!<br>Schau auf den Fernseher 👀`, 'special');
   if (S.phase === 'intro') return renderInfo(S.question.icon, S.question.label, `Kategorie: ${esc(S.question.category)}<br>Gleich geht's los – schau auf den Fernseher!`);
   if (S.phase === 'media') return S.question.audio

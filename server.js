@@ -354,7 +354,7 @@ function nextQuestion() {
   state.step = 0;
   state.special = false;
   const q = currentQuestion(), prev = state.questions[state.idx - 1];
-  if (q.blockCount > 1 && (!prev || prev.block !== q.block)) setPhase('block', BLOCK_MS, beginQuestion); // neuer Block
+  if (!prev || prev.block !== q.block) setPhase('block', BLOCK_MS, beginQuestion); // neuer Block (auch wenn es nur einen gibt)
   else beginQuestion();
 }
 
