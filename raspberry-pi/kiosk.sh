@@ -34,4 +34,4 @@ exec "$BROWSER" $EXTRA --kiosk --noerrdialogs --disable-infobars --no-first-run 
   --check-for-update-interval=31536000 --disk-cache-dir=/tmp/quizabend-cache \
   --disable-background-networking --disable-component-update --disable-sync \
   --disable-features=Translate,MediaRouter,OptimizationHints --no-default-browser-check \
-  --renderer-process-limit=1 --disable-extensions --lang=de --accept-lang=de-DE,de "$URL"
+  --renderer-process-limit=1 --disable-extensions --autoplay-policy=no-user-gesture-required --lang=de --accept-lang=de-DE,de "$URL"

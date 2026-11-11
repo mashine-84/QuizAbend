@@ -146,6 +146,11 @@
   html.lite .special { background: #14102b; }
   html.lite .burst { display: none; }
 
+  /* Videofrage */
+  .vwrap { position: fixed; inset: 0; background: #000; display: grid; place-items: center; z-index: 40; }
+  .vwrap video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+  .vhint { position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%); background: rgba(0,0,0,.75); color: #fff; padding: 1vh 2vw; border-radius: 99px; font-size: 1.6vw; font-weight: 700; z-index: 41; }
+
   /* Rangliste */
   .board { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 2vh; }
   .board h2 { font-size: 3.6vw; font-weight: 900; margin-bottom: 3vh; }
@@ -225,12 +230,12 @@ function qTop() {
   const b = S.block && S.block.total > 1 ? `Block ${S.block.num}/${S.block.total} · ` : '';
   return topbar(`<span id="spb"></span>${badge(S.question)}<span class="pill">${b}Frage ${S.qNum} / ${S.qTotal}</span>`);
 }
-const IN_Q = ['intro', 'preview', 'question', 'special', 'votes', 'reveal'];
+const IN_Q = ['intro', 'video', 'preview', 'question', 'special', 'votes', 'reveal'];
 const fmt = n => Math.abs(n) >= 10000 ? n.toLocaleString('de-DE') : String(n).replace('.', ',');
 
 function render() {
   const inQ = IN_Q.includes(S.phase);
-  const stage = S.phase === 'intro' || S.phase === 'preview' ? S.phase : 'main';
+  const stage = ['intro', 'video', 'preview'].includes(S.phase) ? S.phase : 'main';
   const key = inQ ? `Q:${S.qNum}:${stage}` : S.phase + ':' + S.qNum;
   const fresh = key !== lastKey;
   if (S.remainingMs && (S.phase !== lastPhase || Math.abs(Date.now() + S.remainingMs - deadline) > 1200)) deadline = Date.now() + S.remainingMs;
@@ -240,6 +245,7 @@ function render() {
   if (S.phase === 'lobby') { prevScores = {}; return renderLobby(); }
   if (S.phase === 'block') return fresh ? renderBlock() : null;
   if (stage === 'intro') return fresh ? renderIntro() : null;
+  if (stage === 'video') return fresh ? renderVideo() : null;
   if (stage === 'preview') return fresh ? renderPreview() : null;
   if (inQ) return fresh ? renderMain() : updateMain();
   { const ov = document.getElementById('special'); if (ov && S.phase !== 'special') ov.remove(); }
@@ -312,6 +318,27 @@ function renderIntro() {
   app.innerHTML = qTop() + `<div class="intro">
     <div class="iicon">${q.icon || '❓'}</div><div class="ilabel">${esc(q.label)}</div>
     <div class="icat">${esc(q.category)}</div><div class="inum" id="inum"></div></div>`;
+}
+
+// ---------- Videofrage: Video im Vollbild, danach die Frage ----------
+function videoMsg(event, extra) { fetch('/api/video', { method: 'POST', body: JSON.stringify({ role: 'tv', event, ...extra }) }); }
+function renderVideo() {
+  const q = S.question;
+  app.innerHTML = `<div class="vwrap"><video id="vid" src="${q.video}" autoplay playsinline preload="auto"></video>
+    <div class="vhint" id="vhint" style="display:none">🔇 Ton blockiert – einmal klicken oder M drücken</div></div>`;
+  const v = document.getElementById('vid');
+  v.addEventListener('loadedmetadata', () => videoMsg('duration', { seconds: v.duration, position: v.currentTime }));
+  v.addEventListener('ended', () => videoMsg('ended'));
+  v.addEventListener('error', () => { app.innerHTML += '<div class="vhint">⚠️ Video konnte nicht abgespielt werden</div>'; setTimeout(() => videoMsg('error'), 2500); });
+  // Browser blockiert Autoplay mit Ton? Dann stumm starten und auf Klick/Taste den Ton einschalten
+  v.play().catch(() => {
+    v.muted = true;
+    v.play().catch(() => {});
+    document.getElementById('vhint').style.display = '';
+    const unmute = () => { v.muted = false; const h = document.getElementById('vhint'); if (h) h.remove(); };
+    addEventListener('click', unmute, { once: true });
+    addEventListener('keydown', function k(e) { if (e.key === 'm' || e.key === 'M') { unmute(); removeEventListener('keydown', k); } });
+  });
 }
 
 // ---------- Zuordnen: erst nur die Begriffe ----------

@@ -1,0 +1,8 @@
+{
+  "paket": "Videotest",
+  "fragen": [
+    {"video": "zahlen-test.mp4", "frage": "Welche Zahl wurde in Rot angezeigt?", "antworten": ["7", "3", "5", "2"], "schwierigkeit": 1},
+    {"video": "zahlen-test.mp4", "frage": "Wie viele Pieptöne waren zu hören?", "schaetzen": 8, "schwierigkeit": 2},
+    {"video": "zahlen-test.mp4", "frage": "Welche Farbe hatte welche Zahl?", "zuordnen": {"7": "Rot", "3": "Gelb", "2": "Grün", "4": "Blau"}, "schwierigkeit": 3}
+  ]
+}

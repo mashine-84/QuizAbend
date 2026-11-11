@@ -29,6 +29,8 @@ const MIN_PLAYERS = 2;
 
 const FRAGEN_DIR = path.join(__dirname, 'fragen');
 const SETTINGS_FILE = path.join(__dirname, 'einstellungen.json');
+const VIDEO_TYPES = { '.mp4': 'video/mp4', '.m4v': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/mp4' };
+const VIDEO_MAX_MS = 5 * 60 * 1000; // Sicherheitsnetz, falls der Fernseher das Video-Ende nicht meldet
 const IMAGE_TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml' };
 
 const VERSION = String(Date.now()); // ändert sich bei jedem Neustart -> Bildschirme laden neu
@@ -56,10 +58,10 @@ function jsonErrorText(err, text) {
   return (line ? `Zeile ${line}: ` : '') + 'JSON-Fehler – fehlt ein Komma, eine Klammer oder ein Anführungszeichen?';
 }
 
-function resolveImage(dir, name) {
-  for (const rel of [path.join(dir, name), path.join(dir, 'bilder', name)]) {
+function resolveImage(dir, name, sub = 'bilder', types = IMAGE_TYPES) {
+  for (const rel of [path.join(dir, name), path.join(dir, sub, name)]) {
     const full = path.join(FRAGEN_DIR, rel);
-    if (full.startsWith(FRAGEN_DIR) && IMAGE_TYPES[path.extname(full).toLowerCase()] && fs.existsSync(full))
+    if (full.startsWith(FRAGEN_DIR) && types[path.extname(full).toLowerCase()] && fs.existsSync(full))
       return '/media/' + rel.split(path.sep).map(encodeURIComponent).join('/');
   }
   return null;
@@ -74,6 +76,10 @@ function normalizeQuestion(q, dir, packName, packLevel) {
   if (q.bild) {
     base.image = resolveImage(dir, String(q.bild));
     if (!base.image) throw new Error(`Bild "${q.bild}" nicht gefunden (in den Ordner "bilder" neben der Datei legen)`);
+  }
+  if (q.video) {
+    base.video = resolveImage(dir, String(q.video), 'videos', VIDEO_TYPES);
+    if (!base.video) throw new Error(`Video "${q.video}" nicht gefunden (mp4/webm in den Ordner "videos" neben der Datei legen)`);
   }
   if (q.zuordnen) {
     const pairs = Array.isArray(q.zuordnen) ? q.zuordnen : Object.entries(q.zuordnen);
@@ -245,7 +251,8 @@ function prepareQuestion(q) {
     out.right = shuffle(pairs.map(p => p[1]));
     out.solution = pairs.map(p => out.right.indexOf(p[1])); // linker Index -> rechter Index
   }
-  if (q.kind === 'match') { out.label = 'Zuordnung'; out.icon = '🔗'; }
+  if (q.video) { out.label = 'Videofrage' + (q.kind === 'estimate' ? ' · Schätzfrage' : q.kind === 'match' ? ' · Zuordnung' : ''); out.icon = '🎬'; }
+  else if (q.kind === 'match') { out.label = 'Zuordnung'; out.icon = '🔗'; }
   else if (q.kind === 'estimate') { out.label = q.image ? 'Bilderrätsel · Schätzfrage' : 'Schätzfrage'; out.icon = q.image ? '🖼️' : '🔢'; }
   else if (q.image) { out.label = 'Bilderrätsel'; out.icon = '🖼️'; }
   out.timeMs = q.timeMs || (q.kind === 'match' ? MATCH_TIME_MS : QUESTION_TIME_MS);
@@ -301,6 +308,11 @@ function beginQuestion() {
 }
 
 function afterIntro() {
+  if (currentQuestion().video) setPhase('video', VIDEO_MAX_MS, afterVideo); // erst das Video, dann die Frage
+  else afterVideo();
+}
+
+function afterVideo() {
   if (currentQuestion().kind === 'match') setPhase('preview', PREVIEW_MS, startAnswering);
   else startAnswering();
 }
@@ -419,6 +431,7 @@ function advance() {
     case 'lobby': if (connectedCount() >= MIN_PLAYERS) startGame(); break;
     case 'block': beginQuestion(); break;
     case 'intro': afterIntro(); break;
+    case 'video': afterVideo(); break;
     case 'preview': startAnswering(); break;
     case 'question': endAnswering(); break;
     case 'special': showAnswers(); break;
@@ -466,9 +479,10 @@ function baseView() {
     block: q ? { num: q.block + 1, total: q.blockCount, names: q.blockNames } : null,
     special: state.special && ['special', 'votes', 'reveal'].includes(ph) ? { mult: settings.special.mult } : null,
   };
-  if (q && ['intro', 'preview', 'question', 'special', 'votes', 'reveal'].includes(ph)) {
+  if (q && ['intro', 'video', 'preview', 'question', 'special', 'votes', 'reveal'].includes(ph)) {
     const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category }; // Schwierigkeit wird im Spiel nicht verraten
-    if (ph !== 'intro' && q.kind === 'match') vq.left = q.left;
+    if (ph === 'video') vq.video = q.video;
+    if (ph !== 'intro' && ph !== 'video' && q.kind === 'match') vq.left = q.left;
     if (['question', 'special', 'votes', 'reveal'].includes(ph)) {
       vq.text = q.text; vq.image = q.image;
       if (q.kind === 'choice') vq.answers = q.answers;
@@ -561,15 +575,26 @@ function serveFile(res, file) {
   });
 }
 
-function serveMedia(res, rel) {
+function serveMedia(req, res, rel) {
   let full;
   try { full = path.normalize(path.join(FRAGEN_DIR, decodeURIComponent(rel))); } catch (_) { full = ''; }
-  const type = IMAGE_TYPES[path.extname(full).toLowerCase()];
+  const ext = path.extname(full).toLowerCase();
+  const type = IMAGE_TYPES[ext] || VIDEO_TYPES[ext];
   if (!full.startsWith(FRAGEN_DIR + path.sep) || !type) { res.writeHead(404); res.end(); return; }
-  fs.readFile(full, (err, buf) => {
-    if (err) { res.writeHead(404); res.end(); return; }
-    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'max-age=3600' });
-    res.end(buf);
+  fs.stat(full, (err, st) => {
+    if (err || !st.isFile()) { res.writeHead(404); res.end(); return; }
+    // Videos in Stücken ausliefern (Range), damit sie sofort starten und flüssig laufen
+    const m = /bytes=(\d*)-(\d*)/.exec(req.headers.range || '');
+    if (m && (m[1] || m[2])) {
+      let start = m[1] ? Number(m[1]) : Math.max(0, st.size - Number(m[2]));
+      let end = m[1] && m[2] ? Math.min(Number(m[2]), st.size - 1) : st.size - 1;
+      if (start >= st.size || start > end) { res.writeHead(416, { 'Content-Range': `bytes */${st.size}` }); res.end(); return; }
+      res.writeHead(206, { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Content-Range': `bytes ${start}-${end}/${st.size}`, 'Content-Length': end - start + 1, 'Cache-Control': 'max-age=3600' });
+      fs.createReadStream(full, { start, end }).pipe(res);
+    } else {
+      res.writeHead(200, { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Content-Length': st.size, 'Cache-Control': 'max-age=3600' });
+      fs.createReadStream(full).pipe(res);
+    }
   });
 }
 
@@ -597,7 +622,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && (p === '/' || p === '/play')) return serveFile(res, 'play.html');
   if (req.method === 'GET' && p === '/tv') return serveFile(res, 'tv.html');
   if (req.method === 'GET' && p === '/qr.js') return serveFile(res, 'qr.js');
-  if (req.method === 'GET' && p.startsWith('/media/')) return serveMedia(res, p.slice(7));
+  if (req.method === 'GET' && p.startsWith('/media/')) return serveMedia(req, res, p.slice(7));
 
   if (req.method === 'GET' && p === '/events') {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
@@ -651,6 +676,19 @@ const server = http.createServer(async (req, res) => {
     if (!answer) return json(res, 409, { ok: false });
     state.answers[pl.id] = { ...answer, at: Date.now() };
     if (allAnswered()) endAnswering(); else broadcast();
+    return json(res, 200, { ok: true });
+  }
+
+  if (req.method === 'POST' && p === '/api/video') {
+    const body = await readBody(req);
+    if (body.role === 'tv' && state.phase === 'video') {
+      if (body.event === 'ended' || body.event === 'error') afterVideo();
+      else if (body.event === 'duration' && Number(body.seconds) > 0) {
+        // Sicherheitsnetz an die echte Länge anpassen (+5 s Puffer)
+        const left = Math.min(VIDEO_MAX_MS, (Number(body.seconds) - (Number(body.position) || 0) + 5) * 1000);
+        setPhase('video', left, afterVideo);
+      }
+    }
     return json(res, 200, { ok: true });
   }
 
