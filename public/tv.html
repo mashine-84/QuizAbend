@@ -190,6 +190,10 @@
   .ovbox { text-align: center; }
   .ovicon { font-size: 9vw; line-height: 1.1; }
   .ovtitle { font-size: 4vw; font-weight: 900; margin: 1vh 0; }
+  .ovsub { font-size: 2.4vw; font-weight: 700; color: var(--muted); }
+  .reload { width: 1em; height: 1em; display: block; color: var(--c); }
+  .spin { display: inline-block; animation: spin 1.2s linear infinite; }
+  html.lite .spin { animation: spin 1.2s linear infinite !important; }
 
   /* Rangliste */
   .board { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 2vh; }
@@ -543,11 +547,14 @@ function frozenOverlay() {
 }
 
 // ---------- Systemmeldung (Update, Neustart, Ausschalten) ----------
+// Update-Symbol: zwei runde Pfeile, dreht sich während des Updates
+const RELOAD_SVG = '<svg class="reload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>';
+const sysIcon = i => i === 'update' ? `<span class="spin">${RELOAD_SVG}</span>` : i;
 function systemOverlay() {
   let ov = document.getElementById('sysov');
   if (S.system && !ov) {
     ov = document.createElement('div'); ov.id = 'sysov'; ov.className = 'overlay sys';
-    ov.innerHTML = `<div class="ovbox"><div class="ovicon">${S.system.icon}</div><div class="ovtitle">${esc(S.system.text)}</div></div>`;
+    ov.innerHTML = `<div class="ovbox"><div class="ovicon">${sysIcon(S.system.icon)}</div><div class="ovtitle">${esc(S.system.text)}</div>${S.system.sub ? `<div class="ovsub">${esc(S.system.sub)}</div>` : ''}</div>`;
     document.body.appendChild(ov);
   } else if (!S.system && ov) ov.remove();
 }
