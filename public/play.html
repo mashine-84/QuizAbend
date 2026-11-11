@@ -233,6 +233,11 @@ function render() {
   if (S.phase !== 'lobby') ui.settings = false;
   if (S.phase === 'lobby') return ui.settings && me.isVip ? renderSettings() : renderLobby();
   if (S.phase === 'pause') return renderPause();
+  if (S.phase === 'opening') {
+    renderInfo('🎬', 'Gleich geht\'s los!', 'Schau auf den Fernseher – dort siehst du, was euch heute erwartet.');
+    if (me.isVip) main.querySelector('.center').insertAdjacentHTML('beforeend', '<button class="btn ghost" style="margin-top:3vh" onclick="advance()">⏭ Intro überspringen</button>');
+    return;
+  }
   if (S.phase === 'block') return renderInfo('📦', `Block ${S.block.num} von ${S.block.total}`, `${esc(S.block.names.join(', '))}<br>Schau auf den Fernseher!`);
   if (S.phase === 'special') return renderInfo('⭐', 'Spezialfrage!', `Diese Frage zählt <b>×${S.special.mult}</b> Punkte!<br>Schau auf den Fernseher 👀`, 'special');
   if (S.phase === 'intro') return renderInfo(S.question.icon, S.question.label, `Kategorie: ${esc(S.question.category)}<br>Gleich geht's los – schau auf den Fernseher!`);

@@ -46,6 +46,7 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 - **Autostart abschalten:** `sudo systemctl disable quizabend` und `rm ~/.config/autostart/quizabend-kiosk.desktop`
 
 ## Ablauf und Punkte
+- **🎬 Intro beim Spielstart (22 Sekunden, mit Musik):** Der Fernseher zeigt, was die Runde bringt: Anzahl Blöcke und Fragen, die Kategorien (gemischt, die Reihenfolge wird nicht verraten), die Fragearten, ob es eine Spezialfrage gibt und wer mitspielt. Der 👑-Spieler kann das Intro am Handy überspringen.
 - Ein Spiel besteht aus einem oder mehreren **Frageblöcken**, jeder mit eigener Paketauswahl und Fragenanzahl.
 - **Schwierigkeit:** Am Anfang kommen fast nur leichte Fragen, schwere werden mit jeder Frage wahrscheinlicher, über alle Blöcke hinweg:
 
@@ -143,8 +144,12 @@ Achte auf die Kommas zwischen den Einträgen. Neue oder geänderte Dateien ersch
   Das Quiz schneidet den Ausschnitt selbst zu und dreht ihn um, die Datei bleibt unverändert. Verwende nur Musik, die du privat nutzen darfst.
 - **Testen:** Die Pakete **Allgemein → Seh-Test (Testvideo)** und **Allgemein → Soundcheck (Test)** enthalten selbst erzeugte Testclips (Zahlen-Video, zwei Volkslied-Melodien, eine davon rückwärts). Damit siehst bzw. hörst du sofort, ob Bild und Ton laufen. Für normale Spiele kannst du sie abwählen.
 
-## Eigene Pausenmusik
-In der letzten Minute jeder Pause spielt der Fernseher `sounds/standard/pause-finale.mp3`, eine selbst erzeugte Spannungsmusik (60 Sekunden, endet mit einem Schlag pro Sekunde zum Countdown).
+## Eigene Musik (Intro und Pause)
+Zwei Musikstücke sind dabei, beide selbst erzeugt und frei nutzbar:
+- `sounds/standard/quiz-intro.mp3`: Intro beim Spielstart (22,5 Sekunden, 128 BPM, die Folien wechseln im Takt).
+- `sounds/standard/pause-finale.mp3`: Spannungsmusik in der letzten Pausenminute (60 Sekunden, endet mit einem Schlag pro Sekunde zum Countdown).
+
+Für beide gilt dasselbe, hier am Beispiel der Pausenmusik. Für das Intro heißt die Datei `quiz-intro.mp3`; ein längerer Song wird nach 22,5 Sekunden ausgeblendet.
 
 **Eigenen Song verwenden:** Leg ihn als `sounds/pause-finale.mp3` in den Quiz-Ordner, also neben den Ordner `standard`. Erlaubt sind auch `.m4a`, `.ogg` und `.wav`. Diese Datei hat Vorrang. Sie wird von Updates nicht angefasst, weil Git sie ignoriert. Löschst du sie, ist wieder die Standardmusik dran.
 - **Vom Laptop auf den Pi kopieren:** `scp mein-song.mp3 <benutzer>@quizabend.local:QuizAbend/sounds/pause-finale.mp3`. Ein Neustart ist nicht nötig, die nächste Pause lädt die neue Datei.

@@ -216,6 +216,30 @@
   /* Schonender Modus für schwache Geräte (z. B. Raspberry Pi 3): /tv?lite=1 */
   html.lite body { background: var(--bg); }
   body.nocursor, body.nocursor * { cursor: none !important; }
+  /* Intro beim Spielstart (einfache Animationen, laufen auch im schonenden Modus am Pi) */
+  .opening { flex: 1; position: relative; }
+  .os { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 2.5vh; text-align: center; padding: 0 6vw; }
+  .os.on { display: flex; }
+  .ologo { font-size: 9vw; font-weight: 900; letter-spacing: -0.03em; --an: ozoom .8s cubic-bezier(.2,1.4,.4,1) both; }
+  .ologo span { color: var(--c); }
+  .obig { font-size: 17vw; font-weight: 900; line-height: .9; color: var(--c); font-variant-numeric: tabular-nums; --an: opop .6s cubic-bezier(.2,1.6,.4,1) both; }
+  .olabel { font-size: 4.5vw; font-weight: 900; --an: oup .5s .2s both; }
+  .osub { font-size: 2.3vw; color: var(--muted); font-weight: 800; --an: oup .5s .5s both; }
+  .ochips { display: flex; flex-wrap: wrap; gap: 1.6vh 1.2vw; justify-content: center; max-width: 86vw; }
+  .ochips span { background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.18); border-radius: 99px; padding: 1.3vh 2.2vw; font-size: 2.6vw; font-weight: 800; }
+  .ochips.many span { font-size: 1.9vw; padding: 1vh 1.6vw; }
+  .ochips .more { background: none; color: var(--muted); }
+  .otypes { display: flex; gap: 4vw; justify-content: center; flex-wrap: wrap; }
+  .otypes span { display: flex; flex-direction: column; align-items: center; gap: 1vh; font-size: 2.2vw; font-weight: 800; }
+  .otypes i { font-style: normal; font-size: 7vw; line-height: 1; }
+  .ospecial { margin-top: 4vh; font-size: 2.8vw; font-weight: 900; color: var(--c); }
+  .oplayers { display: flex; gap: 1.5vw; justify-content: center; flex-wrap: wrap; max-width: 90vw; }
+  .oplayers span { display: flex; flex-direction: column; align-items: center; gap: .6vh; background: rgba(255,255,255,.08); border: 2px solid var(--pc); border-radius: 2vh; padding: 2vh 1.6vw; font-size: 2vw; font-weight: 800; min-width: 9vw; }
+  .oplayers i { font-style: normal; font-size: 5.5vw; line-height: 1; }
+  .opening .anim, html.lite .opening .anim { animation: var(--an) !important; }
+  @keyframes opop { from { transform: scale(.3); opacity: 0; } }
+  @keyframes oup { from { transform: translateY(4vh); opacity: 0; } }
+  @keyframes ozoom { from { transform: scale(.5); opacity: 0; } }
   html.lite *, html.lite *::before, html.lite *::after { animation: none !important; transition: none !important; box-shadow: none !important; text-shadow: none !important; }
 </style>
 </head>
@@ -286,6 +310,7 @@ function render() {
 
   document.getElementById('status').style.display = (!KIOSK && (S.phase === 'lobby' || S.phase === 'end')) ? '' : 'none';
   if (S.phase === 'lobby') { prevScores = {}; return renderLobby(); }
+  if (S.phase === 'opening') return fresh ? renderOpening() : null;
   if (S.phase === 'block') return fresh ? renderBlock() : null;
   if (S.phase === 'pause') return fresh ? renderBlockPause() : null;
   if (stage === 'intro') return fresh ? renderIntro() : null;
@@ -302,6 +327,46 @@ function packLine() {
   if (!k.questions) return `<div class="packs warn">⚠️ Keine Fragen aktiv – 👑 wählt am Handy unter ⚙️ Einstellungen Fragenpakete aus</div>`;
   const bl = k.blocks.filter(b => b.plays > 0);
   return `<div class="packs">📚 ${bl.length > 1 ? `${bl.length} Blöcke · ` : ''}${k.questions} Fragen${k.special && k.special.on ? ` · ⭐ Spezialfrage ×${k.special.mult}` : ''}${k.errors ? ` · <span class="warnc">⚠️ ${k.errors} Fehler in Fragendateien (Details am Handy des 👑)</span>` : ''}</div>`;
+}
+
+// ---------- Intro beim Spielstart: was erwartet uns heute? ----------
+// Folien im Takt der Intro-Musik (128 BPM, 1 Takt = 1,875 s)
+const OPEN_SLIDES = [0, 3.75, 7.5, 11.25, 15, 18.75, 20.625];
+function renderOpening() {
+  const o = S.opening, nb = o.blocks.length;
+  const same = o.blocks.every(x => x === o.blocks[0]);
+  const cats = o.categories.slice(0, 18), more = o.categories.length - cats.length;
+  const players = S.players.filter(p => p.connected);
+  const an = (name, dur, delay) => `--an:${name} ${dur}s ${delay || 0}s cubic-bezier(.2,1.4,.4,1) both`;
+  app.innerHTML = topbar(`<span class="pill">Gleich geht's los</span>`) + `<div class="opening">
+    <div class="os"><div class="ologo anim">Quiz<span>Abend</span></div><div class="osub anim">Heute Abend erwartet euch …</div></div>
+    <div class="os"><div class="obig anim" data-count="${nb}">0</div><div class="olabel anim">${nb === 1 ? 'Block' : 'Blöcke'}</div>
+      ${nb > 1 ? `<div class="osub anim">${same ? `je ${o.blocks[0]} Fragen` : o.blocks.join(' + ') + ' Fragen'}${o.pause != null ? ` · 🍺 Pause nach jedem Block` : ''}</div>` : ''}</div>
+    <div class="os"><div class="obig anim" data-count="${o.questions}">0</div><div class="olabel anim">Fragen</div><div class="osub anim">Schnelle Antworten bringen mehr Punkte ⚡</div></div>
+    <div class="os"><div class="olabel anim" style="${an('oup', .5)}">Das kommt dran</div>
+      <div class="ochips ${cats.length > 10 ? 'many' : ''}">${cats.map((c, i) => `<span class="anim" style="${an('opop', .45, .3 + i * (2.4 / Math.max(cats.length, 1)))}">${esc(c)}</span>`).join('')}${more > 0 ? `<span class="anim more" style="${an('opop', .45, 2.8)}">+ ${more} weitere</span>` : ''}</div>
+      <div class="osub anim" style="${an('oup', .5, 2.9)}">Reihenfolge? Wird nicht verraten 🤫</div></div>
+    <div class="os"><div class="olabel anim" style="${an('oup', .4)}">So wird gefragt</div><div class="otypes">${o.types.map((t, i) => `<span class="anim" style="${an('opop', .5, i * .25)}"><i>${t.icon}</i>${esc(t.label)}</span>`).join('')}</div>
+      ${o.special ? `<div class="ospecial anim" style="${an('opop', .6, .4 + o.types.length * .25)}">⭐ Irgendwo versteckt: eine Spezialfrage mit ×${o.special} Punkten</div>` : ''}</div>
+    <div class="os"><div class="olabel anim" style="${an('oup', .4)}">Mit dabei</div>
+      <div class="oplayers">${players.map((p, i) => `<span class="anim" style="--pc:${p.color};${an('opop', .45, .15 + i * .12)}"><i>${p.avatar}</i>${esc(p.name)}</span>`).join('')}</div></div>
+    <div class="os"><div class="ologo anim" style="${an('ozoom', .6)}">Viel Glück! 🍀</div></div>
+  </div>`;
+  openingTick();
+}
+function openingTick() {
+  const slides = document.querySelectorAll('.opening .os');
+  if (!slides.length) return;
+  const total = (S.phaseMs || 22500) / 1000;
+  const left = (S.frozen ? S.remainingMs : Math.max(0, deadline - Date.now())) / 1000;
+  const t = total - left;
+  introMusic.lastLeft = left;
+  if (!S.frozen) introMusic.play(t, left);
+  let cur = 0; OPEN_SLIDES.forEach((x, i) => { if (t >= x) cur = i; });
+  slides.forEach((el, i) => el.classList.toggle('on', i === cur));
+  // Zahlen hochzählen
+  const n = slides[cur].querySelector('[data-count]');
+  if (n) { const p = Math.min(1, (t - OPEN_SLIDES[cur]) / 1.1); n.textContent = Math.round(Number(n.dataset.count) * (1 - Math.pow(1 - p, 3))); }
 }
 
 function renderBlock() {
@@ -329,6 +394,7 @@ function joinBox() {
 }
 
 function renderLobby() {
+  if (soundOn()) introMusic.load();                 // Intro-Musik schon mal laden
   const slots = [];
   for (let i = 0; i < S.maxPlayers; i++) {
     const p = S.players[i];
@@ -444,7 +510,7 @@ const sfx = {
 // ---------- Pause zwischen den Blöcken ----------
 function renderBlockPause() {
   const nb = S.nextBlock;
-  if (soundOn()) finale.load();
+  finale.buf = null; if (soundOn()) finale.load();
   app.innerHTML = topbar(`<span class="pill">Pause</span>`) + `<div class="intro bpause">
     <div class="floaty">${['🍺', '🚻', '🍕', '🥤', '🍿', '☕'].map((e, i) => `<span style="left:${8 + i * 16}%;animation-delay:${i * 0.7}s">${e}</span>`).join('')}</div>
     <div class="ilabel">☕ Pause!</div>
@@ -689,53 +755,62 @@ function renderEstimate(byId) {
   }).join('')}</div>`;
 }
 
-// ---------- Spannungsmusik in der letzten Pausenminute ----------
-// Datei: sounds/pause-finale.* (eigene) oder sounds/standard/pause-finale.mp3
-const FINALE_LEAD = 60;
-const finale = {
-  buf: null, loading: null, src: null, gain: null, lastLeft: 99,
-  load() {
-    if (this.buf || this.loading) return this.loading;
-    return this.loading = fetch('/sounds/pause-finale', { cache: 'no-store' })
-      .then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); })
-      .then(d => ctx().decodeAudioData(d)).then(b => { this.buf = b; })
-      .catch(() => {}).finally(() => { this.loading = null; });
-  },
-  // left = Restzeit der Pause in Sekunden
-  update(left) {
-    this.lastLeft = left;
-    if (!this.buf || S.frozen || !soundOn()) return;
-    const dur = this.buf.duration, lead = Math.min(FINALE_LEAD, dur);
-    if (left > lead + 0.3) return this.stop();       // Pause verlängert
-    if (this.src || left < 0.5) return;
-    try {
-      const c = ctx(), offset = Math.max(0, lead - left), now = c.currentTime + 0.03;
-      const src = c.createBufferSource(), g = c.createGain();
-      src.buffer = this.buf; src.connect(g).connect(c.destination);
-      g.gain.setValueAtTime(0.8, now);
-      if (dur > lead) {                              // längerer Song: zum Pausenende ausblenden
-        const end = now + left; g.gain.setValueAtTime(0.8, end - 1.5); g.gain.linearRampToValueAtTime(0, end);
-        src.start(now, offset); src.stop(end + 0.05);
-      } else src.start(now, offset);
-      src.onended = () => { if (this.src === src) this.src = null; };
-      this.src = src; this.gain = g;
-    } catch (_) {}
-  },
-  // Pause vorbei: bei natürlichem Ende ausklingen lassen, sonst (übersprungen) ausblenden
-  leave() {
-    if (this.lastLeft > 0.7) this.stop(); else { this.src = null; }
-    this.buf = null; this.lastLeft = 99;          // nächste Pause lädt neu (falls Datei getauscht)
-  },
-  stop() {
-    const src = this.src, g = this.gain; this.src = null;
-    if (!src) return;
-    try { const t = audioCtx.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(0, t + 0.4); src.stop(t + 0.45); } catch (_) {}
-  },
+// ---------- Musik: Intro beim Spielstart + Spannungsmusik in der letzten Pausenminute ----------
+// Dateien: sounds/<name>.* (eigene) oder sounds/standard/<name>.mp3
+function makeTrack(name) {
+  return {
+    buf: null, loading: null, src: null, gain: null, lastLeft: 99, started: false,
+    load() {
+      if (this.buf || this.loading) return this.loading;
+      return this.loading = fetch('/sounds/' + name, { cache: 'no-store' })
+        .then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); })
+        .then(d => ctx().decodeAudioData(d)).then(b => { this.buf = b; })
+        .catch(() => {}).finally(() => { this.loading = null; });
+    },
+    // ab Stelle offset (s) abspielen; left = Sekunden bis Phasenende
+    play(offset, left) {
+      if (this.started || !this.buf || S.frozen || !soundOn() || left < 0.5) return;
+      try {
+        const c = ctx(), now = c.currentTime + 0.03, dur = this.buf.duration;
+        const src = c.createBufferSource(), g = c.createGain();
+        src.buffer = this.buf; src.connect(g).connect(c.destination);
+        g.gain.setValueAtTime(0.8, now);
+        src.start(now, Math.max(0, offset));
+        if (dur - offset > left + 3) {               // viel längerer Song: zum Phasenende ausblenden
+          const end = now + left; g.gain.setValueAtTime(0.8, end - 1.5); g.gain.linearRampToValueAtTime(0, end); src.stop(end + 0.05);
+        }
+        src.onended = () => { if (this.src === src) this.src = null; };
+        this.src = src; this.gain = g; this.started = true;
+      } catch (_) {}
+    },
+    // Phase vorbei: bei natürlichem Ende ausklingen lassen, sonst (übersprungen) ausblenden
+    leave() {
+      if (this.lastLeft > 0.7) this.stop(); else this.src = null;
+      this.buf = null; this.started = false; this.lastLeft = 99;   // nächstes Mal neu laden (falls Datei getauscht)
+    },
+    stop() {
+      const src = this.src, g = this.gain; this.src = null; this.started = false;
+      if (!src) return;
+      try { const t = audioCtx.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(0, t + 0.4); src.stop(t + 0.45); } catch (_) {}
+    },
+  };
+}
+const introMusic = makeTrack('quiz-intro');
+const finale = makeTrack('pause-finale');
+// Pausenmusik: startet bei 1:00 (bzw. so, dass ein kürzerer Song genau zum Ende aufhört)
+finale.update = function (left) {
+  this.lastLeft = left;
+  if (!this.buf) return;
+  const lead = Math.min(60, this.buf.duration);
+  if (left > lead + 0.3) return this.stop();         // Pause verlängert
+  this.play(lead - left, left);
 };
 
 let lastTickSec = null;
 function tick() {
-  if ((!S || S.phase !== 'pause') && (finale.buf || finale.src)) finale.leave();
+  if ((!S || S.phase !== 'pause') && (finale.started || finale.src)) finale.leave();
+  if ((!S || S.phase !== 'opening') && (introMusic.started || introMusic.src)) introMusic.leave();
+  if (S && S.phase === 'opening') openingTick();
   if (S && S.phase === 'pause') {
     const el = document.getElementById('pcount');
     if (el && S.phaseMs) {
