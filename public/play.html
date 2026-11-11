@@ -41,6 +41,12 @@
   .hueip { width: 100%; box-sizing: border-box; margin: 8px 0; padding: 12px; border-radius: 12px; border: 0; font-size: 16px; }
   .huelist { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
   .huelist .btn { width: auto; margin: 0; }
+  .reload { width: 1em; height: 1em; display: block; }
+  .spin { display: inline-block; vertical-align: -0.12em; animation: spin 1.2s linear infinite; }
+  .sysb .reload { display: inline-block; vertical-align: -0.12em; }
+  .sysb .spin, .sysb > span { margin-right: .35em; }
+  .center .big .reload { margin: 0 auto; color: var(--c); }
+  @keyframes spin { to { transform: rotate(360deg); } }
   .later { font-size: 15px; opacity: .8; margin-top: 18px; }
   .res .gain { font-size: 30px; font-weight: 900; background: rgba(0,0,0,.18); padding: 8px 22px; border-radius: 99px; }
   .rank { font-size: 64px; font-weight: 900; color: var(--c); }
@@ -237,7 +243,7 @@ function render() {
   const newQuestion = lastQ !== S.qNum || lastPh !== 'question';
   lastKey = key; lastQ = S.qNum; lastPh = S.phase;
 
-  if (S.system) return renderInfo(S.system.icon, S.system.text, 'Das Quiz ist gleich wieder da.');
+  if (S.system) return renderInfo(sysIcon(S.system.icon), S.system.text, esc(S.system.sub || 'Das Quiz ist gleich wieder da.'));
   if (!me) return renderJoin();
   if (ui.host && me.isVip && S.phase !== 'lobby') return renderHost();
   ui.host = false;
@@ -350,19 +356,25 @@ function setPause(d) {
 }
 
 // ---------- System: Update, Neustart, Ausschalten ----------
+// Update-Symbol: zwei runde Pfeile, dreht sich während des Updates
+const RELOAD_SVG = '<svg class="reload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>';
+const sysIcon = i => i === 'update' ? `<span class="spin">${RELOAD_SVG}</span>` : i;
 function systemSection(sys) {
   if (!sys || (!sys.canUpdate && !sys.canPower)) return '';
   const btn = (a, label, cls) => `<button class="btn ${cls || 'ghost'} sysb" onclick="sysAction('${a}')">${ui.confirm === a ? 'Wirklich? Nochmal tippen' : label}</button>`;
   return `<h3>🛠️ System</h3>
-    ${sys.canUpdate ? btn('update', '⬇️ Update holen') : ''}
+    ${sys.canUpdate ? btn('update', `<span class="${ui.updating ? 'spin' : ''}">${RELOAD_SVG}</span> ${ui.updating ? 'Update läuft …' : 'Update holen'}`) : ''}
     ${sys.canPower ? btn('reboot', '🔄 Pi neu starten') + btn('poweroff', '🔌 Pi ausschalten', 'danger') : ''}
     ${ui.sys ? `<div class="sysout ${ui.sys.ok ? '' : 'bad'}">${esc(ui.sys.text)}</div>` : ''}
     ${sys.canUpdate && !sys.autoRestart ? '<p class="small">Nach einem Update den Server neu starten.</p>' : ''}`;
 }
 async function sysAction(a) {
   if (a !== 'update' && ui.confirm !== a) { ui.confirm = a; lastKey = ''; render(); return; } // Sicherheitsabfrage
-  ui.confirm = null; ui.sys = { ok: true, text: a === 'update' ? 'Suche nach Updates …' : 'Wird ausgeführt …' }; lastKey = ''; render();
+  ui.confirm = null; ui.sys = { ok: true, text: a === 'update' ? 'Suche nach Updates …' : 'Wird ausgeführt …' };
+  if (a === 'update') ui.updating = true;
+  lastKey = ''; render();
   const { data } = await post('/api/system', { id: myId, action: a });
+  ui.updating = !!(a === 'update' && data.ok && data.restart);   // dreht weiter, bis QuizAbend neu gestartet ist
   ui.sys = a === 'update'
     ? { ok: data.ok, text: data.ok ? (data.changed ? (data.restart ? 'Update installiert – QuizAbend startet neu.' : 'Update geladen – bitte Server neu starten.') : 'Schon auf dem neuesten Stand ✓') : 'Update fehlgeschlagen: ' + (data.text || '') }
     : { ok: data.ok, text: data.ok ? 'OK' : (data.text || 'Hat nicht geklappt (fehlen sudo-Rechte?)') };

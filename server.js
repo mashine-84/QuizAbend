@@ -682,7 +682,7 @@ function runSystem(action) {
         if (err) return resolve({ ok: false, text: text || String(err) });
         const changed = !/already up to date|bereits aktuell/i.test(text);
         if (changed && UNDER_SYSTEMD) {
-          systemMsg = { icon: '⬇️', text: 'Update installiert – QuizAbend startet neu …' };
+          systemMsg = { icon: 'update', text: 'Update installiert', sub: 'QuizAbend startet neu …' };
           broadcast();
           setTimeout(() => process.exit(0), 1500); // systemd startet den Dienst neu, Bildschirme laden automatisch neu
         }
@@ -690,8 +690,8 @@ function runSystem(action) {
       });
     } else if (action === 'reboot' || action === 'poweroff') {
       if (!systemInfo().canPower) return resolve({ ok: false, text: 'Nur auf dem Raspberry Pi (als Dienst) möglich.' });
-      systemMsg = action === 'reboot' ? { icon: '🔄', text: 'Pi startet neu …' }
-        : { icon: '🔌', text: 'Pi fährt herunter. In 30 Sekunden kann der Stecker raus.' };
+      systemMsg = action === 'reboot' ? { icon: '🔄', text: 'Pi startet neu …', sub: 'Gleich geht es weiter.' }
+        : { icon: '🔌', text: 'Pi fährt herunter', sub: 'In 30 Sekunden kann der Stecker raus.' };
       broadcast();
       setTimeout(() => execFile('sudo', ['-n', '/usr/bin/systemctl', action], (err, out, errOut) => {
         if (err) { systemMsg = null; broadcast(); console.error('  System-Aktion fehlgeschlagen:', errOut || err.message); }
