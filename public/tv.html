@@ -132,7 +132,8 @@
   .stars { color: var(--c); letter-spacing: .1em; margin-left: .6vw; }
   .qcard .stars { color: #f5b014; }
   .bnames { display: flex; flex-wrap: wrap; gap: 1vw; justify-content: center; max-width: 80vw; margin-top: 2vh; }
-  .bnames span { background: rgba(255,255,255,.12); border-radius: 99px; padding: .6vh 1.6vw; font-size: 2.2vw; font-weight: 800; animation: pop .5s both; }
+  .bnames span { background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.18); border-radius: 99px; padding: 1.3vh 2.2vw; font-size: 2.6vw; font-weight: 800; animation: pop .5s both; }
+  .bpause .bnames { margin-top: 1vh; }
   .spbadge { background: linear-gradient(90deg, #ff4d6d, #f5b014); color: #fff; border-radius: 99px; padding: .4em 1.1em; font-weight: 900; }
   .special { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(20,16,43,.82); }
   .burst { position: absolute; width: 140vmax; height: 140vmax; background: repeating-conic-gradient(rgba(245,176,20,.22) 0 10deg, transparent 10deg 20deg); animation: spin 8s linear infinite; }
@@ -520,7 +521,8 @@ function renderBlockPause() {
     <div class="icat">Getränke holen · Klo · durchatmen</div>
     <div class="pcount" id="pcount">${S.phaseMs ? '' : '⏸'}</div>
     ${S.phaseMs ? '' : '<div class="icat">Es geht weiter, wenn alle zurück sind</div>'}
-    ${nb ? `<div class="nextb">Gleich: <b>Block ${nb.num} von ${nb.total}</b>${nb.names && nb.names.length ? ` · ${esc(nb.names.join(', '))}` : ''}</div>` : ''}
+    ${nb ? `<div class="nextb">Gleich: <b>Block ${nb.num} von ${nb.total}</b></div>
+      ${nb.names && nb.names.length ? `<div class="bnames">${nb.names.map(n => `<span>${esc(n)}</span>`).join('')}</div>` : ''}` : ''}
     </div>`;
   tick();
 }
