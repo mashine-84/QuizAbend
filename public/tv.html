@@ -28,6 +28,7 @@
   .pill { background: rgba(255,255,255,.1); border-radius: 99px; padding: .4em 1.1em; font-weight: 700; color: var(--ink); }
 
   /* Lobby */
+  .lobby.drift, html.lite .lobby.drift { transition: transform 6s ease-in-out !important; }
   .lobby { flex: 1; display: grid; grid-template-columns: 1fr 1.25fr; gap: 4vw; align-items: center; }
   .join h1 { font-size: 5.4vw; line-height: 1; font-weight: 900; letter-spacing: -0.03em; }
   .join h1 span { color: var(--c); }
@@ -424,6 +425,10 @@ function joinBox() {
     </div>`;
 }
 
+// Schutz vor Nachbildern (OLED): die Lobby wandert alle 20 s ganz langsam ein paar Pixel weiter
+const SHIFTS = [[0, 0], [1.2, .8], [.4, 1.6], [-.8, 1], [-1.2, -.4], [-.4, -1.4], [.8, -1], [1.2, .2]];
+const lobbyShift = () => { const [x, y] = SHIFTS[Math.floor(Date.now() / 20000) % SHIFTS.length]; return `translate(${x}vw, ${y}vh)`; };
+setInterval(() => { const l = document.querySelector('.lobby'); if (l) { l.classList.add('drift'); l.style.transform = lobbyShift(); } }, 20000);
 function renderLobby() {
   if (soundOn()) introMusic.load();                 // Intro-Musik schon mal laden
   const slots = [];
@@ -437,7 +442,7 @@ function renderLobby() {
   const n = S.players.filter(p => p.connected).length;
   const need = Math.max(0, S.minPlayers - n);
   app.innerHTML = topbar(`<span class="pill">${n} / ${S.maxPlayers} Spieler</span>`) + `
-    <div class="lobby">
+    <div class="lobby" style="transform:${lobbyShift()}">
       <div class="join">
         <h1>Handy raus,<br><span>los geht's!</span></h1>
         ${joinBox()}
