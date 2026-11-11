@@ -144,7 +144,14 @@
   .sp-title { font-size: 7vw; font-weight: 900; color: #fff; letter-spacing: -0.02em; text-shadow: 0 .6vh 0 #ff4d6d; }
   .sp-mult { display: inline-block; margin-top: 2vh; font-size: 4vw; font-weight: 900; color: #1b1440; background: var(--c); border-radius: 99px; padding: .5vh 3vw; }
   html.lite .special { background: #14102b; }
-  html.lite .burst { display: none; }
+  /* Spezialfrage auch im schonenden Modus (Pi) animiert: nur transform/opacity, eigene GPU-Ebenen */
+  .burst { will-change: transform; }
+  .sp-mult { animation: spop .5s .45s cubic-bezier(.2,1.6,.4,1) both; } @keyframes spop { from { transform: scale(.2); opacity: 0; } }
+  html.lite .special .burst { animation: spin 10s linear infinite !important; }
+  html.lite .special .sp-inner { animation: zoom .7s cubic-bezier(.2,1.6,.4,1) both !important; }
+  html.lite .special .sp-star { animation: pulse 1s ease-in-out infinite !important; will-change: transform; }
+  html.lite .special .sp-mult { animation: spop .5s .45s cubic-bezier(.2,1.6,.4,1) both !important; }
+  html.lite .special .sp-title { text-shadow: 0 .6vh 0 #ff4d6d !important; }
 
   /* Videofrage */
   .vwrap { position: fixed; inset: 0; background: #000; display: grid; place-items: center; z-index: 40; }
