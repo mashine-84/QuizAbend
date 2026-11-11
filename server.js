@@ -16,8 +16,8 @@ const PREVIEW_MS = 6000;       // Zuordnen: Begriffe vorab zeigen
 const VOTES_MS = 3500;         // erst zeigen, wer was gewählt hat …
 const REVEAL_MS = 5000;        // … dann die Lösung
 const MATCH_STEP_MS = 2200;    // Zuordnen: Paar für Paar auflösen
-const SCORES_MS = 6000;
-const SCORES_EVERY = Number(process.env.RANGLISTE) || 5; // Rangliste nur alle X Fragen (und am Blockende)
+const SCORES_MS = 10000;        // Balken bauen sich auf, dann sortieren sich alle ein
+const SCORES_EVERY = Number(process.env.RANGLISTE) || 0; // Rangliste nur am Blockende (optional zusätzlich alle X Fragen)
 const OPENING_MS = 22500;      // Intro beim Spielstart (passt zur Intro-Musik: 12 Takte bei 128 BPM)
 const BLOCK_MS = 4500;         // Ankündigung eines neuen Frageblocks
 const SPECIAL_MS = 3500;       // Animation "Spezialfrage"
@@ -461,7 +461,7 @@ function afterReveal() {
   const last = state.idx >= state.questions.length - 1;
   const next = state.questions[state.idx + 1];
   const blockEnd = next && next.block !== currentQuestion().block;
-  if (last || blockEnd || (state.idx + 1) % SCORES_EVERY === 0) showScores();
+  if (last || blockEnd || (SCORES_EVERY && (state.idx + 1) % SCORES_EVERY === 0)) showScores();
   else nextQuestion();
 }
 
@@ -541,7 +541,7 @@ function allAnswered() {
 function ranking() {
   return [...players.values()]
     .sort((a, b) => b.score - a.score || a.joinedAt - b.joinedAt)
-    .map(p => ({ id: p.id, name: p.name, color: p.color, avatar: p.avatar, score: p.score, connected: p.connected,
+    .map(p => ({ id: p.id, name: p.name, color: p.color, avatar: p.avatar, score: p.score, connected: p.connected, joined: p.joinedAt,
       answered: !!state.answers[p.id], result: state.results[p.id] || null }));
 }
 
