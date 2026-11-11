@@ -201,7 +201,7 @@
   .sboard .row .pos { opacity: 0; }
   .sboard .row.ranked .pos { opacity: 1; }
   .sboard .row.lead.ranked { background: rgba(245,176,20,.18); box-shadow: inset 0 0 0 2px var(--c); }
-  .sboard .row .bar i, html.lite .sboard .row .bar i { transition: transform 5s cubic-bezier(.25,.8,.25,1) !important; }
+  .sboard .row .bar i, html.lite .sboard .row .bar i { transition: transform var(--gt, 0s) linear !important; }
   .sboard .row, html.lite .sboard .row { transition: transform 1.3s cubic-bezier(.6,0,.3,1), background .4s !important; }
   html.lite .sboard .row.lead.ranked { box-shadow: inset 0 0 0 2px var(--c) !important; }
   .row .plus { color: #8ff0b5; font-size: 1.4vw; min-width: 6vw; text-align: right; }
@@ -849,7 +849,7 @@ if (LITE) setInterval(tick, 250); else tick();
 
 // Rangliste am Blockende: erst in Beitritts-Reihenfolge (wie in der Lobby), Balken wachsen,
 // dann sortieren sich alle animiert in die richtige Reihenfolge
-const GROW_S = 5, SORT_S = 1.3;
+const GROW_S = 8, SORT_S = 1.3;   // GROW_S = Zeit für den längsten Balken
 function renderScores() {
   const rank = S.players, max = Math.max(1, ...rank.map(p => p.score));
   const start = [...rank].sort((a, b) => a.joined - b.joined);
@@ -864,13 +864,13 @@ function renderScores() {
       }).join('')}</div></div>`;
   prevScores = Object.fromEntries(rank.map(p => [p.id, p.score]));
   const rows = [...document.querySelectorAll('.sboard .row')];
-  // 1) Balken von links nach rechts aufbauen, Zahlen zählen mit
+  // 1) Alle Balken wachsen gleich schnell von links nach rechts; wer weniger Punkte hat, bleibt einfach früher stehen
   setTimeout(() => {
-    rows.forEach(r => { const i = r.querySelector('.bar i'); i.style.transform = `scaleX(${i.dataset.w})`; });
+    rows.forEach(r => { const i = r.querySelector('.bar i'); i.style.setProperty('--gt', (i.dataset.w * GROW_S) + 's'); i.style.transform = `scaleX(${i.dataset.w})`; });
     const t0 = performance.now(), pts = rows.map(r => r.querySelector('.pts'));
     const step = () => {
-      const k = Math.min(1, (performance.now() - t0) / (GROW_S * 1000)), e = 1 - Math.pow(1 - k, 3);
-      pts.forEach(el => { el.textContent = Math.round(el.dataset.to * e); });
+      const k = Math.min(1, (performance.now() - t0) / (GROW_S * 1000));
+      pts.forEach(el => { el.textContent = Math.min(Number(el.dataset.to), Math.round(max * k)); });
       if (k < 1 && document.contains(pts[0])) setTimeout(step, 40);
     };
     step();
