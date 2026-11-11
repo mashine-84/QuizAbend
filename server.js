@@ -293,6 +293,9 @@ function buildGame() {
       used.add(q);
       out.push({ ...prepareQuestion(q), block: n, blockCount: plan.length, blockNames: b.names });
     }
+    // Nummer innerhalb des Blocks (für "Block 1/2 · Frage 3/8")
+    const inBlock = out.filter(x => x.block === n);
+    inBlock.forEach((x, i) => { x.blockQ = i + 1; x.blockLen = inBlock.length; });
   });
   return out;
 }
@@ -528,7 +531,7 @@ function baseView() {
     remainingMs: state.frozen ? state.frozen.remaining : state.phaseEnds ? Math.max(0, state.phaseEnds - Date.now()) : 0, phaseMs: state.phaseMs,
     frozen: !!state.frozen, system: systemMsg,
     version: VERSION, packs: packSummary(), avatars: AVATARS,
-    block: q ? { num: q.block + 1, total: q.blockCount, names: q.blockNames } : null,
+    block: q ? { num: q.block + 1, total: q.blockCount, names: q.blockNames, q: q.blockQ, len: q.blockLen } : null,
     nextBlock: (() => { const n = state.questions[state.idx + 1]; return n && q && n.block !== q.block ? { num: n.block + 1, total: n.blockCount, names: n.blockNames } : null; })(),
     special: state.special && ['special', 'votes', 'reveal'].includes(ph) ? { mult: settings.special.mult } : null,
   };
