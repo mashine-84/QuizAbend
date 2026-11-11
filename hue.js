@@ -152,7 +152,7 @@ function xy(hex) {
 // pulse = Lampen pulsieren lassen (wird mit dem nächsten Befehl wieder gestoppt)
 function apply({ color, mirek, bri, ms = 800, pulse = false }) {
   if (!cfg.group) return;
-  const body = { on: true, bri: Math.max(1, Math.min(254, Math.round(bri * 2.54))), transitiontime: Math.round(ms / 100), alert: pulse ? 'lselect' : 'none' };
+  const body = { on: true, bri: Math.max(1, Math.min(254, Math.round(bri * 2.54))), transitiontime: Math.min(65535, Math.round(ms / 100)), alert: pulse ? 'lselect' : 'none' };
   if (color) { const c = xy(color); body.xy = [c.x, c.y]; }
   else if (mirek) body.ct = mirek;
   groupSend(body);
@@ -200,6 +200,7 @@ async function onPhase(phase, info = {}) {
     case 'reveal': key = 'reveal' + info.q; mood = { color: info.correct != null ? ANSWER[info.correct] : '#2fb36d', bri: 70, ms: 300 }; break;
     case 'scores': mood = { color: VIOLET, bri: 40, ms: 1500 }; break;
     case 'pause': mood = { mirek: 370, bri: 100, ms: 3000 }; break;                    // hell und warmweiß
+    case 'pausedim': mood = { color: VIOLET, bri: 45, ms: info.ms }; break;            // letzte Minute: langsam zum Licht der Block-Ansage
     case 'frozen': mood = { mirek: 370, bri: 60, ms: 1500 }; break;
     case 'end': mood = { color: info.winnerColor || GOLD, bri: 90, ms: 800, pulse: true }; break;
     default: return;
