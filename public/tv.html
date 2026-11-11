@@ -141,14 +141,15 @@
   .mleft { position: relative; display: flex; align-items: center; gap: 1.4vw; background: #4b3aa8; border-radius: 1.2vw; padding: 0 2.6vw 0 1vw; min-width: 0; transition: background .4s; z-index: 1; }
   .mleft::after { content: ''; position: absolute; right: -2.4vh; top: 50%; width: 4.8vh; height: 4.8vh; border-radius: 50%; background: inherit; transform: translateY(-50%); }
   .mterm { min-width: 0; overflow: hidden; }
-  .mrow .mright { position: relative; border: .25vw dashed rgba(255,255,255,.2); border-radius: 1.2vw; padding: 0 1.2vw 0 4vh; transition: background .3s, border-color .3s; }
+  .mrow .mright { position: relative; background: rgba(255,255,255,.06); border-radius: 1.2vw; padding: 0 1.2vw 0 4vh; transition: background .3s; }
   /* Aussparung im rechten Teil: Kreis in Hintergrundfarbe um die Nase des linken Teils – so sieht man, wie die Teile ineinandergreifen */
-  .mrow .mright::before { content: ''; position: absolute; left: calc(-.5vw - .25vw - 2.9vh); top: 50%; width: 5.8vh; height: 5.8vh; border-radius: 50%; background: var(--bg); transform: translateY(-50%); }
-  .mrow .mright.filled { background: #f5b014; border: .25vw solid #f5b014; color: #1b1440; animation: snap .35s cubic-bezier(.2,1.6,.4,1); }
-  .mrow.locked .mleft, .mrow.locked .mright.filled { background: #2fb36d; border-color: #2fb36d; color: #fff; }
+  .mrow .mright::before { content: ''; position: absolute; left: calc(-.5vw - 2.9vh); top: 50%; width: 5.8vh; height: 5.8vh; border-radius: 50%; background: var(--bg); transform: translateY(-50%); }
+  .mrow .mright.filled { background: #f5b014; color: #1b1440; animation: snap .35s cubic-bezier(.2,1.6,.4,1); }
+  .mrow.locked .mleft, .mrow.locked .mright.filled { background: #2fb36d; color: #fff; }
   @keyframes snap { 0% { transform: translateX(1vw); } 60% { transform: translateX(-.4vw); } }
-  .mrow .mright:not(.filled)::before { background: none; border: .25vw dashed rgba(255,255,255,.2); clip-path: inset(0 0 0 50%); }
-  .mpool { display: flex; flex-wrap: wrap; justify-content: center; gap: 1vh 1.2vw; flex: none; }
+  .mpool { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1vh 1.2vw; flex: none; min-height: calc(2.2vw + 2vh); }
+  .mpool .pbar { width: 50vw; }
+  .mid.ghost { visibility: hidden; }
   .mpiece { position: relative; background: #f5b014; color: #1b1440; font-weight: 800; font-size: 1.8vw; border-radius: .9vw; padding: 1vh 1.4vw 1vh 3.2vh; animation: pop .4s both; white-space: nowrap; }
   .mpiece::before { content: ''; position: absolute; left: -1.6vh; top: 50%; width: 3.2vh; height: 3.2vh; border-radius: 50%; background: var(--bg); transform: translateY(-50%); }
   .mpiece.gone { visibility: hidden; }
@@ -704,10 +705,12 @@ async function playAudio(url, o) {
 // ---------- Zuordnen: erst nur die Begriffe ----------
 function renderPreview() {
   const q = S.question;
+  // gleicher Aufbau wie bei der Frage (unsichtbare Uhr-Zeile, Vorrat-Zeile mit Fortschrittsbalken) – so springt nichts, wenn die Frage kommt
   app.innerHTML = qTop() + `<div class="qwrap fade">
     <div class="qcard compact"><div class="cat">${esc(q.category)}</div><div class="qtext soft">Merkt euch diese Begriffe – gleich kommt die Frage …</div></div>
+    <div class="mid ghost"><div class="timer"><svg viewBox="0 0 100 100"></svg><div class="num"></div></div><div class="answered">${chips()}</div></div>
     <div class="mlist n${q.left.length} ${sizeCls(q.left)}">${q.left.map((t, i) => mrow(i, t, '', i * 0.15)).join('')}</div>
-    <div class="pbar"><i id="pbar"></i></div></div>`;
+    <div class="mpool"><div class="pbar"><i id="pbar"></i></div></div></div>`;
 }
 
 // ---------- Frage + Auflösung ----------
