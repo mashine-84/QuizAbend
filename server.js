@@ -733,7 +733,7 @@ function serveMedia(req, res, rel) {
 }
 
 // Musik (Intro, letzte Pausenminute): eigene Datei sounds/<name>.* hat Vorrang vor sounds/standard/
-const MUSIC = ['pause-finale', 'quiz-intro', 'block-start', 'aufloesung', 'siegerehrung', 'rangliste'];
+const MUSIC = ['pause-finale', 'quiz-intro', 'block-start', 'aufloesung', 'siegerehrung', 'rangliste', 'spezialfrage'];
 function musicFile(name) {
   for (const dir of [SOUNDS_DIR, path.join(SOUNDS_DIR, 'standard')]) {
     for (const ext of Object.keys(AUDIO_TYPES)) {
