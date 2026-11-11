@@ -4,3 +4,6 @@ hotspot.json
 node_modules/
 sounds/pause-finale.*
 sounds/quiz-intro.*
+sounds/block-start.*
+sounds/aufloesung.*
+sounds/siegerehrung.*

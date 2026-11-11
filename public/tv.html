@@ -303,7 +303,9 @@ function render() {
   const fresh = key !== lastKey;
   if (S.remainingMs && (S.phase !== lastPhase || Math.abs(Date.now() + S.remainingMs - deadline) > 1200)) deadline = Date.now() + S.remainingMs;
   if (S.phase !== 'media' && window.__stopAudio) { window.__stopAudio(); window.__stopAudio = null; }
-  if (S.phase === 'reveal' && lastPhase !== 'reveal') sfx.gong();      // Gong bei der Auflösung
+  if (S.phase === 'reveal' && lastPhase !== 'reveal') shot(revealSound, 0.85);   // Treffer bei der Auflösung
+  if (S.phase === 'lobby' && lastPhase !== 'lobby') [blockMusic, revealSound, winSound].forEach(t => { t.buf = null; }); // neu laden (falls Datei getauscht)
+  if (soundOn()) [blockMusic, revealSound, winSound].forEach(t => t.load());
   if (S.phase === 'question' && lastPhase !== 'question') lastTickSec = null;
   lastKey = key; lastPhase = S.phase;
   frozenOverlay(); systemOverlay();
@@ -447,7 +449,7 @@ function renderIntro() {
     <div class="icat">${esc(q.category)}</div><div class="inum" id="inum"></div></div>`;
 }
 
-// ---------- Sounds (werden live erzeugt, keine Dateien nötig) ----------
+// ---------- Sounds: Ticken wird live erzeugt, Musik/Jingles kommen aus sounds/ ----------
 function soundOn() { return !S || !S.packs || !S.packs.sound || S.packs.sound.on; }
 function ctx() {
   audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -481,29 +483,6 @@ const sfx = {
       const c = ctx(), t = c.currentTime + 0.01;
       this.tone(last ? 1760 : 1320, t, 0.09, { type: 'triangle', gain: last ? 0.5 : 0.32 });
       this.tone(last ? 880 : 660, t, 0.05, { type: 'square', gain: 0.06, filter: 2500 });
-    } catch (_) {}
-  },
-  // Tiefer, warmer Gong mit Obertönen
-  gong() {
-    if (!soundOn()) return;
-    try {
-      const c = ctx(), t = c.currentTime + 0.02, base = 196;
-      [[1, 0.35, 2.8], [2.0, 0.16, 2.2], [2.76, 0.12, 1.8], [3.4, 0.08, 1.4], [5.4, 0.05, 0.9]]
-        .forEach(([r, g, d]) => this.tone(base * r, t, d, { gain: g, attack: 0.01 }));
-      this.tone(base * 4, t, 0.25, { type: 'triangle', gain: 0.08 }); // heller Anschlag
-    } catch (_) {}
-  },
-  // Kurze Siegerfanfare (Blechbläser-Klang)
-  fanfare() {
-    if (!soundOn()) return;
-    try {
-      const c = ctx(), t = c.currentTime + 0.05;
-      const brass = (f, s, d, g = 0.16) => this.tone(f, t + s, d, { type: 'sawtooth', gain: g, attack: 0.03, filter: 2200 });
-      brass(392, 0, 0.18); brass(392, 0.18, 0.18); brass(392, 0.36, 0.18);   // G G G
-      brass(523.25, 0.56, 0.5);                                              // C
-      brass(659.25, 1.06, 0.18); brass(587.33, 1.24, 0.18);                  // E D
-      [523.25, 659.25, 783.99, 1046.5].forEach(f => brass(f, 1.44, 1.6, 0.11)); // C-Dur-Akkord
-      this.tone(1046.5, t + 1.44, 1.6, { type: 'sine', gain: 0.08 });
     } catch (_) {}
   },
 };
@@ -797,6 +776,13 @@ function makeTrack(name) {
   };
 }
 const introMusic = makeTrack('quiz-intro');
+const blockMusic = makeTrack('block-start');
+const revealSound = makeTrack('aufloesung'), winSound = makeTrack('siegerehrung');
+// kurze Jingles einfach abspielen
+function shot(track, gain) {
+  if (!soundOn() || !track.buf) return;
+  try { const c = ctx(), src = c.createBufferSource(), g = c.createGain(); g.gain.value = gain; src.buffer = track.buf; src.connect(g).connect(c.destination); src.start(); } catch (_) {}
+}
 const finale = makeTrack('pause-finale');
 // Pausenmusik: startet bei 1:00 (bzw. so, dass ein kürzerer Song genau zum Ende aufhört)
 finale.update = function (left) {
@@ -812,6 +798,11 @@ function tick() {
   if ((!S || S.phase !== 'pause') && (finale.started || finale.src)) finale.leave();
   if ((!S || S.phase !== 'opening') && (introMusic.started || introMusic.src)) introMusic.leave();
   if (S && S.phase === 'opening') openingTick();
+  if ((!S || S.phase !== 'block') && (blockMusic.started || blockMusic.src)) { blockMusic.leave(); }
+  if (S && S.phase === 'block' && S.phaseMs) {
+    const left = (S.frozen ? S.remainingMs : Math.max(0, deadline - Date.now())) / 1000;
+    blockMusic.lastLeft = left; if (!S.frozen) blockMusic.play(S.phaseMs / 1000 - left, left);
+  }
   if (S && S.phase === 'pause') {
     const el = document.getElementById('pcount');
     if (el && S.phaseMs) {
@@ -871,7 +862,7 @@ function countUp(els) {
 }
 
 function renderEnd() {
-  sfx.fanfare();
+  shot(winSound, 0.9);
   const P = S.players, order = [1, 0, 2], heights = ['34vh', '24vh', '17vh'];
   app.innerHTML = topbar(`<span class="pill">Spiel vorbei</span>`) + `
     <div class="board"><h2>🏆 ${P[0] ? esc(P[0].name) + ' gewinnt!' : 'Spiel vorbei'}</h2>

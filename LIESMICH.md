@@ -144,12 +144,17 @@ Achte auf die Kommas zwischen den Einträgen. Neue oder geänderte Dateien ersch
   Das Quiz schneidet den Ausschnitt selbst zu und dreht ihn um, die Datei bleibt unverändert. Verwende nur Musik, die du privat nutzen darfst.
 - **Testen:** Die Pakete **Allgemein → Seh-Test (Testvideo)** und **Allgemein → Soundcheck (Test)** enthalten selbst erzeugte Testclips (Zahlen-Video, zwei Volkslied-Melodien, eine davon rückwärts). Damit siehst bzw. hörst du sofort, ob Bild und Ton laufen. Für normale Spiele kannst du sie abwählen.
 
-## Eigene Musik (Intro und Pause)
-Zwei Musikstücke sind dabei, beide selbst erzeugt und frei nutzbar:
-- `sounds/standard/quiz-intro.mp3`: Intro beim Spielstart (22,5 Sekunden, 128 BPM, die Folien wechseln im Takt).
-- `sounds/standard/pause-finale.mp3`: Spannungsmusik in der letzten Pausenminute (60 Sekunden, endet mit einem Schlag pro Sekunde zum Countdown).
+## Eigene Musik und Jingles
+Alle Stücke sind selbst erzeugt, frei nutzbar und klingen einheitlich (A-Dur, 128 BPM, gleiche Klänge). Sie liegen in `sounds/standard/`:
+| Datei | Wann | Länge |
+|---|---|---|
+| `quiz-intro.mp3` | Intro beim Spielstart, Folien wechseln im Takt | 22,5 s |
+| `block-start.mp3` | Ansage eines neuen Frageblocks | 4,5 s |
+| `aufloesung.mp3` | Auflösung jeder Frage | 1,6 s |
+| `pause-finale.mp3` | letzte Minute der Pause, ein Schlag pro Sekunde zum Countdown | 60 s |
+| `siegerehrung.mp3` | Siegerpodest | 10 s |
 
-Für beide gilt dasselbe, hier am Beispiel der Pausenmusik. Für das Intro heißt die Datei `quiz-intro.mp3`; ein längerer Song wird nach 22,5 Sekunden ausgeblendet.
+Die Erzeuger-Skripte liegen daneben. Jede Datei lässt sich ersetzen, hier am Beispiel der Pausenmusik. Intro und Block-Start werden zum Ende ihrer Ansage ausgeblendet, wenn dein Song deutlich länger ist.
 
 **Eigenen Song verwenden:** Leg ihn als `sounds/pause-finale.mp3` in den Quiz-Ordner, also neben den Ordner `standard`. Erlaubt sind auch `.m4a`, `.ogg` und `.wav`. Diese Datei hat Vorrang. Sie wird von Updates nicht angefasst, weil Git sie ignoriert. Löschst du sie, ist wieder die Standardmusik dran.
 - **Vom Laptop auf den Pi kopieren:** `scp mein-song.mp3 <benutzer>@quizabend.local:QuizAbend/sounds/pause-finale.mp3`. Ein Neustart ist nicht nötig, die nächste Pause lädt die neue Datei.
