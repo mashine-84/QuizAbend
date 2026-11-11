@@ -803,7 +803,7 @@ function makeTrack(name) {
     },
     // Phase vorbei: bei natürlichem Ende ausklingen lassen, sonst (übersprungen) ausblenden
     leave() {
-      if (this.lastLeft > 0.7) this.stop(); else this.src = null;
+      if (this.lastLeft > 1.2) this.stop(); else this.src = null;   // bis 1,2 s vor Schluss gilt als natürliches Ende (Uhren von TV und Server weichen leicht ab)
       this.buf = null; this.started = false; this.lastLeft = 99;   // nächstes Mal neu laden (falls Datei getauscht)
     },
     stop() {
@@ -849,8 +849,9 @@ function tick() {
     const el = document.getElementById('pcount');
     if (el && S.phaseMs) {
       const left = S.frozen ? S.remainingMs : Math.max(0, deadline - Date.now());
-      finale.update(left / 1000);
-      const sec = Math.ceil(left / 1000);
+      // Der Server hängt 1,5 s an, in denen 0:00 stehen bleibt; der große Schlussschlag der Musik (bei 59 s) fällt genau auf 0:00
+      finale.update(left / 1000 - 0.5);
+      const sec = Math.ceil(Math.max(0, left - 1500) / 1000);
       el.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
     }
   } else if (S && S.question) {
@@ -885,10 +886,9 @@ function renderScores() {
   app.innerHTML = topbar(`<span class="pill">${blockNum ? `Nach Block ${blockNum} von ${S.block.total}` : 'Endstand'}</span>`) + `
     <div class="board sboard"><h2>${last ? 'Gleich kommt die Siegerehrung …' : 'Zwischenstand'}</h2>
       <div class="rows">${start.map((p, i) => {
-        const gain = p.score - (prevScores[p.id] || 0);
         return `<div class="row" data-id="${p.id}" style="--pc:${p.color};animation-delay:${i * 0.07}s"><span class="pos"></span><span class="av">${p.avatar}</span>
           <span class="nm">${esc(p.name)}</span><span class="bar"><i data-w="${p.score / max}"></i></span>
-          <span class="plus">${gain && gain !== p.score ? '+' + gain : ''}</span><span class="pts" data-to="${p.score}">0</span></div>`;
+          <span class="pts" data-to="${p.score}">0</span></div>`;
       }).join('')}</div></div>`;
   prevScores = Object.fromEntries(rank.map(p => [p.id, p.score]));
   const rows = [...document.querySelectorAll('.sboard .row')];
