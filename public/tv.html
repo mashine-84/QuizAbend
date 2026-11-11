@@ -51,6 +51,7 @@
   .qwrap { flex: 1; display: flex; flex-direction: column; gap: 2vh; padding-top: 1vh; min-height: 0; }
   .qwrap > * { flex-shrink: 0; }
   .qwrap > .answers, .qwrap > .imgq, .qwrap > .estq, .qwrap > .mlist { flex: 1 1 0; min-height: 0; }
+  .qwrap > .mpool { flex: none; }
   .qcard { background: #fff; color: #1b1440; border-radius: 1.6vw; padding: 4vh 3vw; text-align: center; box-shadow: 0 1vh 0 rgba(0,0,0,.25); }
   .cat { display: inline-block; font-size: 1.3vw; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #6a5acd; margin-bottom: 1.2vh; }
   .qtext { font-size: 3.4vw; font-weight: 900; line-height: 1.15; letter-spacing: -0.01em; }
@@ -136,14 +137,27 @@
   .erow.truth .ev { margin-left: 0; }
   .erow.truth span:last-child { margin-left: auto; color: var(--d); text-transform: uppercase; font-size: 1.4vw; letter-spacing: .1em; }
   .mlist { flex: 1; min-height: 0; display: grid; grid-auto-rows: minmax(0, var(--row)); align-content: center; gap: 1.4vh; max-height: 100%; }
-  .mrow { display: grid; grid-template-columns: 5vw 1fr 1.3fr; align-items: center; gap: 1.4vw; background: rgba(255,255,255,.08); border-radius: 1.2vw; padding: 0 1.4vw; min-height: 0; height: 100%; font-size: var(--rowfont); font-weight: 800; line-height: 1.1; animation: slide .45s both; transition: background .4s; overflow: hidden; }
+  .mrow { display: grid; grid-template-columns: 1fr 1.25fr; align-items: stretch; gap: 0; min-height: 0; height: 100%; font-size: var(--rowfont); font-weight: 800; line-height: 1.1; animation: slide .45s both; }
+  .mleft { position: relative; display: flex; align-items: center; gap: 1.4vw; background: #4b3aa8; border-radius: 1.2vw; padding: 0 2.6vw 0 1vw; min-width: 0; transition: background .4s; z-index: 1; }
+  .mleft::after { content: ''; position: absolute; right: -2.4vh; top: 50%; width: 4.8vh; height: 4.8vh; border-radius: 50%; background: inherit; transform: translateY(-50%); }
+  .mterm { min-width: 0; overflow: hidden; }
+  .mrow .mright { border: .25vw dashed rgba(255,255,255,.2); border-left: none; border-radius: 0 1.2vw 1.2vw 0; padding: 0 1.2vw 0 4vh; transition: background .3s, border-color .3s; }
+  .mrow .mright.filled { background: #f5b014; border: .25vw solid #f5b014; border-left: none; color: #1b1440; animation: snap .35s cubic-bezier(.2,1.6,.4,1); }
+  .mrow.locked .mleft, .mrow.locked .mright.filled { background: #2fb36d; border-color: #2fb36d; color: #fff; }
+  @keyframes snap { 0% { transform: translateX(1vw); } 60% { transform: translateX(-.4vw); } }
+  .mpool { display: flex; flex-wrap: wrap; justify-content: center; gap: 1vh 1.2vw; flex: none; }
+  .mpiece { position: relative; background: #f5b014; color: #1b1440; font-weight: 800; font-size: 1.8vw; border-radius: .9vw; padding: 1vh 1.4vw 1vh 3.2vh; animation: pop .4s both; white-space: nowrap; }
+  .mpiece::before { content: ''; position: absolute; left: -1.6vh; top: 50%; width: 3.2vh; height: 3.2vh; border-radius: 50%; background: var(--bg); transform: translateY(-50%); }
+  .mpiece.gone { visibility: hidden; }
+  .mpiece.flying { position: fixed; z-index: 30; margin: 0; animation: none; transition: transform .6s cubic-bezier(.5,0,.2,1); }
+  html.lite .mpiece.flying { transition: transform .6s cubic-bezier(.5,0,.2,1) !important; }
+  html.lite .mrow .mright.filled { animation: snap .35s cubic-bezier(.2,1.6,.4,1) !important; }
   .mnum { width: min(4.4vw, 7vh); height: min(4.4vw, 7vh); border-radius: 50%; background: var(--c); color: #1b1440; display: grid; place-items: center; font-weight: 900; }
   .mright { display: flex; align-items: center; gap: 1vw; min-width: 0; }
   .mright .qm { color: rgba(255,255,255,.25); }
   .mright .voters { margin-left: auto; max-width: none; }
   .mright .none { color: rgba(255,255,255,.5); font-size: 1.4vw; font-weight: 700; }
   .mrow .vav { width: min(3.2vw, 5.4vh); height: min(3.2vw, 5.4vh); font-size: min(1.9vw, 3.2vh); border-width: .2vw; }
-  .mrow.done { background: rgba(47,179,109,.32); }
   .mans.l { font-size: .8em; } .mans.xl { font-size: .62em; }
   .mans { animation: pop .45s cubic-bezier(.2,1.6,.4,1) both; }
   .pbar { height: 1.2vh; background: rgba(255,255,255,.1); border-radius: 99px; overflow: hidden; }
@@ -495,7 +509,8 @@ function chips() {
 const avatarHtml = (p, delay) => `<span class="vav" title="${esc(p.name)}" style="--pc:${p.color};animation-delay:${delay}s">${p.avatar}</span>`;
 // Schriftgröße nach dem längsten Text der Frage – alle Kacheln/Zeilen einer Frage gleich groß
 const sizeCls = list => { const m = Math.max(...list.map(s => String(s).length)); return m > 52 ? 'xlong' : m > 36 ? 'long' : ''; };
-const mrow = (i, t, right, delay) => `<div class="mrow" id="mrow${i}" style="animation-delay:${delay || 0}s"><span class="mnum">${i + 1}</span><span class="mterm">${esc(t)}</span><span class="mright" id="mr${i}">${right}</span></div>`;
+// Zuordnung als Puzzle: links ein Teil mit Nase, rechts die Aussparung für das passende Gegenstück
+const mrow = (i, t, right, delay) => `<div class="mrow" id="mrow${i}" style="animation-delay:${delay || 0}s"><span class="mleft"><span class="mnum">${i + 1}</span><span class="mterm">${esc(t)}</span></span><span class="mright" id="mr${i}">${right}</span></div>`;
 
 // ---------- Ankündigung (Bilderrätsel, Schätzfrage, Zuordnung) ----------
 function renderIntro() {
@@ -711,7 +726,8 @@ function renderMain() {
     body = `<div class="estq ${q.image ? '' : 'noimg'}">${img}<div class="estpanel" id="est">
       <div class="esthint">${q.year ? '📅 Jahreszahl am Handy eingeben!' : '🔢 Schätzt am Handy!'}${q.unit && !q.year ? `<small>Antwort in ${esc(q.unit)}</small>` : ''}${tolText(q) ? `<small>${tolText(q)}</small>` : ''}</div></div></div>`;
   } else if (q.kind === 'match') {
-    body = `<div class="mlist n${q.left.length} ${sizeCls(q.left)}">${q.left.map((t, i) => mrow(i, t, '<span class="qm">?</span>')).join('')}</div>`;
+    body = `<div class="mlist n${q.left.length} ${sizeCls(q.left)}">${q.left.map((t, i) => mrow(i, t, '<span class="qm">?</span>')).join('')}</div>
+      <div class="mpool">${q.right.map((t, j) => `<span class="mpiece" data-j="${j}" style="animation-delay:${0.2 + j * 0.08}s">${esc(t)}</span>`).join('')}</div>`;
   }
   app.innerHTML = qTop() + `<div class="qwrap ${S.phase === 'question' ? 'fade' : ''}">${head}${mid}${body}</div>`;
   updateMain();
@@ -745,11 +761,36 @@ function updateMain() {
       if (!row || row.classList.contains('done')) continue;
       const right = S.players.filter(p => p.result && p.result.pairs && p.result.pairs[i]);
       row.classList.add('done');
-      const ans = q.right[q.solution[i]];
-      document.getElementById('mr' + i).innerHTML = `<span class="mans ${ans.length > 36 ? 'xl' : ans.length > 22 ? 'l' : ''}">${esc(ans)}</span>
-        <span class="voters">${right.length ? right.map((p, k) => avatarHtml(p, 0.3 + k * 0.1)).join('') : '<span class="none">keiner</span>'}</span>`;
+      const j = q.solution[i], ans = q.right[j], slot = document.getElementById('mr' + i);
+      const fill = () => {
+        slot.classList.add('filled'); row.classList.add('locked');
+        slot.innerHTML = `<span class="mans ${ans.length > 36 ? 'xl' : ans.length > 22 ? 'l' : ''}">${esc(ans)}</span>
+          <span class="voters">${right.length ? right.map((p, k) => avatarHtml(p, 0.15 + k * 0.1)).join('') : '<span class="none">keiner</span>'}</span>`;
+        snapSound();
+      };
+      flyPiece(document.querySelector(`.mpiece[data-j="${j}"]`), slot, fill);
     }
   }
+}
+
+// Puzzleteil aus dem Vorrat in die Aussparung fliegen lassen (nur transform – läuft auch am Pi)
+function flyPiece(piece, slot, done) {
+  if (!piece || !slot || piece.classList.contains('gone')) return done();
+  const a = piece.getBoundingClientRect(), b = slot.getBoundingClientRect();
+  const ghost = piece.cloneNode(true);
+  ghost.classList.add('flying');
+  Object.assign(ghost.style, { left: a.left + 'px', top: a.top + 'px', width: a.width + 'px', height: a.height + 'px' });
+  document.body.appendChild(ghost);
+  piece.classList.add('gone');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    ghost.style.transform = `translate(${b.left - a.left}px, ${b.top + (b.height - a.height) / 2 - a.top}px)`;
+  }));
+  setTimeout(() => { ghost.remove(); done(); }, 650);
+}
+// kurzes „Klick“ beim Einrasten
+function snapSound() {
+  if (!soundOn()) return;
+  try { const t = ctx().currentTime + 0.01; sfx.tone(900, t, 0.05, { type: 'square', gain: 0.08, filter: 2500 }); sfx.tone(1700, t + 0.03, 0.06, { type: 'triangle', gain: 0.12 }); } catch (_) {}
 }
 
 // ---------- Spezialfrage: Animation nach dem Antworten ----------
