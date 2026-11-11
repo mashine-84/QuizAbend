@@ -119,9 +119,10 @@ let warned = 0;
 function warn(e) { if (Date.now() - warned > 60000) { warned = Date.now(); console.error('Hue: Bridge nicht erreichbar –', e.message); } }
 
 // Gruppenbefehl: alle Lampen des Bereichs schalten gleichzeitig (wichtig für die Auflösung)
-let groupNext = null, groupBusy = false, groupLast = 0;
-function groupSend(body) {
+let groupNext = null, groupBusy = false, groupLast = 0, groupAfter = null;
+function groupSend(body, after) {
   groupNext = Object.assign(groupNext || {}, body);
+  groupAfter = after || null;          // läuft, sobald dieser Befehl wirklich gesendet ist
   if (!groupBusy) groupPump();
 }
 async function groupPump() {
@@ -129,8 +130,9 @@ async function groupPump() {
   while (groupNext) {
     const wait = groupLast + 1000 - Date.now();
     if (wait > 0) await new Promise(r => setTimeout(r, wait));
-    const body = groupNext; groupNext = null; groupLast = Date.now();
+    const body = groupNext, after = groupAfter; groupNext = null; groupAfter = null; groupLast = Date.now();
     try { await request('PUT', cfg.ip, `/api/${cfg.appKey}/groups/${cfg.group}/action`, body, null); } catch (e) { warn(e); }
+    if (after) after();
   }
   groupBusy = false;
 }
@@ -150,14 +152,24 @@ function xy(hex) {
 
 // Stimmung auf den ganzen Bereich: { color: '#rrggbb' } oder { mirek: 370 } (warmweiß), bri 1–100, ms Übergang,
 // pulse = Lampen pulsieren lassen (wird mit dem nächsten Befehl wieder gestoppt)
+let pulseTimer = null;
 function apply({ color, mirek, bri, ms = 800, pulse = false }) {
   if (!cfg.group) return;
-  const body = { on: true, bri: Math.max(1, Math.min(254, Math.round(bri * 2.54))), transitiontime: Math.min(65535, Math.round(ms / 100)), alert: pulse ? 'lselect' : 'none' };
+  clearTimeout(pulseTimer);
+  // Erst Farbe und Helligkeit setzen (beim Pulsieren ohne Übergang), das Pulsieren kommt als eigener Befehl danach:
+  // starten beide gleichzeitig, pulsieren manche Lampen noch in der alten Farbe.
+  const body = { on: true, bri: Math.max(1, Math.min(254, Math.round(bri * 2.54))), transitiontime: pulse ? 0 : Math.min(65535, Math.round(ms / 100)), alert: 'none' };
   if (color) { const c = xy(color); body.xy = [c.x, c.y]; }
   else if (mirek) body.ct = mirek;
-  groupSend(body);
+  groupSend(body, pulse ? () => {
+    // 600 ms nachdem die Farbe gesendet ist; direkt (nicht über die 1-s-Warteschlange), damit es in den kurzen Spezialfrage-Screen passt
+    pulseTimer = setTimeout(() => {
+      groupLast = Date.now();
+      request('PUT', cfg.ip, `/api/${cfg.appKey}/groups/${cfg.group}/action`, { alert: 'lselect' }, null).catch(warn);
+    }, 600);
+  } : null);
 }
-function stopPulse() { if (cfg.group) groupSend({ alert: 'none' }); }
+function stopPulse() { clearTimeout(pulseTimer); if (cfg.group) groupSend({ alert: 'none' }); }
 
 // Zustand vor dem Spiel merken und danach wiederherstellen
 async function takeSnapshot() {
