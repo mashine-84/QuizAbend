@@ -257,7 +257,13 @@ function setPhase(phase, ms, next) {
   if (ms && next) timer = setTimeout(next, ms);
   broadcast();
   hueUpdate();
+  // Pause: in der letzten Minute das Licht langsam herunterdimmen (bei kurzer Pause nach dem Hellwerden)
+  clearTimeout(hueDimTimer);
+  if (phase === 'pause' && ms) hueDimTimer = setTimeout(() => {
+    if (state.phase === 'pause' && !state.frozen) hue.onPhase('pausedim', { ms: Math.max(0, state.phaseEnds - Date.now()) }).catch(() => {});
+  }, Math.max(3500, ms - 60000));
 }
+let hueDimTimer = null;
 
 // Licht passend zur Phase (macht nichts, solange Hue nicht eingerichtet ist)
 function hueUpdate() {
@@ -501,6 +507,7 @@ function freeze() {
   const remaining = state.phaseEnds ? Math.max(0, state.phaseEnds - Date.now()) : 0;
   clearTimer();
   state.frozen = { remaining, hadTimer: !!state.phaseEnds };
+  clearTimeout(hueDimTimer);
   broadcast();
   hueUpdate();
 }
