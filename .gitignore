@@ -1,3 +1,4 @@
-node_modules/
 .DS_Store
 einstellungen.json
+hotspot.json
+node_modules/

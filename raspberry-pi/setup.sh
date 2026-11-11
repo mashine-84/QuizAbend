@@ -8,18 +8,25 @@
 #   ./raspberry-pi/setup.sh                 mit Desktop: Quiz startet nach dem Desktop-Login
 #   ./raspberry-pi/setup.sh --ohne-desktop  ohne Desktop: Pi bootet direkt ins Quiz (empfohlen für Pi 3)
 #   zusätzlich --720p                       Fernseher mit 1280x720 ansteuern (deutlich flüssiger auf Pi 3)
+#   zusätzlich --ohne-hotspot               kein eigenes WLAN, wenn kein bekanntes WLAN da ist
+#   zusätzlich --name NAME                  Adresse NAME.local statt quizabend.local
 # Zurück zum Desktop bzw. zu voller Auflösung: einfach ohne die Option erneut ausführen.
 set -e
 
 MODE=desktop
 RES=""
-for arg in "$@"; do
-  case "$arg" in
+HOTSPOT=1
+HOSTNAME_NEW=quizabend
+while [ $# -gt 0 ]; do
+  case "$1" in
     --ohne-desktop|--no-desktop) MODE=kiosk ;;
     --mit-desktop) MODE=desktop ;;
     --720p) RES=720 ;;
-    *) echo "Unbekannte Option: $arg  (erlaubt: --ohne-desktop, --720p)"; exit 1 ;;
+    --ohne-hotspot) HOTSPOT=0 ;;
+    --name) shift; HOSTNAME_NEW="$1" ;;
+    *) echo "Unbekannte Option: $1  (erlaubt: --ohne-desktop, --720p, --ohne-hotspot, --name NAME)"; exit 1 ;;
   esac
+  shift
 done
 
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -32,7 +39,7 @@ fi
 
 echo "==> Pakete installieren (dauert ein paar Minuten) …"
 sudo apt-get update
-sudo apt-get install -y nodejs curl
+sudo apt-get install -y nodejs curl avahi-daemon   # avahi: Adresse quizabend.local
 if apt-cache show chromium >/dev/null 2>&1; then CHR=chromium; else CHR=chromium-browser; fi
 sudo apt-get install -y "$CHR" fonts-noto-color-emoji   # Emoji-Schrift für die Spieler-Icons
 sudo apt-get install -y unclutter >/dev/null 2>&1 || true   # versteckt den Mauszeiger (optional)
@@ -58,6 +65,10 @@ Wants=network-online.target
 User=$USER_NAME
 WorkingDirectory=$DIR
 Environment=NO_BROWSER=1
+# Port 80 = Adresse ohne :3000 (http://quizabend.local); 3000 funktioniert weiterhin
+Environment=PORT=80
+Environment=EXTRA_PORT=3000
+AmbientCapabilities=CAP_NET_BIND_SERVICE
 ExecStart=$NODE_BIN $DIR/server.js
 Restart=always
 RestartSec=3
@@ -66,7 +77,58 @@ RestartSec=3
 WantedBy=multi-user.target
 UNIT
 sudo systemctl daemon-reload
-sudo systemctl enable --now quizabend.service
+sudo systemctl enable quizabend.service
+sudo systemctl restart quizabend.service
+
+echo "==> Host darf den Pi per Handy neu starten / ausschalten …"
+echo "$USER_NAME ALL=(root) NOPASSWD: /usr/bin/systemctl reboot, /usr/bin/systemctl poweroff" | sudo tee /etc/sudoers.d/quizabend >/dev/null
+sudo chmod 440 /etc/sudoers.d/quizabend
+sudo visudo -cf /etc/sudoers.d/quizabend >/dev/null || { echo "sudo-Regel fehlerhaft – entferne sie"; sudo rm -f /etc/sudoers.d/quizabend; }
+
+if [ -n "$HOSTNAME_NEW" ] && [ "$(hostname)" != "$HOSTNAME_NEW" ] && command -v raspi-config >/dev/null; then
+  echo "==> Feste Adresse: http://$HOSTNAME_NEW.local …"
+  sudo raspi-config nonint do_hostname "$HOSTNAME_NEW" || true
+fi
+
+if command -v nmcli >/dev/null; then
+  if [ "$HOTSPOT" = 1 ]; then
+    echo "==> Eigenes WLAN einrichten (startet nur, wenn kein bekanntes WLAN da ist) …"
+    HS="$DIR/hotspot.json"
+    if [ ! -f "$HS" ]; then
+      PW=$(tr -dc 'abcdefghjkmnpqrstuvwxyz23456789' </dev/urandom | head -c 10)
+      printf '{ "ssid": "QuizAbend", "password": "%s" }\n' "$PW" > "$HS"
+    fi
+    SSID=$(python3 -c "import json;print(json.load(open('$HS'))['ssid'])")
+    PW=$(python3 -c "import json;print(json.load(open('$HS'))['password'])")
+    sudo nmcli con delete QuizAbend-Hotspot >/dev/null 2>&1 || true
+    sudo nmcli con add type wifi ifname wlan0 con-name QuizAbend-Hotspot autoconnect no ssid "$SSID" \
+      mode ap 802-11-wireless.band bg ipv4.method shared \
+      wifi-sec.key-mgmt wpa-psk wifi-sec.proto rsn wifi-sec.pairwise ccmp wifi-sec.group ccmp wifi-sec.psk "$PW" >/dev/null
+    chmod +x "$DIR/raspberry-pi/hotspot-fallback.sh"
+    sudo tee /etc/systemd/system/quizabend-hotspot.service >/dev/null <<UNIT
+[Unit]
+Description=QuizAbend: eigenes WLAN, wenn kein bekanntes WLAN da ist
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=$DIR/raspberry-pi/hotspot-fallback.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+    sudo systemctl daemon-reload
+    sudo systemctl enable quizabend-hotspot.service
+    echo "    WLAN-Name: $SSID   Passwort: $PW   (steht auch auf dem Fernseher)"
+  else
+    sudo systemctl disable quizabend-hotspot.service >/dev/null 2>&1 || true
+    sudo nmcli con delete QuizAbend-Hotspot >/dev/null 2>&1 || true
+  fi
+else
+  echo "    (NetworkManager fehlt – eigenes WLAN wird übersprungen)"
+fi
 
 echo "==> Vollbild-Browser beim Login starten …"
 KIOSK="$DIR/raspberry-pi/kiosk.sh"
@@ -151,4 +213,4 @@ echo
 echo "Fertig! Nach einem Neustart (sudo reboot) zeigt der Fernseher das Quiz."
 [ "$MODE" = kiosk ] && echo "Modus: ohne Desktop. Zurück zum Desktop:  ./raspberry-pi/setup.sh  (ohne Option)"
 echo "Klappt es nicht:  ./raspberry-pi/check.sh  ausführen und die Ausgabe weitergeben."
-echo "Handys verbinden sich über den QR-Code oder http://${IP:-<IP-des-Pi>}:3000/"
+echo "Handys verbinden sich über den QR-Code, http://${HOSTNAME_NEW:-quizabend}.local oder http://${IP:-<IP-des-Pi>}/"

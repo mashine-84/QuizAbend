@@ -115,11 +115,24 @@
   .pchip { max-width: 100%; }
   .mslots.tight { gap: 6px; } .mslots.tight .mslot { padding: 6px 10px; font-size: 17px; } .mslots.tight .mnum { width: 30px; height: 30px; }
   .mslots.tight ~ .pool { gap: 6px; margin: 10px 0; } .mslots.tight ~ .pool .pchip { padding: 9px 14px; font-size: 16px; }
+  .hostbtn { border: none; background: rgba(255,255,255,.12); color: #fff; font-size: 20px; border-radius: 10px; width: 40px; height: 36px; margin-left: 6px; }
+  .prow2 { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.08); border-radius: 12px; padding: 8px 10px; }
+  .prow2.off { opacity: .55; }
+  .prow2 input { flex: 1; font: inherit; font-size: 18px; padding: 8px 10px; border-radius: 10px; border: none; }
+  .pav { width: 36px; height: 36px; border-radius: 50%; background: var(--pc); display: grid; place-items: center; font-size: 20px; flex: none; }
+  .pn { flex: 1; font-weight: 800; display: flex; flex-direction: column; } .pn small { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .ib { border: none; background: rgba(255,255,255,.12); color: #fff; border-radius: 10px; min-width: 40px; height: 36px; font: inherit; font-size: 15px; font-weight: 800; }
+  .ib.warn { background: #e5484d; padding: 0 10px; }
+  .btn.danger { background: #e5484d; color: #fff; }
+  .sysb { max-width: none; }
+  .sysout { background: rgba(47,179,109,.25); border-radius: 12px; padding: 10px 12px; font-size: 14px; white-space: pre-wrap; }
+  .sysout.bad { background: rgba(229,72,77,.25); }
+  .pcount { font-size: 64px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--c); }
 </style>
 </head>
 <body>
 <div class="offline" id="offline">Verbindung weg – verbinde neu …</div>
-<header id="hdr" style="display:none"><span class="av" id="hAv"></span><span id="hName"></span><span class="score" id="hScore">0</span></header>
+<header id="hdr" style="display:none"><span class="av" id="hAv"></span><span id="hName"></span><span class="score" id="hScore">0</span><button class="hostbtn" id="hostBtn" style="display:none" onclick="toggleHost()">🎛️</button></header>
 <main id="main"></main>
 <script>
 const SHAPES = ['▲', '◆', '●', '■'];
@@ -127,9 +140,9 @@ const main = document.getElementById('main');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = n => Math.abs(n) >= 10000 ? n.toLocaleString('de-DE') : String(n).replace('.', ',');
 let myId = localStorage.getItem('quizId');
-let serverVersion = null;
+let serverVersion = null, lastQ = null, lastPh = null;
 let S = null, es = null, lastKey = '', joining = false, sending = false;
-let ui = { settings: false, packs: null, edit: null, avatar: null }; // Einstellungen (nur 👑), Emoji-Wahl
+let ui = { settings: false, packs: null, edit: null, avatar: null, host: false, renaming: null, sys: null, confirm: null }; // Einstellungen (nur 👑), Emoji-Wahl
 let est = '';                                  // Schätzfrage: Eingabe
 let match = { sel: [], active: 0 };            // Zuordnen: sel[slot] = Index im rechten Begriff
 
@@ -192,6 +205,7 @@ function header() {
   document.getElementById('hAv').textContent = S.me.avatar;
   document.getElementById('hName').textContent = S.me.name + (S.me.isVip ? ' 👑' : '');
   document.getElementById('hScore').textContent = S.me.score + ' P';
+  document.getElementById('hostBtn').style.display = S.me.isVip && S.phase !== 'lobby' ? '' : 'none';
 }
 
 function qline(extra) {
@@ -204,15 +218,21 @@ function render() {
   const me = S.me;
   const lobbyKey = S.phase === 'lobby' ? [S.players.filter(p => p.connected).length, JSON.stringify(S.packs), ui.settings].join(',') : '';
   const joinKey = me ? '' : S.players.map(p => p.avatar).join('');
-  const key = [joinKey, S.phase, S.qNum, me ? me.id : '-', me && JSON.stringify(me.answer && (me.answer.choice ?? me.answer.value ?? me.answer.order)),
+  const hostKey = ui.host ? [S.players.map(p => p.id + p.name + p.connected).join(','), ui.renaming].join('|') : '';
+  const key = [joinKey, hostKey, ui.host, S.frozen, JSON.stringify(S.system), S.kicked, S.phase, S.qNum, me ? me.id : '-', me && JSON.stringify(me.answer && (me.answer.choice ?? me.answer.value ?? me.answer.order)),
     me && me.isVip, lobbyKey, S.question && S.question.step].join('|');
   if (key === lastKey) return; // nichts Relevantes geändert (Eingaben nicht zerstören)
-  const newQuestion = !lastKey.startsWith('question|' + S.qNum + '|');
-  lastKey = key;
+  const newQuestion = lastQ !== S.qNum || lastPh !== 'question';
+  lastKey = key; lastQ = S.qNum; lastPh = S.phase;
 
+  if (S.system) return renderInfo(S.system.icon, S.system.text, 'Das Quiz ist gleich wieder da.');
   if (!me) return renderJoin();
+  if (ui.host && me.isVip && S.phase !== 'lobby') return renderHost();
+  ui.host = false;
+  if (S.frozen) return renderFrozen();
   if (S.phase !== 'lobby') ui.settings = false;
   if (S.phase === 'lobby') return ui.settings && me.isVip ? renderSettings() : renderLobby();
+  if (S.phase === 'pause') return renderPause();
   if (S.phase === 'block') return renderInfo('📦', `Block ${S.block.num} von ${S.block.total}`, `${esc(S.block.names.join(', '))}<br>Schau auf den Fernseher!`);
   if (S.phase === 'special') return renderInfo('⭐', 'Spezialfrage!', `Diese Frage zählt <b>×${S.special.mult}</b> Punkte!<br>Schau auf den Fernseher 👀`, 'special');
   if (S.phase === 'intro') return renderInfo(S.question.icon, S.question.label, `Kategorie: ${esc(S.question.category)}<br>Gleich geht's los – schau auf den Fernseher!`);
@@ -248,6 +268,7 @@ function renderJoin() {
   if (!ui.avatar || taken.has(ui.avatar)) ui.avatar = fav && !taken.has(fav) ? fav : S.avatars.find(a => !taken.has(a));
   main.innerHTML = `<form class="center" onsubmit="join(event)">
     <h1>Quiz<span>Abend</span></h1>
+    ${S.kicked ? '<p class="err">Du wurdest vom Host aus dem Spiel genommen.</p>' : ''}
     <p>${S.phase === 'lobby' ? 'Wie heißt du?' : 'Das Spiel läuft schon – du steigst bei der nächsten Frage ein.'}</p>
     <input id="name" maxlength="14" autocomplete="off" autocapitalize="words" placeholder="Dein Name" value="${esc(name)}">
     <p class="small">Wähle dein Emoji:</p>
@@ -304,6 +325,32 @@ function packOn(bi, id, on) {
 function togglePack(gi, pi, on) { packOn(ui.edit, ui.packs.groups[gi].packs[pi].id, on); saveCfg(); }
 function toggleGroup(gi, on) { ui.packs.groups[gi].packs.forEach(p => packOn(ui.edit, p.id, on)); saveCfg(); }
 function editBlock(i) { ui.edit = i; lastKey = ''; render(); window.scrollTo(0, 0); }
+const PAUSE_STEPS = [0, 1, 2, 3, 5, 10, 15, 20, 30, 45, 60];
+function setPause(d) {
+  const p = cfg().pause, i = PAUSE_STEPS.findIndex(x => x >= p.minutes);
+  p.minutes = PAUSE_STEPS[Math.max(0, Math.min(PAUSE_STEPS.length - 1, (i < 0 ? PAUSE_STEPS.length - 1 : i) + d))]; saveCfg();
+}
+
+// ---------- System: Update, Neustart, Ausschalten ----------
+function systemSection(sys) {
+  if (!sys || (!sys.canUpdate && !sys.canPower)) return '';
+  const btn = (a, label, cls) => `<button class="btn ${cls || 'ghost'} sysb" onclick="sysAction('${a}')">${ui.confirm === a ? 'Wirklich? Nochmal tippen' : label}</button>`;
+  return `<h3>🛠️ System</h3>
+    ${sys.canUpdate ? btn('update', '⬇️ Update holen') : ''}
+    ${sys.canPower ? btn('reboot', '🔄 Pi neu starten') + btn('poweroff', '⏻ Pi ausschalten', 'danger') : ''}
+    ${ui.sys ? `<div class="sysout ${ui.sys.ok ? '' : 'bad'}">${esc(ui.sys.text)}</div>` : ''}
+    ${sys.canUpdate && !sys.autoRestart ? '<p class="small">Nach einem Update den Server neu starten.</p>' : ''}`;
+}
+async function sysAction(a) {
+  if (a !== 'update' && ui.confirm !== a) { ui.confirm = a; lastKey = ''; render(); return; } // Sicherheitsabfrage
+  ui.confirm = null; ui.sys = { ok: true, text: a === 'update' ? 'Suche nach Updates …' : 'Wird ausgeführt …' }; lastKey = ''; render();
+  const { data } = await post('/api/system', { id: myId, action: a });
+  ui.sys = a === 'update'
+    ? { ok: data.ok, text: data.ok ? (data.changed ? (data.restart ? 'Update installiert – QuizAbend startet neu.' : 'Update geladen – bitte Server neu starten.') : 'Schon auf dem neuesten Stand ✓') : 'Update fehlgeschlagen: ' + (data.text || '') }
+    : { ok: data.ok, text: data.ok ? 'OK' : (data.text || 'Hat nicht geklappt (fehlen sudo-Rechte?)') };
+  lastKey = ''; render();
+}
+
 function setSpecial(on) { cfg().special.on = on; saveCfg(); }
 function setMult(m) { cfg().special.mult = m; saveCfg(); }
 
@@ -335,6 +382,12 @@ function renderSettings() {
     <label class="switch"><input type="checkbox" ${c.special.on ? 'checked' : ''} onchange="setSpecial(this.checked)"><span>Eine zufällige Spezialfrage pro Spiel</span></label>
     ${c.special.on ? `<div class="seg">${[2, 3, 4].map(m => `<button class="${c.special.mult === m ? 'on' : ''}" onclick="setMult(${m})">×${m}</button>`).join('')}</div>
       <p class="small">Erst nach dem Antworten wird verraten, dass es die Spezialfrage war. Die Punkte zählen dann ×${c.special.mult}.</p>` : ''}
+    <h3>🔊 Sounds</h3>
+    <label class="switch"><input type="checkbox" ${c.sound.on ? 'checked' : ''} onchange="cfg().sound.on = this.checked; saveCfg()"><span>Ticken, Gong und Fanfare am Fernseher</span></label>
+    <h3>🍺 Pause nach jedem Block</h3>
+    <label class="switch"><input type="checkbox" ${c.pause.on ? 'checked' : ''} onchange="cfg().pause.on = this.checked; saveCfg()"><span>Pausen-Bildschirm zwischen den Blöcken</span></label>
+    ${c.pause.on ? stepper('Dauer in Minuten', c.pause.minutes || '∞', `setPause(-1)`, `setPause(1)`) + `<p class="small">${c.pause.minutes ? `Nach ${c.pause.minutes} Minuten geht es automatisch weiter.` : 'Die Pause läuft, bis du sie am Handy beendest.'} Du kannst sie jederzeit beenden oder verlängern.</p>` : ''}
+    ${systemSection(d.system)}
     ${d.errors.length ? `<div class="errors"><b>⚠️ Fehler in Fragendateien</b>${d.errors.map(e => `<div><code>${esc(e.file)}</code><br>${esc(e.error)}</div>`).join('')}</div>` : ''}
   </div>`;
 }
@@ -361,6 +414,58 @@ function renderBlockEditor() {
     const g = d.groups[cb.dataset.group], on = g.packs.filter(p => !dis.has(p.id)).length;
     cb.indeterminate = on > 0 && on < g.packs.length;
   });
+}
+
+// ---------- Host-Menü (während des Spiels) ----------
+function toggleHost() { ui.host = !ui.host; ui.renaming = null; lastKey = ''; render(); }
+function hostAct(action, extra) { return post('/api/host', { id: myId, action, ...extra }); }
+async function kick(id) { if (ui.confirm !== 'kick' + id) { ui.confirm = 'kick' + id; lastKey = ''; return render(); } ui.confirm = null; await hostAct('kick', { target: id }); }
+function startRename(id) { ui.renaming = id; lastKey = ''; render(); const i = document.getElementById('rn'); if (i) { i.focus(); i.select(); } }
+async function saveRename(ev, id) {
+  ev.preventDefault();
+  const { ok, data } = await hostAct('rename', { target: id, name: document.getElementById('rn').value });
+  if (!ok) { document.getElementById('rnerr').textContent = data.error || 'Hat nicht geklappt.'; return; }
+  ui.renaming = null; lastKey = ''; render();
+}
+function renderHost() {
+  const ph = S.phase, inGame = !['lobby', 'end'].includes(ph);
+  main.innerHTML = `<div class="settings">
+    <div class="shead"><h2>🎛️ Host</h2><button class="btn sm" onclick="toggleHost()">Zurück</button></div>
+    ${inGame ? (S.frozen
+      ? '<button class="btn" onclick="hostAct(\'resume\')">▶️ Spiel fortsetzen</button>'
+      : '<button class="btn ghost" onclick="hostAct(\'pause\')">⏸ Spiel anhalten</button>') : ''}
+    ${ph === 'pause' ? '<button class="btn" onclick="advance()">⏭ Pause beenden</button><button class="btn ghost" onclick="hostAct(\'extend\')">➕ 5 Minuten länger</button>'
+      : inGame ? '<button class="btn ghost" onclick="advance()">⏭ Weiter / überspringen</button>' : ''}
+    <h3>👥 Spieler</h3>
+    ${S.players.map(p => ui.renaming === p.id
+      ? `<form class="prow2" onsubmit="saveRename(event, '${p.id}')"><span class="pav" style="--pc:${p.color}">${p.avatar}</span>
+          <input id="rn" maxlength="14" value="${esc(p.name)}"><button class="btn sm">OK</button></form><div class="err" id="rnerr"></div>`
+      : `<div class="prow2 ${p.connected ? '' : 'off'}"><span class="pav" style="--pc:${p.color}">${p.avatar}</span>
+          <span class="pn">${esc(p.name)}${p.id === S.vip ? ' 👑' : ''}<small>${p.score} P${p.connected ? '' : ' · offline'}</small></span>
+          <button class="ib" onclick="startRename('${p.id}')" title="Umbenennen">✏️</button>
+          ${p.id === myId ? '' : `<button class="ib ${ui.confirm === 'kick' + p.id ? 'warn' : ''}" onclick="kick('${p.id}')" title="Entfernen">${ui.confirm === 'kick' + p.id ? 'Sicher?' : '✖'}</button>`}</div>`).join('')}
+  </div>`;
+}
+
+let pauseTimer = null;
+function renderPause() {
+  const nb = S.nextBlock, end = Date.now() + S.remainingMs;
+  main.innerHTML = `<div class="center">
+    <div class="big">🍺</div><h1>Pause!</h1>
+    <div class="pcount" id="pc">${S.phaseMs ? '' : '⏸'}</div>
+    <p>${S.phaseMs ? 'bis es weitergeht' : 'Es geht weiter, wenn der Host startet.'}${nb ? `<br>Gleich: <b>Block ${nb.num} von ${nb.total}</b>` : ''}</p>
+    ${S.me.isVip ? '<button class="btn" onclick="advance()">⏭ Pause beenden</button><button class="btn ghost" onclick="hostAct(\'extend\')">➕ 5 Minuten länger</button>' : ''}
+  </div>`;
+  clearInterval(pauseTimer);
+  if (S.phaseMs && !S.frozen) pauseTimer = setInterval(() => {
+    const el = document.getElementById('pc'); if (!el) return clearInterval(pauseTimer);
+    const s = Math.max(0, Math.ceil((end - Date.now()) / 1000)); el.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }, 250);
+}
+
+function renderFrozen() {
+  main.innerHTML = `<div class="center"><div class="big">⏸</div><h1>Spiel angehalten</h1><p>Gleich geht es weiter …</p>
+    ${S.me.isVip ? '<button class="btn" onclick="hostAct(\'resume\')">▶️ Spiel fortsetzen</button>' : ''}</div>`;
 }
 
 // ---------- Fragen ----------
