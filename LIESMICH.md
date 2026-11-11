@@ -106,6 +106,7 @@ Eine Paketdatei sieht so aus, und die Frageart ergibt sich aus den Feldern:
 | Auswahl | `"antworten": [...]` mit 2 bis 4 Antworten. **Die erste ist immer die richtige**, im Spiel wird gemischt. |
 | Bilderrätsel | zusätzlich `"bild": "datei.jpg"`. Das Bild in den Ordner `bilder` neben der Datei legen (jpg, png, webp, gif oder svg). |
 | Schätzfrage | `"schaetzen": 330` statt Antworten, optional mit `"einheit": "m"`. Geht mit oder ohne Bild. Fragen mit „Jahr“ im Text werden automatisch als Jahreszahl erkannt (±2 Jahre). Mit `"toleranz": 5` stellst du die erlaubte Abweichung selbst ein, auch bei normalen Schätzfragen. `"jahr": false` schaltet die Erkennung ab. |
+| Videofrage | zusätzlich `"video": "clip.mp4"`. Das Video in den Ordner `videos` neben der Datei legen. Es läuft nach der Ankündigung im Vollbild auf dem Fernseher, danach kommt die Frage. Geht mit jeder Frageart. |
 | Zuordnung | `"zuordnen": {"Begriff": "Partner", ...}` mit 2 bis 6 Paaren. Die Reihenfolge wird im Spiel gemischt. |
 
 Optional bei jeder Frage:
@@ -113,6 +114,15 @@ Optional bei jeder Frage:
 - `"kategorie": "Flaggen"`, sonst gilt der Paketname.
 - `"zeit": 30` in Sekunden.
 Achte auf die Kommas zwischen den Einträgen. Neue oder geänderte Dateien erscheinen beim nächsten Öffnen der Paketauswahl.
+
+## Videos für Videofragen
+- **Format:** MP4 mit H.264-Video und AAC-Ton, am besten 720p und 10 bis 60 Sekunden lang. Auf dem Raspberry Pi 3 kann 1080p ruckeln.
+- **Umwandeln** geht mit dem kostenlosen Programm [ffmpeg](https://ffmpeg.org):
+  ```bash
+  ffmpeg -i mein-video.mov -vf scale=-2:720 -c:v libx264 -preset slow -crf 23 -pix_fmt yuv420p -c:a aac -b:a 128k -movflags +faststart clip.mp4
+  ```
+- **Ton am Laptop:** Browser blockieren Videos mit Ton, solange niemand auf die Seite geklickt hat. Dann läuft das Video stumm mit dem Hinweis „Ton blockiert“, ein Klick oder die Taste **M** schaltet den Ton ein. Am Raspberry Pi ist das schon freigeschaltet.
+- **Testen:** Das Paket **Allgemein → Videotest** enthält ein 10-Sekunden-Testvideo mit drei Fragen. Damit siehst du sofort, ob Bild und Ton flüssig laufen. Für normale Spiele kannst du es abwählen.
 
 ## Einstellungen (optional, beim Start setzen)
 | Variable | Bedeutung | Standard |

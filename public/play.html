@@ -216,6 +216,7 @@ function render() {
   if (S.phase === 'block') return renderInfo('📦', `Block ${S.block.num} von ${S.block.total}`, `${esc(S.block.names.join(', '))}<br>Schau auf den Fernseher!`);
   if (S.phase === 'special') return renderInfo('⭐', 'Spezialfrage!', `Diese Frage zählt <b>×${S.special.mult}</b> Punkte!<br>Schau auf den Fernseher 👀`, 'special');
   if (S.phase === 'intro') return renderInfo(S.question.icon, S.question.label, `Kategorie: ${esc(S.question.category)}<br>Gleich geht's los – schau auf den Fernseher!`);
+  if (S.phase === 'video') return renderInfo('🎬', 'Schau genau hin!', 'Das Video läuft auf dem Fernseher – danach kommt die Frage dazu.');
   if (S.phase === 'preview') return renderInfo('👀', 'Merk dir die Begriffe!', 'Gleich musst du ihnen auf dem Handy die richtigen Partner zuordnen.');
   if (S.phase === 'question') {
     if (me.answer) return renderWaiting(waitingFor(me.answer));
