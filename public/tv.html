@@ -151,6 +151,15 @@
   .vwrap video { width: 100%; height: 100%; object-fit: contain; background: #000; }
   .vhint { position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%); background: rgba(0,0,0,.75); color: #fff; padding: 1vh 2vw; border-radius: 99px; font-size: 1.6vw; font-weight: 700; z-index: 41; }
 
+  /* Soundcheck */
+  .iicon.sc { animation: pulse 1.2s ease-in-out infinite; }
+  .eq { display: flex; gap: .8vw; align-items: flex-end; height: 10vh; margin-top: 2vh; }
+  .eq i { width: 1.6vw; height: 100%; background: var(--c); border-radius: .4vw; transform-origin: bottom; animation: eq .9s ease-in-out infinite alternate; }
+  @keyframes eq { from { transform: scaleY(.15); } to { transform: scaleY(1); } }
+  .pbar.wide { width: 50vw; margin-top: 2vh; }
+  .pbar.wide i { transition: width .2s linear; }
+  html.lite .eq i { transform: scaleY(.6); }
+
   /* Rangliste */
   .board { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 2vh; }
   .board h2 { font-size: 3.6vw; font-weight: 900; margin-bottom: 3vh; }
@@ -233,22 +242,23 @@ function qTop() {
   const b = S.block && S.block.total > 1 ? `Block ${S.block.num}/${S.block.total} · ` : '';
   return topbar(`<span id="spb"></span>${badge(S.question)}<span class="pill">${b}Frage ${S.qNum} / ${S.qTotal}</span>`);
 }
-const IN_Q = ['intro', 'video', 'preview', 'question', 'special', 'votes', 'reveal'];
+const IN_Q = ['intro', 'media', 'preview', 'question', 'special', 'votes', 'reveal'];
 const fmt = n => Math.abs(n) >= 10000 ? n.toLocaleString('de-DE') : String(n).replace('.', ',');
 
 function render() {
   const inQ = IN_Q.includes(S.phase);
-  const stage = ['intro', 'video', 'preview'].includes(S.phase) ? S.phase : 'main';
+  const stage = ['intro', 'media', 'preview'].includes(S.phase) ? S.phase : 'main';
   const key = inQ ? `Q:${S.qNum}:${stage}` : S.phase + ':' + S.qNum;
   const fresh = key !== lastKey;
   if (S.remainingMs && (S.phase !== lastPhase || Math.abs(Date.now() + S.remainingMs - deadline) > 1200)) deadline = Date.now() + S.remainingMs;
+  if (S.phase !== 'media' && window.__stopAudio) { window.__stopAudio(); window.__stopAudio = null; }
   lastKey = key; lastPhase = S.phase;
 
   document.getElementById('status').style.display = (!KIOSK && (S.phase === 'lobby' || S.phase === 'end')) ? '' : 'none';
   if (S.phase === 'lobby') { prevScores = {}; return renderLobby(); }
   if (S.phase === 'block') return fresh ? renderBlock() : null;
   if (stage === 'intro') return fresh ? renderIntro() : null;
-  if (stage === 'video') return fresh ? renderVideo() : null;
+  if (stage === 'media') return fresh ? (S.question.audio ? renderAudio() : renderVideo()) : null;
   if (stage === 'preview') return fresh ? renderPreview() : null;
   if (inQ) return fresh ? renderMain() : updateMain();
   { const ov = document.getElementById('special'); if (ov && S.phase !== 'special') ov.remove(); }
@@ -324,7 +334,7 @@ function renderIntro() {
 }
 
 // ---------- Videofrage: Video im Vollbild, danach die Frage ----------
-function videoMsg(event, extra) { fetch('/api/video', { method: 'POST', body: JSON.stringify({ role: 'tv', event, ...extra }) }); }
+function videoMsg(event, extra) { fetch('/api/media', { method: 'POST', body: JSON.stringify({ role: 'tv', event, ...extra }) }); }
 function renderVideo() {
   const q = S.question;
   app.innerHTML = `<div class="vwrap"><video id="vid" src="${q.video}" autoplay playsinline preload="auto"></video>
@@ -342,6 +352,60 @@ function renderVideo() {
     addEventListener('click', unmute, { once: true });
     addEventListener('keydown', function k(e) { if (e.key === 'm' || e.key === 'M') { unmute(); removeEventListener('keydown', k); } });
   });
+}
+
+// ---------- Soundcheck: Audio (Ausschnitt, auf Wunsch rückwärts) per WebAudio ----------
+let audioCtx = null;
+function renderAudio() {
+  const q = S.question, o = q.audioOpts || {};
+  app.innerHTML = `<div class="intro">
+    <div class="iicon sc">🎧</div><div class="ilabel">Hör genau hin!</div>
+    <div class="icat">${o.reverse ? '⏪ rückwärts gespielt' : esc(q.category)}</div>
+    <div class="eq">${Array.from({ length: 9 }, (_, i) => `<i style="animation-delay:${i * 0.11}s"></i>`).join('')}</div>
+    <div class="pbar wide"><i id="apbar" style="width:0%"></i></div>
+    <div class="vhint" id="vhint" style="display:none">🔇 Ton blockiert – einmal klicken oder M drücken</div></div>`;
+  playAudio(q.audio, o).catch(() => {
+    app.innerHTML += '<div class="vhint">⚠️ Audio konnte nicht abgespielt werden</div>';
+    setTimeout(() => videoMsg('error'), 2500);
+  });
+}
+async function playAudio(url, o) {
+  const key = S.qNum;
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  const data = await (await fetch(url)).arrayBuffer();
+  const full = await audioCtx.decodeAudioData(data);
+  if (S.qNum !== key || S.phase !== 'media') return;      // inzwischen übersprungen
+  // Ausschnitt schneiden und ggf. umdrehen
+  const sr = full.sampleRate;
+  const from = Math.min(full.length, Math.floor((o.start || 0) * sr));
+  const to = o.dauer ? Math.min(full.length, from + Math.floor(o.dauer * sr)) : full.length;
+  const buf = audioCtx.createBuffer(full.numberOfChannels, Math.max(1, to - from), sr);
+  for (let c = 0; c < full.numberOfChannels; c++) {
+    const part = full.getChannelData(c).slice(from, to);
+    if (o.reverse) part.reverse();
+    buf.copyToChannel(part, c);
+  }
+  // kurzes Ein-/Ausblenden gegen Knackser
+  const src = audioCtx.createBufferSource(), gain = audioCtx.createGain();
+  src.buffer = buf; src.connect(gain).connect(audioCtx.destination);
+  const t0 = audioCtx.currentTime + 0.05, len = buf.duration;
+  gain.gain.setValueAtTime(0, t0); gain.gain.linearRampToValueAtTime(1, t0 + 0.08);
+  gain.gain.setValueAtTime(1, t0 + Math.max(0.1, len - 0.15)); gain.gain.linearRampToValueAtTime(0, t0 + len);
+  src.onended = () => { if (S.qNum === key && S.phase === 'media') videoMsg('ended'); };
+  videoMsg('duration', { seconds: len, position: 0 });
+  src.start(t0);
+  window.__stopAudio = () => { try { src.stop(); } catch (_) {} };
+  if (audioCtx.state === 'suspended') {   // Autoplay gesperrt -> Hinweis, Klick/M startet den Ton
+    const h = document.getElementById('vhint'); if (h) h.style.display = '';
+    const go = () => { audioCtx.resume(); const x = document.getElementById('vhint'); if (x) x.remove(); };
+    addEventListener('click', go, { once: true });
+    addEventListener('keydown', function k(e) { if (e.key === 'm' || e.key === 'M') { go(); removeEventListener('keydown', k); } });
+  }
+  const tick = setInterval(() => {
+    const b = document.getElementById('apbar');
+    if (!b || S.phase !== 'media' || S.qNum !== key) { clearInterval(tick); return; }
+    b.style.width = Math.min(100, (audioCtx.currentTime - t0) / len * 100) + '%';
+  }, 200);
 }
 
 // ---------- Zuordnen: erst nur die Begriffe ----------

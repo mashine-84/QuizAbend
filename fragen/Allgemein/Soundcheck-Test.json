@@ -1,0 +1,7 @@
+{
+  "paket": "Soundcheck (Test)",
+  "fragen": [
+    {"audio": "alle-meine-entchen.mp3", "dauer": 8, "frage": "Welches Kinderlied war das?", "antworten": ["Alle meine Entchen", "Hänschen klein", "Bruder Jakob", "Kuckuck, Kuckuck, ruft's aus dem Wald"], "schwierigkeit": 1},
+    {"audio": "haenschen-klein.mp3", "rueckwaerts": true, "frage": "Welches Kinderlied lief rückwärts?", "antworten": ["Hänschen klein", "Alle meine Entchen", "Bruder Jakob", "Alle Vögel sind schon da"], "schwierigkeit": 2}
+  ]
+}
