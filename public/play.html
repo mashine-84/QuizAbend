@@ -210,6 +210,8 @@ function leave() {
 // Punkte gibt's erst am Blockende – während der Fragen bleiben sie verborgen
 const HIDE_PTS = ['intro', 'media', 'preview', 'question', 'special', 'votes', 'reveal'];
 let shownScore = 0, scoresSince = 0;
+let lastEstQ = 0, estRevealAt = 0;
+const EST_WAIT_MS = 6000;   // TV: 4,5 s Slotmaschine + 1,4 s Einsortieren
 const SCORES_REVEAL_MS = 10400;  // so lange braucht der Fernseher, bis die Rangliste sortiert ist
 const LATER = '<p class="later">Punkte und Platz gibt\'s am Ende des Blocks 🤫</p>';
 function header() {
@@ -270,7 +272,17 @@ function render() {
     return k === 'estimate' ? renderEstimate() : k === 'match' ? renderMatch() : renderChoice();
   }
   if (S.phase === 'votes') return renderVotes();
-  if (S.phase === 'reveal') return S.question.kind === 'match' ? renderMatchResult() : renderResult();
+  if (S.phase === 'reveal') {
+    if (S.question.kind === 'estimate') {   // erst wenn am TV die Zahl gelandet und die Liste sortiert ist
+      if (lastEstQ !== S.qNum) { lastEstQ = S.qNum; estRevealAt = Date.now() + EST_WAIT_MS; }
+      const wait = estRevealAt - Date.now();
+      if (wait > 0) {
+        clearTimeout(render.estT); render.estT = setTimeout(() => { lastKey = ''; render(); }, wait + 30);
+        return renderInfo('🎰', 'Gleich wissen wir es …', 'Schau auf den Fernseher 👀');
+      }
+    }
+    return S.question.kind === 'match' ? renderMatchResult() : renderResult();
+  }
   if (S.phase === 'scores') return renderRank(false);
   if (S.phase === 'end') return renderRank(true);
 }

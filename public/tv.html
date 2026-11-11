@@ -123,6 +123,8 @@
   .erow.ehead { background: none; font-size: 1.3vw; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; padding-top: 0; padding-bottom: 0; animation: none; }
   .erow.ehead .ev { margin-left: auto; }
   .erow.ehead .vav { visibility: hidden; }
+  .erow.esort, html.lite .erow.esort { transition: transform 1.3s cubic-bezier(.6,0,.3,1), background .4s !important; animation: none !important; }
+  .erow .ed, .erow .eg { transition: opacity .4s; } .erow.esort:not(.edone) .ed, .erow.esort:not(.edone) .eg { opacity: 0; }
   .elist.many .erow { font-size: 1.35vw; padding-top: 0; padding-bottom: 0; } .elist.many .erow .vav { width: 2vw; height: 2vw; font-size: 1.2vw; } .elist.many { gap: .4vh; }
   .eresult.many { margin-bottom: .6vh; } .eresult.many .ebig { font-size: 3.8vw; }
   .estpanel.reveal { justify-content: flex-start; }
@@ -797,7 +799,7 @@ function renderEstimate(byId) {
   const rowsHtml = (list, final) => (list.length ? `<div class="erow ehead"><span class="vav"></span><span class="en">Spieler</span><span class="ev">Schätzung</span><span class="ed">${final ? 'Abstand' : ''}</span><span class="eg"></span></div>` : '') + list.map((r, i) => {
     const p = byId[r.id]; if (!p) return '';
     const res = final ? p.result : null;
-    return `<div class="erow ${res && res.correct ? 'best' : ''} ${res && res.outOfRange ? 'out' : ''}" style="--pc:${p.color};animation-delay:${final ? i * 0.12 : 0}s">
+    return `<div class="erow ${res && res.correct ? 'best' : ''} ${res && res.outOfRange ? 'out' : ''}" data-id="${r.id}" style="--pc:${p.color};animation-delay:${final ? i * 0.12 : 0}s">
       <span class="vav">${p.avatar}</span><span class="en">${esc(p.name)}</span><span class="ev">${fmt(r.value)}${unit}</span><span class="ed">${final ? sign(r.value - q.value) + dunit : ''}</span>
       ${res ? `<span class="eg ${res.correct ? '' : res.gain ? 'mid' : 'no'}">${res.correct ? '✓' : res.gain ? '≈' : '✗'}</span>` : '<span class="eg"></span>'}</div>`;   // Punkte gibt's erst am Blockende
   }).join('');
@@ -806,10 +808,37 @@ function renderEstimate(byId) {
   box.innerHTML = `<div class="eresult ${many}"><span class="elabel">Richtig</span><span class="ebig" id="ebig">&nbsp;</span></div>
     <div class="elist ${many}" id="elist">${rowsHtml(byValue, false)}</div>`;
   slotRoll(document.getElementById('ebig'), q, unit, rows, () => {
-    const l = document.getElementById('elist'); if (l) l.innerHTML = rowsHtml(rows, true);
-    estLanded = S.qNum; const c = document.getElementById('chips'); if (c) c.innerHTML = chips();
+    const l = document.getElementById('elist');
+    if (l) sortEstimateRows(l, rows, byId, q, unit, dunit, sign, () => { estLanded = S.qNum; const c = document.getElementById('chips'); if (c) c.innerHTML = chips(); });
     shot(revealSound, 0.85);
   });
+}
+
+// Wie bei der Rangliste: Zeilen gleiten auf ihre Plätze (nach Abstand), danach erscheinen Abstand und ✓/≈/✗
+const EST_SORT_S = 1.3;
+function sortEstimateRows(list, rows, byId, q, unit, dunit, sign, done) {
+  const els = [...list.querySelectorAll('.erow[data-id]')];
+  const pitch = els.length > 1 ? els[1].offsetTop - els[0].offsetTop : 0;
+  els.forEach((el, from) => {
+    const to = rows.findIndex(r => r.id === el.dataset.id);
+    el.classList.add('esort');
+    el.style.transform = `translateY(${(to - from) * pitch}px)`;
+  });
+  setTimeout(() => {
+    if (!document.contains(list)) return;
+    const head = list.querySelector('.ehead .ed'); if (head) head.textContent = 'Abstand';
+    els.forEach(el => {
+      const r = rows.find(x => x.id === el.dataset.id), p = byId[el.dataset.id], res = p && p.result;
+      el.querySelector('.ed').textContent = sign(r.value - q.value) + (q.year ? ' J.' : (q.unit ? ' ' + q.unit : ''));
+      if (res) {
+        const g = el.querySelector('.eg');
+        g.className = 'eg ' + (res.correct ? '' : res.gain ? 'mid' : 'no'); g.textContent = res.correct ? '✓' : res.gain ? '≈' : '✗';
+        el.classList.toggle('best', !!res.correct); el.classList.toggle('out', !!res.outOfRange);
+      }
+      el.classList.add('edone');
+    });
+    done();
+  }, EST_SORT_S * 1000 + 100);
 }
 
 // Slotmaschine: zählt von unten aufwärts an den Schätzungen vorbei zum richtigen Wert –
