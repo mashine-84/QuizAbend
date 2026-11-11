@@ -20,9 +20,9 @@
   h1 { font-size: 34px; font-weight: 900; letter-spacing: -0.02em; line-height: 1.1; }
   h1 span { color: var(--c); }
   p { color: var(--muted); font-size: 17px; line-height: 1.4; }
-  input { width: 100%; max-width: 340px; font: inherit; font-size: 22px; font-weight: 700; padding: 16px 18px; border-radius: 14px; border: 3px solid transparent; background: #fff; color: #1b1440; text-align: center; outline: none; }
+  input { width: 100%; font: inherit; font-size: 22px; font-weight: 700; padding: 16px 18px; border-radius: 14px; border: 3px solid transparent; background: #fff; color: #1b1440; text-align: center; outline: none; }
   input:focus { border-color: var(--c); }
-  .btn { width: 100%; max-width: 340px; font: inherit; font-size: 21px; font-weight: 900; padding: 17px; border-radius: 14px; border: none; background: var(--c); color: #1b1440; box-shadow: 0 5px 0 rgba(0,0,0,.3); cursor: pointer; }
+  .btn { width: 100%;   /* volle Breite auf allen Handys */ font: inherit; font-size: 21px; font-weight: 900; padding: 17px; border-radius: 14px; border: none; background: var(--c); color: #1b1440; box-shadow: 0 5px 0 rgba(0,0,0,.3); cursor: pointer; }
   .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
   .btn:disabled { opacity: .4; }
   .btn.ghost { background: rgba(255,255,255,.12); color: #fff; }
@@ -85,7 +85,6 @@
   .gain.dark { font-size: 26px; font-weight: 900; background: rgba(255,255,255,.12); padding: 8px 22px; border-radius: 99px; }
   /* Paketauswahl */
   .settings { display: flex; flex-direction: column; gap: 12px; }
-  .settings .btn:not(.sm) { max-width: none; }   /* Knöpfe im Host-Menü und in den Einstellungen volle Breite */
   .shead { display: flex; align-items: center; justify-content: space-between; }
   .shead h2 { font-size: 24px; }
   .pergame { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px 14px; font-weight: 700; }
@@ -102,7 +101,7 @@
   .errors { background: rgba(229,72,77,.2); border-radius: 14px; padding: 12px 14px; font-size: 14px; display: flex; flex-direction: column; gap: 8px; }
   .errors code { color: #ffd0d0; }
   .legend { text-align: center; }
-  .emojis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; width: 100%; max-width: 340px; }
+  .emojis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; width: 100%; }
   .emo { font-size: 28px; aspect-ratio: 1; border-radius: 12px; border: 3px solid transparent; background: rgba(255,255,255,.08); padding: 0; }
   .emo.on { border-color: var(--c); background: rgba(245,176,20,.2); }
   .emo:disabled { opacity: .18; }
