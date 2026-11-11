@@ -164,6 +164,32 @@ Die Erzeuger-Skripte liegen daneben. Jede Datei lässt sich ersetzen, hier am Be
 - **Länge:** Ideal sind genau 60 Sekunden. Ein längerer Song startet bei 1:00 von vorn und wird zum Pausenende ausgeblendet. Ein kürzerer startet so, dass er genau zum Pausenende aufhört.
 - Wird die Pause verlängert oder übersprungen, blendet die Musik aus. Ist „Sounds“ in den Einstellungen aus, bleibt es still.
 
+## 💡 Philips Hue (Test)
+Das Quiz kann das Licht im Raum mitsteuern. Es braucht dafür nur die Hue Bridge im selben Netz, keine Zusatzsoftware.
+
+**Einrichten (einmalig, am Handy des 👑 unter ⚙️ Einstellungen › Philips Hue):**
+1. „Bridge suchen“ tippen. Das braucht Internet; ohne Internet die IP der Bridge eintippen (Hue-App › Einstellungen › Bridges › ⓘ).
+2. Den runden Knopf oben auf der Bridge drücken und innerhalb von 30 Sekunden „Verbinden“ tippen.
+3. Den Bereich wählen: einen Entertainment-Bereich (z. B. „TV“), einen Raum oder eine Zone.
+4. Mit „Testen“ prüfen: Die Lampen leuchten kurz gold und pulsieren, danach ist alles wie vorher.
+
+**Was im Spiel passiert:**
+| Moment | Licht |
+|---|---|
+| Intro, Block-Ansage, Rangliste | Lila, gedimmt |
+| Frage | Dunkles Blau-Lila, stark gedimmt (bei Video/Audio fast aus) |
+| Auflösung | Farbe der richtigen Antwort (rot, blau, gelb, grün); bei Schätz- und Zuordnungsfragen grün |
+| Spezialfrage | Gold, volle Helligkeit, pulsiert |
+| Pause zwischen den Blöcken | Hell und warmweiß |
+| Spiel angehalten | Warmweiß, halbe Helligkeit |
+| Siegerehrung | Farbe des Gewinners, pulsiert |
+| Zurück in der Lobby | Licht wie vor dem Spiel |
+
+- Lampen ohne Farbe werden nur gedimmt.
+- Die Bridge verträgt etwa 10 Befehle pro Sekunde. Bei vielen Lampen wechselt das Licht deshalb leicht nacheinander.
+- Läuft gleichzeitig Hue Sync (App oder Sync Box) für denselben Bereich, ignoriert die Bridge die Befehle des Quiz. Hue Sync also vorher ausschalten.
+- Die Zugangsdaten liegen in `hue.json` im Quiz-Ordner (nicht in Git). „Verbindung trennen“ löscht sie.
+
 ## Einstellungen (optional, beim Start setzen)
 | Variable | Bedeutung | Standard |
 |---|---|---|
@@ -185,6 +211,7 @@ Beispiel (Windows, Eingabeaufforderung): `set FRAGEN=15 && node server.js`
 - `public/tv.html`: Fernseher-Ansicht (Lobby, Frage, Auflösung, Rangliste, Siegerpodest)
 - `public/play.html`: Handy-Controller
 - `public/qr.js`: QR-Code-Generator (funktioniert offline)
+- `hue.js`: Philips-Hue-Steuerung (Kopplung, Bereich, Licht je Spielphase)
 - `sounds/`: Pausenmusik (`standard/` mit Erzeuger-Skript, eigene Datei daneben)
 - `fragen/`: Fragenpakete (ein Ordner pro Hauptkategorie, eine Datei pro Paket)
 - `einstellungen.json`: gewählte Pakete (legt das Spiel selbst an)

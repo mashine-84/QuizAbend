@@ -38,6 +38,9 @@
   .res { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px; animation: pop .4s cubic-bezier(.2,1.5,.4,1) both; }
   .res.ok { background: #2fb36d; } .res.bad { background: #e5484d; } .res.none { background: #3b3363; }
   .res h1 { font-size: 40px; } .res p { color: rgba(255,255,255,.9); font-size: 20px; font-weight: 700; }
+  .hueip { width: 100%; box-sizing: border-box; margin: 8px 0; padding: 12px; border-radius: 12px; border: 0; font-size: 16px; }
+  .huelist { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .huelist .btn { width: auto; margin: 0; }
   .later { font-size: 15px; opacity: .8; margin-top: 18px; }
   .res .gain { font-size: 30px; font-weight: 900; background: rgba(0,0,0,.18); padding: 8px 22px; border-radius: 99px; }
   .rank { font-size: 64px; font-weight: 900; color: var(--c); }
@@ -314,6 +317,7 @@ async function openSettings() {
   ui.settings = true; ui.edit = null; lastKey = '';
   main.innerHTML = '<div class="center"><p>Lade Einstellungen …</p></div>';
   ui.packs = await fetch('/api/pakete').then(r => r.json()).catch(() => null);
+  ui.hue = { st: (await hueCall('status')) || null };
   lastKey = ''; render();
 }
 function closeSettings() { ui.settings = false; lastKey = ''; render(); }
@@ -365,6 +369,68 @@ async function sysAction(a) {
   lastKey = ''; render();
 }
 
+// ---------- Philips Hue (Test) ----------
+async function hueCall(action, extra) {
+  const { data } = await post('/api/hue', { id: myId, action, ...(extra || {}) });
+  return data;
+}
+function hueSection() {
+  const h = ui.hue || {}, st = h.st;
+  if (!st) return '';
+  const msg = h.msg ? `<div class="sysout ${h.msg.ok ? '' : 'bad'}">${esc(h.msg.text)}</div>` : '';
+  let body;
+  if (!st.paired) {
+    body = `<p class="small">Das Quiz dimmt den Raum während des Spiels, färbt das Licht bei der Auflösung in der Farbe der richtigen Antwort und macht es in der Pause hell.</p>
+      <button class="btn ghost" onclick="hueDiscover()">🔍 Bridge suchen</button>
+      ${(h.ips || []).map(ip => `<button class="btn ${h.ip === ip ? '' : 'ghost'} sm" onclick="ui.hue.ip='${esc(ip)}'; lastKey=''; render()">${esc(ip)}</button>`).join(' ')}
+      <input class="hueip" id="hueip" placeholder="oder IP der Bridge, z. B. 192.168.178.20" value="${esc(h.ip || '')}" oninput="ui.hue.ip=this.value">
+      <p class="small">Drück den runden Knopf oben auf der Bridge und tippe dann innerhalb von 30 Sekunden auf „Verbinden“.</p>
+      <button class="btn" onclick="huePair()">🔗 Verbinden</button>`;
+  } else {
+    const groups = {};
+    (h.list || []).forEach(t => (groups[t.group] = groups[t.group] || []).push(t));
+    body = `<p class="small">Verbunden mit der Bridge ${esc(st.ip)}${st.target ? ` · Bereich: <b>${esc(st.target.name)}</b> (${st.lights} Lampen)` : ''}</p>
+      ${st.target ? `<label class="switch"><input type="checkbox" ${st.enabled ? 'checked' : ''} onchange="hueEnable(this.checked)"><span>Licht im Spiel steuern</span></label>` : ''}
+      ${h.list ? Object.entries(groups).map(([g, l]) => `<p class="small"><b>${esc(g)}</b></p><div class="huelist">${l.map(t =>
+        `<button class="btn sm ${st.target && st.target.id === t.id ? '' : 'ghost'}" onclick="hueSelect('${t.kind}','${esc(t.id)}')">${esc(t.name)}</button>`).join('')}</div>`).join('')
+        : `<button class="btn ghost" onclick="hueTargets()">${st.target ? '🔁 Anderen Bereich wählen' : '💡 Bereich wählen'}</button>`}
+      ${st.target ? '<button class="btn ghost" onclick="hueTest()">✨ Testen</button>' : ''}
+      <button class="btn ghost sm" onclick="hueForget()">Verbindung trennen</button>`;
+  }
+  return `<h3>💡 Philips Hue <small>(Test)</small></h3>${body}${msg}`;
+}
+async function hueRefresh(msg) { ui.hue.st = await hueCall('status'); ui.hue.msg = msg || null; lastKey = ''; render(); }
+async function hueDiscover() {
+  ui.hue.msg = { ok: true, text: 'Suche …' }; lastKey = ''; render();
+  const r = await hueCall('discover'); ui.hue.ips = r.ips || [];
+  if (ui.hue.ips.length === 1) ui.hue.ip = ui.hue.ips[0];
+  ui.hue.msg = { ok: !!ui.hue.ips.length, text: ui.hue.ips.length ? 'Gefunden – wähle die Bridge.' : 'Keine Bridge gefunden. Gib die IP von Hand ein (steht in der Hue-App unter Einstellungen › Bridges).' };
+  lastKey = ''; render();
+}
+async function huePair() {
+  if (!ui.hue.ip) { ui.hue.msg = { ok: false, text: 'Erst eine Bridge wählen oder die IP eingeben.' }; lastKey = ''; render(); return; }
+  ui.hue.msg = { ok: true, text: 'Verbinde …' }; lastKey = ''; render();
+  const r = await hueCall('pair', { ip: ui.hue.ip });
+  if (r.ok) { await hueRefresh({ ok: true, text: 'Verbunden ✓ Jetzt den Bereich wählen.' }); return hueTargets(); }
+  ui.hue.msg = { ok: false, text: r.text || 'Hat nicht geklappt.' }; lastKey = ''; render();
+}
+async function hueTargets() {
+  const r = await hueCall('targets');
+  if (!r.ok) return hueRefresh({ ok: false, text: r.text });
+  ui.hue.list = r.list; lastKey = ''; render();
+}
+async function hueSelect(kind, target) {
+  const r = await hueCall('select', { kind, target });
+  ui.hue.list = null;
+  await hueRefresh(r.ok ? { ok: true, text: `Bereich gewählt: ${r.count} Lampen.` } : { ok: false, text: r.text });
+}
+async function hueEnable(on) { await hueCall('enable', { on }); hueRefresh(); }
+async function hueTest() { const r = await hueCall('test'); hueRefresh(r.ok ? { ok: true, text: 'Die Lampen sollten jetzt kurz gold pulsieren.' } : { ok: false, text: r.text }); }
+async function hueForget() {
+  if (ui.confirm !== 'hue') { ui.confirm = 'hue'; ui.hue.msg = { ok: false, text: 'Nochmal auf „Verbindung trennen“ tippen zum Bestätigen.' }; lastKey = ''; render(); return; }
+  ui.confirm = null; await hueCall('forget'); ui.hue.list = null; hueRefresh({ ok: true, text: 'Getrennt.' });
+}
+
 function setSpecial(on) { cfg().special.on = on; saveCfg(); }
 function setMult(m) { cfg().special.mult = m; saveCfg(); }
 
@@ -401,6 +467,7 @@ function renderSettings() {
     <h3>🍺 Pause nach jedem Block</h3>
     <label class="switch"><input type="checkbox" ${c.pause.on ? 'checked' : ''} onchange="cfg().pause.on = this.checked; saveCfg()"><span>Pausen-Bildschirm zwischen den Blöcken</span></label>
     ${c.pause.on ? stepper('Dauer in Minuten', c.pause.minutes || '∞', `setPause(-1)`, `setPause(1)`) + `<p class="small">${c.pause.minutes ? `Nach ${c.pause.minutes} Minuten geht es automatisch weiter.` : 'Die Pause läuft, bis du sie am Handy beendest.'} Du kannst sie jederzeit beenden oder verlängern.</p>` : ''}
+    ${hueSection()}
     ${systemSection(d.system)}
     ${d.errors.length ? `<div class="errors"><b>⚠️ Fehler in Fragendateien</b>${d.errors.map(e => `<div><code>${esc(e.file)}</code><br>${esc(e.error)}</div>`).join('')}</div>` : ''}
   </div>`;
