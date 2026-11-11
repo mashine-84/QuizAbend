@@ -3,6 +3,10 @@
 # Stürzt der Browser ab, startet er neu. Nach 5 Abstürzen in Folge bleibt die Konsole offen.
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOG=/tmp/quizabend-kiosk.log
+
+# Unsichtbarer Mauszeiger: sonst zeichnet cage den Standard-Pfeil dauerhaft ins Bild
+[ -d "$HOME/.icons/quizabend-blank" ] || python3 "$DIR/raspberry-pi/blank-cursor.py" >>"$LOG" 2>&1
+export XCURSOR_THEME=quizabend-blank XCURSOR_SIZE=24 XCURSOR_PATH="$HOME/.icons:/usr/share/icons"
 fails=0
 while [ $fails -lt 5 ]; do
   start=$(date +%s)
