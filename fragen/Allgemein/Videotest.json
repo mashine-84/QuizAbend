@@ -1,5 +1,5 @@
 {
-  "paket": "Videotest",
+  "paket": "Seh-Test (Testvideo)",
   "fragen": [
     {"video": "zahlen-test.mp4", "frage": "Welche Zahl wurde in Rot angezeigt?", "antworten": ["7", "3", "5", "2"], "schwierigkeit": 1},
     {"video": "zahlen-test.mp4", "frage": "Wie viele Pieptöne waren zu hören?", "schaetzen": 8, "schwierigkeit": 2},
