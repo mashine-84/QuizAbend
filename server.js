@@ -28,6 +28,7 @@ const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
 
 const FRAGEN_DIR = path.join(__dirname, 'fragen');
+const SOUNDS_DIR = path.join(__dirname, 'sounds');
 const HOTSPOT_FILE = path.join(__dirname, 'hotspot.json'); // von raspberry-pi/setup.sh angelegt: {ssid, password}
 const UNDER_SYSTEMD = !!process.env.INVOCATION_ID;           // läuft als Dienst (Pi) -> Neustart nach Update automatisch
 const SETTINGS_FILE = path.join(__dirname, 'einstellungen.json');
@@ -706,6 +707,23 @@ function serveMedia(req, res, rel) {
   });
 }
 
+// Musik für die letzte Pausenminute: eigene Datei sounds/pause-finale.* hat Vorrang vor sounds/standard/
+function pauseMusicFile() {
+  for (const dir of [SOUNDS_DIR, path.join(SOUNDS_DIR, 'standard')]) {
+    for (const ext of Object.keys(AUDIO_TYPES)) {
+      const f = path.join(dir, 'pause-finale' + ext);
+      if (fs.existsSync(f)) return f;
+    }
+  }
+  return null;
+}
+function servePauseMusic(res) {
+  const f = pauseMusicFile();
+  if (!f) { res.writeHead(404); res.end(); return; }
+  res.writeHead(200, { 'Content-Type': AUDIO_TYPES[path.extname(f).toLowerCase()], 'Cache-Control': 'no-store' });
+  fs.createReadStream(f).pipe(res);
+}
+
 function validAnswer(q, body) {
   if (q.kind === 'choice') {
     const choice = Number(body.choice);
@@ -731,6 +749,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && p === '/tv') return serveFile(res, 'tv.html');
   if (req.method === 'GET' && p === '/qr.js') return serveFile(res, 'qr.js');
   if (req.method === 'GET' && p.startsWith('/media/')) return serveMedia(req, res, p.slice(7));
+  if (req.method === 'GET' && p === '/sounds/pause-finale') return servePauseMusic(res);
 
   if (req.method === 'GET' && p === '/events') {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
