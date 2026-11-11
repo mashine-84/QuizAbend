@@ -366,7 +366,8 @@ function openingTick() {
   slides.forEach((el, i) => el.classList.toggle('on', i === cur));
   // Zahlen hochzählen
   const n = slides[cur].querySelector('[data-count]');
-  if (n) { const p = Math.min(1, (t - OPEN_SLIDES[cur]) / 1.1); n.textContent = Math.round(Number(n.dataset.count) * (1 - Math.pow(1 - p, 3))); }
+  // über 2,6 s, am Ende sanft abbremsend – so kann man jede Zahl mitlesen
+  if (n) { const p = Math.min(1, Math.max(0, t - OPEN_SLIDES[cur] - 0.2) / 2.6); n.textContent = Math.round(Number(n.dataset.count) * (1 - Math.pow(1 - p, 2))); }
 }
 
 function renderBlock() {
