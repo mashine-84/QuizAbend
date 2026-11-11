@@ -198,8 +198,11 @@ const KIOSK = /[?&]kiosk=1/.test(location.search);
 if (LITE) document.documentElement.classList.add('lite');
 // Mauszeiger nach 2 s ohne Bewegung ausblenden
 let cursorTimer;
-function wakeCursor() { document.body.classList.remove('nocursor'); clearTimeout(cursorTimer); cursorTimer = setTimeout(() => document.body.classList.add('nocursor'), 2000); }
-addEventListener('mousemove', wakeCursor); addEventListener('DOMContentLoaded', wakeCursor);
+function wakeCursor() {
+  if (KIOSK) return document.body.classList.add('nocursor'); // am Fernseher-Kiosk nie anzeigen
+  document.body.classList.remove('nocursor'); clearTimeout(cursorTimer); cursorTimer = setTimeout(() => document.body.classList.add('nocursor'), 2000); }
+addEventListener('mousemove', wakeCursor);
+if (KIOSK) document.body.classList.add('nocursor'); addEventListener('DOMContentLoaded', wakeCursor);
 const app = document.getElementById('app');
 let S = null, lastKey = '', lastPhase = '', lastQ = 0, deadline = 0, seen = new Set(), prevScores = {};
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
