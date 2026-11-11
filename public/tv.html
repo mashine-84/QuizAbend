@@ -349,11 +349,11 @@ function render() {
   if (S.phase === 'end') return fresh ? renderEnd() : null;
 }
 
+// Blöcke, Fragen und Spezialfrage zeigt jetzt das Intro – hier nur noch Warnungen
 function packLine() {
   const k = S.packs || {};
   if (!k.questions) return `<div class="packs warn">⚠️ Keine Fragen aktiv – 👑 wählt am Handy unter ⚙️ Einstellungen Fragenpakete aus</div>`;
-  const bl = k.blocks.filter(b => b.plays > 0);
-  return `<div class="packs">📚 ${bl.length > 1 ? `${bl.length} Blöcke · ` : ''}${k.questions} Fragen${k.special && k.special.on ? ` · ⭐ Spezialfrage ×${k.special.mult}` : ''}${k.errors ? ` · <span class="warnc">⚠️ ${k.errors} Fehler in Fragendateien (Details am Handy des 👑)</span>` : ''}</div>`;
+  return k.errors ? `<div class="packs"><span class="warnc">⚠️ ${k.errors} Fehler in Fragendateien (Details am Handy des 👑)</span></div>` : '';
 }
 
 // ---------- Intro beim Spielstart: was erwartet uns heute? ----------
