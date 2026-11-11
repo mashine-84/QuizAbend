@@ -646,7 +646,7 @@ function runSystem(action) {
     } else if (action === 'reboot' || action === 'poweroff') {
       if (!systemInfo().canPower) return resolve({ ok: false, text: 'Nur auf dem Raspberry Pi (als Dienst) möglich.' });
       systemMsg = action === 'reboot' ? { icon: '🔄', text: 'Pi startet neu …' }
-        : { icon: '⏻', text: 'Pi fährt herunter. In 30 Sekunden kann der Stecker raus.' };
+        : { icon: '🔌', text: 'Pi fährt herunter. In 30 Sekunden kann der Stecker raus.' };
       broadcast();
       setTimeout(() => execFile('sudo', ['-n', '/usr/bin/systemctl', action], (err, out, errOut) => {
         if (err) { systemMsg = null; broadcast(); console.error('  System-Aktion fehlgeschlagen:', errOut || err.message); }
