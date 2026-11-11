@@ -78,11 +78,20 @@ Oben rechts am Handy des 👑-Spielers öffnet **🎛️** das Host-Menü:
 - **Spieler umbenennen (✏️) oder entfernen (✖)**
 
 ## Einstellungen am Handy (👑)
-Der 👑-Spieler tippt in der Lobby auf **⚙️ Einstellungen**:
+Der 👑-Spieler tippt in der Lobby auf **⚙️ Einstellungen**. Über das Menü (☰ oben links) wechselt er zwischen drei Bereichen, geöffnet wird immer **Spieleinstellungen**:
+
+**Spieleinstellungen**
 - **Anzahl Blöcke** (1 bis 6). Antippen eines Blocks öffnet seine Einstellungen: wie viele Fragen er hat und welche Pakete er nutzt. Pakete lassen sich einzeln oder als ganze Hauptkategorie an- und abhaken. Neben jedem Paket steht, wie viele leichte, mittlere und schwere Fragen es enthält.
 - **Spezialfrage:** an/aus und der Multiplikator ×2, ×3 oder ×4.
-- **Sounds** an/aus, **Pause nach jedem Block** an/aus mit Dauer.
+- **Pause nach jedem Block** an/aus mit Dauer.
+
+**Integrationen**
+- **Philips Hue** (siehe unten).
+
+**Systemeinstellungen**
+- **Sound:** Musik und Sounds am Fernseher an/aus.
 - **System:** Update holen, Pi neu starten, Pi ausschalten.
+
 - Fehler in Fragendateien, zum Beispiel ein fehlendes Komma, erscheinen dort mit Dateiname und Zeile.
 
 Die Einstellungen bleiben gespeichert (`einstellungen.json`).
