@@ -137,14 +137,17 @@
   .erow.truth .ev { margin-left: 0; }
   .erow.truth span:last-child { margin-left: auto; color: var(--d); text-transform: uppercase; font-size: 1.4vw; letter-spacing: .1em; }
   .mlist { flex: 1; min-height: 0; display: grid; grid-auto-rows: minmax(0, var(--row)); align-content: center; gap: 1.4vh; max-height: 100%; }
-  .mrow { display: grid; grid-template-columns: 1fr 1.25fr; align-items: stretch; gap: 0; min-height: 0; height: 100%; font-size: var(--rowfont); font-weight: 800; line-height: 1.1; animation: slide .45s both; }
+  .mrow { display: grid; grid-template-columns: 1fr 1.25fr; align-items: stretch; gap: .5vw; min-height: 0; height: 100%; font-size: var(--rowfont); font-weight: 800; line-height: 1.1; animation: slide .45s both; }
   .mleft { position: relative; display: flex; align-items: center; gap: 1.4vw; background: #4b3aa8; border-radius: 1.2vw; padding: 0 2.6vw 0 1vw; min-width: 0; transition: background .4s; z-index: 1; }
   .mleft::after { content: ''; position: absolute; right: -2.4vh; top: 50%; width: 4.8vh; height: 4.8vh; border-radius: 50%; background: inherit; transform: translateY(-50%); }
   .mterm { min-width: 0; overflow: hidden; }
-  .mrow .mright { border: .25vw dashed rgba(255,255,255,.2); border-left: none; border-radius: 0 1.2vw 1.2vw 0; padding: 0 1.2vw 0 4vh; transition: background .3s, border-color .3s; }
-  .mrow .mright.filled { background: #f5b014; border: .25vw solid #f5b014; border-left: none; color: #1b1440; animation: snap .35s cubic-bezier(.2,1.6,.4,1); }
+  .mrow .mright { position: relative; border: .25vw dashed rgba(255,255,255,.2); border-radius: 1.2vw; padding: 0 1.2vw 0 4vh; transition: background .3s, border-color .3s; }
+  /* Aussparung im rechten Teil: Kreis in Hintergrundfarbe um die Nase des linken Teils – so sieht man, wie die Teile ineinandergreifen */
+  .mrow .mright::before { content: ''; position: absolute; left: calc(-.5vw - .25vw - 2.9vh); top: 50%; width: 5.8vh; height: 5.8vh; border-radius: 50%; background: var(--bg); transform: translateY(-50%); }
+  .mrow .mright.filled { background: #f5b014; border: .25vw solid #f5b014; color: #1b1440; animation: snap .35s cubic-bezier(.2,1.6,.4,1); }
   .mrow.locked .mleft, .mrow.locked .mright.filled { background: #2fb36d; border-color: #2fb36d; color: #fff; }
   @keyframes snap { 0% { transform: translateX(1vw); } 60% { transform: translateX(-.4vw); } }
+  .mrow .mright:not(.filled)::before { background: none; border: .25vw dashed rgba(255,255,255,.2); clip-path: inset(0 0 0 50%); }
   .mpool { display: flex; flex-wrap: wrap; justify-content: center; gap: 1vh 1.2vw; flex: none; }
   .mpiece { position: relative; background: #f5b014; color: #1b1440; font-weight: 800; font-size: 1.8vw; border-radius: .9vw; padding: 1vh 1.4vw 1vh 3.2vh; animation: pop .4s both; white-space: nowrap; }
   .mpiece::before { content: ''; position: absolute; left: -1.6vh; top: 50%; width: 3.2vh; height: 3.2vh; border-radius: 50%; background: var(--bg); transform: translateY(-50%); }
