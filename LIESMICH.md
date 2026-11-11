@@ -152,6 +152,7 @@ Alle Stücke sind selbst erzeugt, frei nutzbar und klingen einheitlich (A-Dur, 1
 | `quiz-intro.mp3` | Intro beim Spielstart, Folien wechseln im Takt | 22,5 s |
 | `block-start.mp3` | Ansage eines neuen Frageblocks | 4,5 s |
 | `aufloesung.mp3` | Auflösung jeder Frage | 1,6 s |
+| `rangliste.mp3` | Rangliste am Blockende: Spannung, solange die Balken wachsen, Auflösung beim Einsortieren | 13 s |
 | `pause-finale.mp3` | letzte Minute der Pause, ein Schlag pro Sekunde zum Countdown | 60 s |
 | `siegerehrung.mp3` | Siegerpodest | 10 s |
 

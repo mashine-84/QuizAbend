@@ -316,8 +316,8 @@ function render() {
   if (S.remainingMs && (S.phase !== lastPhase || Math.abs(Date.now() + S.remainingMs - deadline) > 1200)) deadline = Date.now() + S.remainingMs;
   if (S.phase !== 'media' && window.__stopAudio) { window.__stopAudio(); window.__stopAudio = null; }
   if (S.phase === 'reveal' && lastPhase !== 'reveal') shot(revealSound, 0.85);   // Treffer bei der Auflösung
-  if (S.phase === 'lobby' && lastPhase !== 'lobby') [blockMusic, revealSound, winSound].forEach(t => { t.buf = null; }); // neu laden (falls Datei getauscht)
-  if (soundOn()) [blockMusic, revealSound, winSound].forEach(t => t.load());
+  if (S.phase === 'lobby' && lastPhase !== 'lobby') [blockMusic, scoresMusic, revealSound, winSound].forEach(t => { t.buf = null; }); // neu laden (falls Datei getauscht)
+  if (soundOn()) [blockMusic, scoresMusic, revealSound, winSound].forEach(t => t.load());
   if (S.phase === 'question' && lastPhase !== 'question') lastTickSec = null;
   lastKey = key; lastPhase = S.phase;
   frozenOverlay(); systemOverlay();
@@ -792,6 +792,7 @@ function makeTrack(name) {
 }
 const introMusic = makeTrack('quiz-intro');
 const blockMusic = makeTrack('block-start');
+const scoresMusic = makeTrack('rangliste');   // läuft synchron zum Balken-Aufbau und Einsortieren
 const revealSound = makeTrack('aufloesung'), winSound = makeTrack('siegerehrung');
 // kurze Jingles einfach abspielen
 function shot(track, gain) {
@@ -813,10 +814,13 @@ function tick() {
   if ((!S || S.phase !== 'pause') && (finale.started || finale.src)) finale.leave();
   if ((!S || S.phase !== 'opening') && (introMusic.started || introMusic.src)) introMusic.leave();
   if (S && S.phase === 'opening') openingTick();
-  if ((!S || S.phase !== 'block') && (blockMusic.started || blockMusic.src)) { blockMusic.leave(); }
-  if (S && S.phase === 'block' && S.phaseMs) {
-    const left = (S.frozen ? S.remainingMs : Math.max(0, deadline - Date.now())) / 1000;
-    blockMusic.lastLeft = left; if (!S.frozen) blockMusic.play(S.phaseMs / 1000 - left, left);
+  // Musik, die genau eine Phase begleitet (Block-Ansage, Rangliste)
+  for (const [phase, m] of [['block', blockMusic], ['scores', scoresMusic]]) {
+    if ((!S || S.phase !== phase) && (m.started || m.src)) m.leave();
+    if (S && S.phase === phase && S.phaseMs) {
+      const left = (S.frozen ? S.remainingMs : Math.max(0, deadline - Date.now())) / 1000;
+      m.lastLeft = left; if (!S.frozen) m.play(S.phaseMs / 1000 - left, left);
+    }
   }
   if (S && S.phase === 'pause') {
     const el = document.getElementById('pcount');
