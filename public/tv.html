@@ -126,6 +126,10 @@
   .elist.many .erow { font-size: 1.35vw; padding-top: 0; padding-bottom: 0; } .elist.many .erow .vav { width: 2vw; height: 2vw; font-size: 1.2vw; } .elist.many { gap: .4vh; }
   .eresult.many { margin-bottom: .6vh; } .eresult.many .ebig { font-size: 3.8vw; }
   .estpanel.reveal { justify-content: flex-start; }
+  .estq.noimg .estpanel.side { width: 86vw; flex-direction: row; align-items: stretch; gap: 1.6vw; background: none; padding: 0; }
+  .estpanel.side .eresult { flex: 0 0 28vw; flex-direction: column; align-items: center; justify-content: center; gap: 1vh; margin: 0; background: rgba(255,255,255,.06); border-radius: 1.4vw; }
+  .estpanel.side .eresult .ebig, .estpanel.side .eresult.many .ebig { font-size: 5.8vw; min-width: 0; text-align: center; }
+  .estpanel.side .elist { flex: 1; min-width: 0; background: rgba(255,255,255,.06); border-radius: 1.4vw; padding: 1.6vh 1.2vw; justify-content: center; }
   .erow .ev { min-width: 11vw; text-align: right; }
   .erow.truth .ev { margin-left: 0; }
   .erow.truth span:last-child { margin-left: auto; color: var(--d); text-transform: uppercase; font-size: 1.4vw; letter-spacing: .1em; }
@@ -787,43 +791,54 @@ function renderEstimate(byId) {
   const rows = q.guesses.map(g => ({ ...g })).sort((x, y) => dist(x) - dist(y));
   const sign = d => d === 0 ? '±0' : (d > 0 ? '+' : '−') + fmt(Math.abs(d));
   const dunit = q.year ? ' J.' : unit;
+  const byValue = q.guesses.map(g => ({ ...g })).sort((x, y) => x.value - y.value);
+  const many = rows.length > (q.image ? 3 : 5) ? 'many' : '';
+  // final = false: während die Zahl läuft (nach Wert sortiert, ohne Abstand/Bewertung); true: nach Abstand mit Bewertung
+  const rowsHtml = (list, final) => (list.length ? `<div class="erow ehead"><span class="vav"></span><span class="en">Spieler</span><span class="ev">Schätzung</span><span class="ed">${final ? 'Abstand' : ''}</span><span class="eg"></span></div>` : '') + list.map((r, i) => {
+    const p = byId[r.id]; if (!p) return '';
+    const res = final ? p.result : null;
+    return `<div class="erow ${res && res.correct ? 'best' : ''} ${res && res.outOfRange ? 'out' : ''}" style="--pc:${p.color};animation-delay:${final ? i * 0.12 : 0}s">
+      <span class="vav">${p.avatar}</span><span class="en">${esc(p.name)}</span><span class="ev">${fmt(r.value)}${unit}</span><span class="ed">${final ? sign(r.value - q.value) + dunit : ''}</span>
+      ${res ? `<span class="eg ${res.correct ? '' : res.gain ? 'mid' : 'no'}">${res.correct ? '✓' : res.gain ? '≈' : '✗'}</span>` : '<span class="eg"></span>'}</div>`;   // Punkte gibt's erst am Blockende
+  }).join('');
   box.classList.add('reveal');
-  box.innerHTML = `<div class="eresult ${rows.length > 3 ? 'many' : ''}"><span class="elabel">Richtig</span><span class="ebig" id="ebig">&nbsp;</span></div>
-    <div class="elist ehidden ${rows.length > 3 ? 'many' : ''}" id="elist">${rows.length ? `<div class="erow ehead"><span class="vav"></span><span class="en">Spieler</span><span class="ev">Schätzung</span><span class="ed">Abstand</span><span class="eg"></span></div>` : ''}${rows.map((r, i) => {
-      const p = byId[r.id]; if (!p) return '';
-      const res = p.result;
-      return `<div class="erow ${res && res.correct ? 'best' : ''} ${res && res.outOfRange ? 'out' : ''}" style="--pc:${p.color};animation-delay:${i * 0.12}s">
-        <span class="vav">${p.avatar}</span><span class="en">${esc(p.name)}</span><span class="ev">${fmt(r.value)}${unit}</span><span class="ed">${sign(r.value - q.value)}${dunit}</span>
-        ${res ? `<span class="eg ${res.correct ? '' : res.gain ? 'mid' : 'no'}">${res.correct ? '✓' : res.gain ? '≈' : '✗'}</span>` : '<span class="eg"></span>'}</div>`;   // Punkte gibt's erst am Blockende
-    }).join('')}</div>`;
+  if (!q.image) box.classList.add('side');   // ohne Bild: Ergebnis als eigene Karte links neben der Liste
+  box.innerHTML = `<div class="eresult ${many}"><span class="elabel">Richtig</span><span class="ebig" id="ebig">&nbsp;</span></div>
+    <div class="elist ${many}" id="elist">${rowsHtml(byValue, false)}</div>`;
   slotRoll(document.getElementById('ebig'), q, unit, rows, () => {
-    const l = document.getElementById('elist'); if (l) l.classList.remove('ehidden');
+    const l = document.getElementById('elist'); if (l) l.innerHTML = rowsHtml(rows, true);
     estLanded = S.qNum; const c = document.getElementById('chips'); if (c) c.innerHTML = chips();
     shot(revealSound, 0.85);
   });
 }
 
-// Slotmaschine: erst schnell wechselnde Zahlen weit weg vom Ergebnis, dann immer langsamer und näher dran
+// Slotmaschine: zählt von unten aufwärts an den Schätzungen vorbei zum richtigen Wert –
+// erst schnell, dann immer zäher, die letzten Zahlen bleiben fast eine Sekunde stehen
 function slotRoll(el, q, unit, rows, done) {
-  const target = q.value, dec = (String(target).split('.')[1] || '').length;
-  const far = Math.max(Math.abs(target) * 0.6, ...rows.map(r => Math.abs(r.value - target)), 10);
-  const spread = Math.min(far, Math.abs(target) * 2 || far);
-  const DUR = 2800, t0 = performance.now();
+  const target = q.value, dec = q.year ? 0 : (String(target).split('.')[1] || '').length, stepU = Math.pow(10, -dec);
+  const below = rows.filter(r => r.value < target).map(r => target - r.value);
+  let span = Math.max(below.length ? Math.max(...below) * 1.15 : 0, q.year ? 25 : Math.abs(target) * 0.5, 10 * stepU);
+  let start = target - span;
+  if (!q.year && target >= 0) start = Math.max(0, start);
+  const round = v => dec ? +v.toFixed(dec) : Math.round(v);
+  const show = v => { el.textContent = fmt(v) + (q.unit ? ' ' + q.unit : ''); };
+  const DUR = 4500, t0 = performance.now();
   let last = null;
   const step = () => {
     if (!document.contains(el)) return;
     const p = Math.min(1, (performance.now() - t0) / DUR);
-    if (p >= 1) { el.textContent = fmt(target) + (q.unit ? ' ' + q.unit : ''); el.classList.add('landed'); return done(); }
-    const range = spread * Math.pow(1 - p, 2);
-    let v = target + (Math.random() * 2 - 1) * range;
-    if (q.year || !dec) v = Math.round(v); else v = +v.toFixed(dec);
-    if (target >= 0 && v < 0) v = Math.abs(v);
-    if (v === last) v = v + (dec ? Math.pow(10, -dec) : 1);
-    last = v; el.textContent = fmt(v) + (q.unit ? ' ' + q.unit : '');
-    if (soundOn()) try { sfx.tone(1500 + Math.random() * 300, ctx().currentTime + 0.005, 0.03, { type: 'triangle', gain: 0.07 }); } catch (_) {}
-    setTimeout(step, 40 + 360 * Math.pow(p, 2.2));   // 40 ms am Anfang, ~400 ms am Ende
+    if (p >= 1) { show(target); el.classList.add('landed'); return done(); }
+    let v = round(start + (target - start) * (1 - Math.pow(1 - p, 4)));   // stark abbremsend
+    if (v >= target) v = round(target - stepU);                             // erst ganz am Schluss landen
+    if (last !== null && v < last) v = last;                                // nie rückwärts
+    if (v !== last) {
+      show(v); last = v;
+      if (soundOn()) try { sfx.tone(1500 + 300 * p, ctx().currentTime + 0.005, 0.03, { type: 'triangle', gain: 0.07 }); } catch (_) {}
+    }
+    setTimeout(step, 35 + 700 * Math.pow(p, 3));   // anfangs 35 ms, am Ende ~0,7 s
   };
-  step();
+  show(round(start)); last = round(start);
+  setTimeout(step, 60);
 }
 
 // ---------- Musik: Intro beim Spielstart + Spannungsmusik in der letzten Pausenminute ----------
