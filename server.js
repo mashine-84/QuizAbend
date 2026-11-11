@@ -693,7 +693,8 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && (p === '/api/media' || p === '/api/video')) {
     const body = await readBody(req);
     if (body.role === 'tv' && state.phase === 'media') {
-      if (body.event === 'ended' || body.event === 'error') afterMedia();
+      if (body.event === 'info') console.log('  [TV-Medien]', JSON.stringify(body.info));
+      else if (body.event === 'ended' || body.event === 'error') afterMedia();
       else if (body.event === 'duration' && Number(body.seconds) > 0) {
         // Sicherheitsnetz an die echte Länge anpassen (+5 s Puffer)
         const left = Math.min(MEDIA_MAX_MS, (Number(body.seconds) - (Number(body.position) || 0) + 5) * 1000);
