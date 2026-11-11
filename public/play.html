@@ -38,6 +38,7 @@
   .res { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px; animation: pop .4s cubic-bezier(.2,1.5,.4,1) both; }
   .res.ok { background: #2fb36d; } .res.bad { background: #e5484d; } .res.none { background: #3b3363; }
   .res h1 { font-size: 40px; } .res p { color: rgba(255,255,255,.9); font-size: 20px; font-weight: 700; }
+  .later { font-size: 15px; opacity: .8; margin-top: 18px; }
   .res .gain { font-size: 30px; font-weight: 900; background: rgba(0,0,0,.18); padding: 8px 22px; border-radius: 99px; }
   .rank { font-size: 64px; font-weight: 900; color: var(--c); }
   @keyframes pop { from { transform: scale(.85); opacity: 0; } }
@@ -197,6 +198,11 @@ function leave() {
   localStorage.removeItem('quizId'); myId = null; lastKey = ''; connect();
 }
 
+// Punkte gibt's erst am Blockende – während der Fragen bleiben sie verborgen
+const HIDE_PTS = ['intro', 'media', 'preview', 'question', 'special', 'votes', 'reveal'];
+let shownScore = 0, scoresSince = 0;
+const SCORES_REVEAL_MS = 7400;   // so lange braucht der Fernseher, bis die Rangliste sortiert ist
+const LATER = '<p class="later">Punkte und Platz gibt\'s am Ende des Blocks 🤫</p>';
 function header() {
   const h = document.getElementById('hdr');
   if (!S.me) { h.style.display = 'none'; return; }
@@ -204,7 +210,9 @@ function header() {
   document.documentElement.style.setProperty('--pc', S.me.color);
   document.getElementById('hAv').textContent = S.me.avatar;
   document.getElementById('hName').textContent = S.me.name + (S.me.isVip ? ' 👑' : '');
-  document.getElementById('hScore').textContent = S.me.score + ' P';
+  const sorting = S.phase === 'scores' && Date.now() < scoresSince + SCORES_REVEAL_MS;
+  if (!HIDE_PTS.includes(S.phase) && !sorting) shownScore = S.me.score;     // während eines Blocks bleibt der Stand vom letzten Blockende stehen
+  document.getElementById('hScore').textContent = shownScore + ' P';
   document.getElementById('hostBtn').style.display = S.me.isVip && S.phase !== 'lobby' ? '' : 'none';
 }
 
@@ -214,6 +222,7 @@ function qline(extra) {
 }
 
 function render() {
+  if (S.phase === 'scores' && lastPh !== 'scores') scoresSince = Date.now();
   header();
   const me = S.me;
   const lobbyKey = S.phase === 'lobby' ? [S.players.filter(p => p.connected).length, JSON.stringify(S.packs), ui.settings].join(',') : '';
@@ -446,7 +455,7 @@ function renderHost() {
       ? `<form class="prow2" onsubmit="saveRename(event, '${p.id}')"><span class="pav" style="--pc:${p.color}">${p.avatar}</span>
           <input id="rn" maxlength="14" value="${esc(p.name)}"><button class="btn sm">OK</button></form><div class="err" id="rnerr"></div>`
       : `<div class="prow2 ${p.connected ? '' : 'off'}"><span class="pav" style="--pc:${p.color}">${p.avatar}</span>
-          <span class="pn">${esc(p.name)}${p.id === S.vip ? ' 👑' : ''}<small>${p.score} P${p.connected ? '' : ' · offline'}</small></span>
+          <span class="pn">${esc(p.name)}${p.id === S.vip ? ' 👑' : ''}<small>${HIDE_PTS.includes(S.phase) ? '' : p.score + ' P'}${p.connected ? '' : (HIDE_PTS.includes(S.phase) ? '' : ' · ') + 'offline'}</small></span>
           <button class="ib" onclick="startRename('${p.id}')" title="Umbenennen">✏️</button>
           ${p.id === myId ? '' : `<button class="ib ${ui.confirm === 'kick' + p.id ? 'warn' : ''}" onclick="kick('${p.id}')" title="Entfernen">${ui.confirm === 'kick' + p.id ? 'Sicher?' : '✖'}</button>`}</div>`).join('')}
   </div>`;
@@ -566,7 +575,7 @@ function renderResult() {
     detail = r.correct ? '' : `<p>Richtig war: ${SHAPES[q.correct]} ${esc(q.answers[q.correct])}</p>`;
   }
   main.innerHTML = `<div class="res ${cls}"><h1>${title}</h1>${detail}
-    ${r.gain ? `<div class="gain">+${r.gain} Punkte${r.mult ? ` <small>(×${r.mult})</small>` : ''}</div>` : ''}<p>Du bist auf Platz ${S.me.rank}</p></div>`;
+    ${LATER}</div>`;
   if (navigator.vibrate) navigator.vibrate(r.correct ? 80 : [100, 60, 100]);
 }
 
@@ -582,10 +591,19 @@ function renderMatchResult() {
         <span class="mx">${shown ? (ok ? '✓' : '✗') : '…'}</span></div>
         ${shown && !ok ? `<div class="fix">richtig: ${esc(q.right[q.solution[i]])}</div>` : ''}`;
     }).join('')}</div>
-    ${done ? `${r.gain ? `<div class="gain dark">+${r.gain} Punkte${r.mult ? ` <small>(×${r.mult})</small>` : ''}</div>` : ''}<p>Du bist auf Platz ${S.me.rank}</p>` : '<p>Schau auf den Fernseher 👀</p>'}</div>`;
+    ${done ? LATER : '<p>Schau auf den Fernseher 👀</p>'}</div>`;
 }
 
 function renderRank(end) {
+  // Zwischenstand: erst wenn der Fernseher fertig sortiert hat, sonst ist die Spannung weg
+  if (!end) {
+    const wait = scoresSince + SCORES_REVEAL_MS - Date.now();
+    if (wait > 0) {
+      main.innerHTML = `<div class="center"><div class="big">📊</div><h1>Zwischenstand</h1><p>Schau auf den Fernseher 👀<br>Gleich siehst du deinen Platz …</p></div>`;
+      clearTimeout(renderRank.t); renderRank.t = setTimeout(() => { if (S.phase === 'scores') { header(); renderRank(false); } }, wait + 50);
+      return;
+    }
+  }
   const me = S.me, ahead = S.players[me.rank - 2];
   const gap = ahead ? ahead.score - me.score : 0;
   main.innerHTML = `<div class="center">

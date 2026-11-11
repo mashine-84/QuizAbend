@@ -65,7 +65,8 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 - **Zuordnung:** Erst erscheinen nur die Begriffe, dann die Frage. Am Handy ordnest du die Partner den Zahlen zu. Aufgelöst wird Paar für Paar, Punkte gibt es pro richtigem Paar.
 - Wer mehrere Fragen in Folge richtig hat, bekommt bis zu +150 Serienbonus.
 - Ist die Zeit um, zeigt der Fernseher erst, wer was gewählt hat. Danach kommt die Auflösung.
-- Die Rangliste erscheint nach jeder 5. Frage, am Ende jedes Blocks und am Spielende, jeweils mit den Punkten seit der letzten Rangliste.
+- **Punkte bleiben bis zum Blockende geheim.** Bei der Auflösung sieht man nur richtig (✓), knapp daneben (≈) oder falsch (✗), am Handy steht „Punkte und Platz gibt's am Ende des Blocks“.
+- **Rangliste am Ende jedes Blocks:** Alle stehen erst in der Reihenfolge, in der sie beigetreten sind (wie in der Lobby). Die Balken wachsen 5 Sekunden lang von links nach rechts, die Punkte zählen mit. Erst wenn alle Balken fertig sind, schieben sich die Spieler animiert auf ihre Plätze. Die Handys zeigen den eigenen Platz erst danach.
 - **🍺 Pause nach jedem Block** (abschaltbar): Pausen-Bildschirm mit Countdown, standardmäßig 10 Minuten. Der 👑-Spieler kann die Pause beenden oder um 5 Minuten verlängern. Bei „∞“ läuft sie, bis er weiter drückt. In der **letzten Minute** läuft auf dem Fernseher Spannungsmusik, die genau mit dem Ende der Pause aufhört (siehe „Eigene Pausenmusik“).
 - **🔊 Sounds** (abschaltbar): Ticken in den letzten 5 Sekunden, Gong bei der Auflösung, Fanfare bei der Siegerehrung. Am Laptop braucht der Browser für Ton einmal einen Klick auf den Fernseher-Bildschirm.
 - Handy-Akku leer oder Seite neu geladen? Einfach wieder öffnen, der Spielstand bleibt erhalten.
@@ -166,7 +167,7 @@ Die Erzeuger-Skripte liegen daneben. Jede Datei lässt sich ersetzen, hier am Be
 |---|---|---|
 | `FRAGEN` | Fragen pro Runde | 10 |
 | `SEKUNDEN` | Zeit pro Frage | 20 |
-| `RANGLISTE` | Rangliste nach jeder X. Frage | 5 |
+| `RANGLISTE` | zusätzlich eine Rangliste nach jeder X. Frage (0 = nur am Blockende) | 0 |
 | `PORT` | Port des Servers | 3000 |
 | `HOST_IP` | Adresse im QR-Code erzwingen | automatisch |
 
