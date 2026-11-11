@@ -107,6 +107,7 @@
   .erow .vav { width: 3vw; height: 3vw; font-size: 1.8vw; border-width: .2vw; animation: none; }
   .erow .ev { margin-left: auto; font-variant-numeric: tabular-nums; }
   .erow .eg { color: #8ff0b5; min-width: 5vw; text-align: right; font-size: 1.5vw; }
+  .erow .eg.mid { color: var(--c); } .erow .eg.no { color: #ff8a8d; }
   .erow.best { background: rgba(47,179,109,.45); }
   .erow.out { opacity: .45; }
   .erow.truth { background: #fff; color: #1b1440; padding: 1vh 1.6vw; font-size: 2.2vw; animation: pop .5s both; }
@@ -745,7 +746,7 @@ function renderEstimate(byId) {
     const res = S.phase === 'reveal' ? p.result : null;
     return `<div class="erow ${res && res.correct ? 'best' : ''} ${res && res.outOfRange ? 'out' : ''}" style="--pc:${p.color};animation-delay:${S.phase === 'votes' ? i * 0.15 : 0}s">
       <span class="vav">${p.avatar}</span><span class="en">${esc(p.name)}</span><span class="ev">${fmt(r.value)}${unit}</span>
-      ${res ? `<span class="eg">${res.gain ? '+' + res.gain : ''}</span>` : ''}</div>`;
+      ${res ? `<span class="eg ${res.correct ? '' : res.gain ? 'mid' : 'no'}">${res.correct ? '✓' : res.gain ? '≈' : '✗'}</span>` : ''}</div>`;   // Punkte gibt's erst am Blockende
   }).join('')}</div>`;
 }
 
