@@ -337,22 +337,41 @@ function renderIntro() {
 function videoMsg(event, extra) { fetch('/api/media', { method: 'POST', body: JSON.stringify({ role: 'tv', event, ...extra }) }); }
 function renderVideo() {
   const q = S.question;
-  app.innerHTML = `<div class="vwrap"><video id="vid" src="${q.video}" autoplay playsinline preload="auto"></video>
+  app.innerHTML = `<div class="vwrap"><video id="vid" src="${q.video}" playsinline preload="auto"></video>
     <div class="vhint" id="vhint" style="display:none">🔇 Ton blockiert – einmal klicken oder M drücken</div></div>`;
   const v = document.getElementById('vid');
+  // Ton des Videos über denselben Audio-Kanal wie Soundcheck-Fragen leiten.
+  // Manche Ausgänge (z. B. HDMI direkt am Pi) erlauben nur einen Kanal gleichzeitig.
+  let routed = false;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx.createMediaElementSource(v).connect(audioCtx.destination);
+    routed = true;
+  } catch (e) { mediaInfo({ routeError: String(e) }); }
   v.addEventListener('loadedmetadata', () => videoMsg('duration', { seconds: v.duration, position: v.currentTime }));
   v.addEventListener('ended', () => videoMsg('ended'));
-  v.addEventListener('error', () => { app.innerHTML += '<div class="vhint">⚠️ Video konnte nicht abgespielt werden</div>'; setTimeout(() => videoMsg('error'), 2500); });
-  // Browser blockiert Autoplay mit Ton? Dann stumm starten und auf Klick/Taste den Ton einschalten
-  v.play().catch(() => {
-    v.muted = true;
-    v.play().catch(() => {});
+  v.addEventListener('error', () => {
+    mediaInfo({ videoError: v.error && v.error.code });
+    app.innerHTML += '<div class="vhint">⚠️ Video konnte nicht abgespielt werden</div>'; setTimeout(() => videoMsg('error'), 2500);
+  });
+  const blocked = () => {
     document.getElementById('vhint').style.display = '';
-    const unmute = () => { v.muted = false; const h = document.getElementById('vhint'); if (h) h.remove(); };
+    const unmute = () => { v.muted = false; if (audioCtx) audioCtx.resume(); v.play().catch(() => {}); const h = document.getElementById('vhint'); if (h) h.remove(); };
     addEventListener('click', unmute, { once: true });
     addEventListener('keydown', function k(e) { if (e.key === 'm' || e.key === 'M') { unmute(); removeEventListener('keydown', k); } });
+  };
+  if (routed && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  v.play().then(() => {
+    if (routed && audioCtx.state !== 'running') blocked();
+    mediaInfo({ playing: true, muted: v.muted, routed, ctx: audioCtx && audioCtx.state });
+  }).catch(err => {
+    mediaInfo({ playError: err && err.name, routed });
+    // Nur wenn der Browser Autoplay mit Ton verbietet: stumm starten und Hinweis zeigen
+    if (err && err.name === 'NotAllowedError') { v.muted = true; v.play().catch(() => {}); blocked(); }
   });
 }
+// Kurze Rückmeldung an den Server (steht im Server-Log, hilft bei der Fehlersuche)
+function mediaInfo(info) { videoMsg('info', { info }); }
 
 // ---------- Soundcheck: Audio (Ausschnitt, auf Wunsch rückwärts) per WebAudio ----------
 let audioCtx = null;
