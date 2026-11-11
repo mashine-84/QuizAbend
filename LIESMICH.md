@@ -65,7 +65,7 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 - Wer mehrere Fragen in Folge richtig hat, bekommt bis zu +150 Serienbonus.
 - Ist die Zeit um, zeigt der Fernseher erst, wer was gewählt hat. Danach kommt die Auflösung.
 - Die Rangliste erscheint nach jeder 5. Frage, am Ende jedes Blocks und am Spielende, jeweils mit den Punkten seit der letzten Rangliste.
-- **🍺 Pause nach jedem Block** (abschaltbar): Pausen-Bildschirm mit Countdown, standardmäßig 10 Minuten. Der 👑-Spieler kann die Pause beenden oder um 5 Minuten verlängern. Bei „∞“ läuft sie, bis er weiter drückt.
+- **🍺 Pause nach jedem Block** (abschaltbar): Pausen-Bildschirm mit Countdown, standardmäßig 10 Minuten. Der 👑-Spieler kann die Pause beenden oder um 5 Minuten verlängern. Bei „∞“ läuft sie, bis er weiter drückt. In der **letzten Minute** läuft auf dem Fernseher Spannungsmusik, die genau mit dem Ende der Pause aufhört (siehe „Eigene Pausenmusik“).
 - **🔊 Sounds** (abschaltbar): Ticken in den letzten 5 Sekunden, Gong bei der Auflösung, Fanfare bei der Siegerehrung. Am Laptop braucht der Browser für Ton einmal einen Klick auf den Fernseher-Bildschirm.
 - Handy-Akku leer oder Seite neu geladen? Einfach wieder öffnen, der Spielstand bleibt erhalten.
 
@@ -143,6 +143,14 @@ Achte auf die Kommas zwischen den Einträgen. Neue oder geänderte Dateien ersch
   Das Quiz schneidet den Ausschnitt selbst zu und dreht ihn um, die Datei bleibt unverändert. Verwende nur Musik, die du privat nutzen darfst.
 - **Testen:** Die Pakete **Allgemein → Seh-Test (Testvideo)** und **Allgemein → Soundcheck (Test)** enthalten selbst erzeugte Testclips (Zahlen-Video, zwei Volkslied-Melodien, eine davon rückwärts). Damit siehst bzw. hörst du sofort, ob Bild und Ton laufen. Für normale Spiele kannst du sie abwählen.
 
+## Eigene Pausenmusik
+In der letzten Minute jeder Pause spielt der Fernseher `sounds/standard/pause-finale.mp3`, eine selbst erzeugte Spannungsmusik (60 Sekunden, endet mit einem Schlag pro Sekunde zum Countdown).
+
+**Eigenen Song verwenden:** Leg ihn als `sounds/pause-finale.mp3` in den Quiz-Ordner, also neben den Ordner `standard`. Erlaubt sind auch `.m4a`, `.ogg` und `.wav`. Diese Datei hat Vorrang. Sie wird von Updates nicht angefasst, weil Git sie ignoriert. Löschst du sie, ist wieder die Standardmusik dran.
+- **Vom Laptop auf den Pi kopieren:** `scp mein-song.mp3 <benutzer>@quizabend.local:QuizAbend/sounds/pause-finale.mp3`. Ein Neustart ist nicht nötig, die nächste Pause lädt die neue Datei.
+- **Länge:** Ideal sind genau 60 Sekunden. Ein längerer Song startet bei 1:00 von vorn und wird zum Pausenende ausgeblendet. Ein kürzerer startet so, dass er genau zum Pausenende aufhört.
+- Wird die Pause verlängert oder übersprungen, blendet die Musik aus. Ist „Sounds“ in den Einstellungen aus, bleibt es still.
+
 ## Einstellungen (optional, beim Start setzen)
 | Variable | Bedeutung | Standard |
 |---|---|---|
@@ -164,5 +172,6 @@ Beispiel (Windows, Eingabeaufforderung): `set FRAGEN=15 && node server.js`
 - `public/tv.html`: Fernseher-Ansicht (Lobby, Frage, Auflösung, Rangliste, Siegerpodest)
 - `public/play.html`: Handy-Controller
 - `public/qr.js`: QR-Code-Generator (funktioniert offline)
+- `sounds/`: Pausenmusik (`standard/` mit Erzeuger-Skript, eigene Datei daneben)
 - `fragen/`: Fragenpakete (ein Ordner pro Hauptkategorie, eine Datei pro Paket)
 - `einstellungen.json`: gewählte Pakete (legt das Spiel selbst an)

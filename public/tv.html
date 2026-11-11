@@ -444,6 +444,7 @@ const sfx = {
 // ---------- Pause zwischen den Blöcken ----------
 function renderBlockPause() {
   const nb = S.nextBlock;
+  if (soundOn()) finale.load();
   app.innerHTML = topbar(`<span class="pill">Pause</span>`) + `<div class="intro bpause">
     <div class="floaty">${['🍺', '🚻', '🍕', '🥤', '🍿', '☕'].map((e, i) => `<span style="left:${8 + i * 16}%;animation-delay:${i * 0.7}s">${e}</span>`).join('')}</div>
     <div class="ilabel">☕ Pause!</div>
@@ -688,12 +689,58 @@ function renderEstimate(byId) {
   }).join('')}</div>`;
 }
 
+// ---------- Spannungsmusik in der letzten Pausenminute ----------
+// Datei: sounds/pause-finale.* (eigene) oder sounds/standard/pause-finale.mp3
+const FINALE_LEAD = 60;
+const finale = {
+  buf: null, loading: null, src: null, gain: null, lastLeft: 99,
+  load() {
+    if (this.buf || this.loading) return this.loading;
+    return this.loading = fetch('/sounds/pause-finale', { cache: 'no-store' })
+      .then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); })
+      .then(d => ctx().decodeAudioData(d)).then(b => { this.buf = b; })
+      .catch(() => {}).finally(() => { this.loading = null; });
+  },
+  // left = Restzeit der Pause in Sekunden
+  update(left) {
+    this.lastLeft = left;
+    if (!this.buf || S.frozen || !soundOn()) return;
+    const dur = this.buf.duration, lead = Math.min(FINALE_LEAD, dur);
+    if (left > lead + 0.3) return this.stop();       // Pause verlängert
+    if (this.src || left < 0.5) return;
+    try {
+      const c = ctx(), offset = Math.max(0, lead - left), now = c.currentTime + 0.03;
+      const src = c.createBufferSource(), g = c.createGain();
+      src.buffer = this.buf; src.connect(g).connect(c.destination);
+      g.gain.setValueAtTime(0.8, now);
+      if (dur > lead) {                              // längerer Song: zum Pausenende ausblenden
+        const end = now + left; g.gain.setValueAtTime(0.8, end - 1.5); g.gain.linearRampToValueAtTime(0, end);
+        src.start(now, offset); src.stop(end + 0.05);
+      } else src.start(now, offset);
+      src.onended = () => { if (this.src === src) this.src = null; };
+      this.src = src; this.gain = g;
+    } catch (_) {}
+  },
+  // Pause vorbei: bei natürlichem Ende ausklingen lassen, sonst (übersprungen) ausblenden
+  leave() {
+    if (this.lastLeft > 0.7) this.stop(); else { this.src = null; }
+    this.buf = null; this.lastLeft = 99;          // nächste Pause lädt neu (falls Datei getauscht)
+  },
+  stop() {
+    const src = this.src, g = this.gain; this.src = null;
+    if (!src) return;
+    try { const t = audioCtx.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(0, t + 0.4); src.stop(t + 0.45); } catch (_) {}
+  },
+};
+
 let lastTickSec = null;
 function tick() {
+  if ((!S || S.phase !== 'pause') && (finale.buf || finale.src)) finale.leave();
   if (S && S.phase === 'pause') {
     const el = document.getElementById('pcount');
     if (el && S.phaseMs) {
       const left = S.frozen ? S.remainingMs : Math.max(0, deadline - Date.now());
+      finale.update(left / 1000);
       const sec = Math.ceil(left / 1000);
       el.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
     }
