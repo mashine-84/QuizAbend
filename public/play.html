@@ -79,7 +79,10 @@
   .mslot.ok { background: rgba(47,179,109,.5); } .mslot.bad { background: rgba(229,72,77,.45); }
   .fix { font-size: 14px; color: #ffd0d0; margin: -6px 0 0 60px; text-align: left; width: 100%; }
   .pool { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 16px 0; min-height: 50px; }
-  .pchip { font: inherit; font-size: 18px; font-weight: 800; border: none; border-radius: 99px; background: #fff; color: #1b1440; padding: 12px 18px; box-shadow: 0 4px 0 rgba(0,0,0,.3); }
+  .pchip { position: relative; font: inherit; font-size: 18px; font-weight: 800; border: none; border-radius: 10px; background: #f5b014; color: #1b1440; padding: 12px 18px 12px 26px; box-shadow: 0 4px 0 rgba(0,0,0,.3); }
+  .pchip::before { content: ''; position: absolute; left: -9px; top: 50%; width: 18px; height: 18px; border-radius: 50%; background: var(--bg); transform: translateY(-50%); }   /* Puzzle-Aussparung wie am TV */
+  .mslot .mnum { position: relative; }
+  .mslot .mnum::after { content: ''; position: absolute; right: -8px; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: inherit; transform: translateY(-50%); }   /* Puzzle-Nase */
   .pchip:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.3); }
   .res.mid { background: #d9930d; }
   .gain.dark { font-size: 26px; font-weight: 900; background: rgba(255,255,255,.12); padding: 8px 22px; border-radius: 99px; }
