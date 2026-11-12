@@ -410,7 +410,7 @@ function renderOpening() {
     <div class="os"><div class="ologo anim">Quiz<span>Abend</span></div><div class="osub anim">Heute Abend erwartet euch …</div></div>
     <div class="os"><div class="obig anim" data-count="${nb}">0</div><div class="olabel anim">${nb === 1 ? 'Block' : 'Blöcke'}</div>
       ${nb > 1 ? `<div class="osub anim">${same ? `je ${o.blocks[0]} Fragen` : o.blocks.join(' + ') + ' Fragen'}${o.pause != null ? ` · 🍺 Pause nach jedem Block` : ''}</div>` : ''}</div>
-    <div class="os"><div class="obig anim" data-count="${o.questions}">0</div><div class="olabel anim">Fragen</div><div class="osub anim">Schnelle Antworten bringen mehr Punkte ⚡</div></div>
+    <div class="os"><div class="obig anim" data-count="${o.questions}">0</div><div class="olabel anim">Fragen</div><div class="osub anim">${o.scoring === 'level' ? 'Je schwerer die Frage, desto mehr Punkte 🧠' : 'Schnelle Antworten bringen mehr Punkte ⚡'}</div></div>
     <div class="os"><div class="olabel anim" style="${an('oup', .5)}">Das kommt dran</div>
       <div class="ochips ${cats.length > 10 ? 'many' : ''}">${cats.map((c, i) => `<span class="anim" style="${an('opop', .45, .3 + i * (2.4 / Math.max(cats.length, 1)))}">${esc(c)}</span>`).join('')}${more > 0 ? `<span class="anim more" style="${an('opop', .45, 2.8)}">+ ${more} weitere</span>` : ''}</div>
       <div class="osub anim" style="${an('oup', .5, 2.9)}">Reihenfolge? Wird nicht verraten 🤫</div></div>
@@ -1088,7 +1088,7 @@ function renderEnd() {
       <div class="podium">${order.filter(i => P[i]).map(i => `
         <div class="step" style="--pc:${P[i].color};animation-delay:${(2 - i) * 0.35}s">
           <div class="who"><div class="big">${P[i].avatar}</div>${esc(P[i].name)}</div>
-          <div class="block" style="height:${heights[i]}">${i + 1}<small>${P[i].score} Punkte</small></div></div>`).join('')}
+          <div class="block" style="height:${heights[i]}">${i + 1}<small>${P[i].score} ${P[i].score === 1 ? 'Punkt' : 'Punkte'}</small></div></div>`).join('')}
       </div>
       <div class="others">${P.slice(3).map((p, i) => `<span>${i + 4}. ${p.avatar} ${esc(p.name)} – ${p.score}</span>`).join(' · ')}</div>
       <div class="hint">👑 Neue Runde am Handy starten – oder <b>Leertaste</b></div>

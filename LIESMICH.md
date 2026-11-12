@@ -82,6 +82,7 @@ Der 👑-Spieler tippt in der Lobby auf **⚙️ Einstellungen**. Über das Men�
 
 **Spieleinstellungen**
 - **Anzahl Blöcke** (1 bis 6). Antippen eines Blocks öffnet seine Einstellungen: wie viele Fragen er hat und welche Pakete er nutzt. Pakete lassen sich einzeln oder als ganze Hauptkategorie an- und abhaken. Neben jedem Paket steht, wie viele leichte, mittlere und schwere Fragen es enthält.
+- **🏅 Punkte:** *Schnelligkeit* (Standard): bis zu 1000 Punkte je Frage, schnellere richtige Antworten bringen mehr, dazu Serienbonus; Schätz- und Zuordnungsfragen geben Teilpunkte. *Schwierigkeit*: eine richtige Antwort bringt so viele Punkte wie die Schwierigkeit der Frage (1–3), Tempo zählt nicht. Ausnahmen: Bei Zuordnungsfragen gibt jedes richtige Paar 1 Punkt (3 von 4 richtig = 3 Punkte), bei Schätzfragen bekommt, wer am nächsten dran ist, die Punkte der Schwierigkeit (bei Jahreszahlen nur innerhalb von ±2 Jahren). Die Spezialfrage vervielfacht in beiden Fällen.
 - **Spezialfrage:** an/aus und der Multiplikator ×2, ×3 oder ×4.
 - **Pause nach jedem Block** an/aus mit Dauer.
 
