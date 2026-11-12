@@ -188,6 +188,7 @@
 const SHAPES = ['▲', '◆', '●', '■'];
 const main = document.getElementById('main');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const pts = n => `${n} ${n === 1 ? 'Punkt' : 'Punkte'}`;
 const fmt = n => Math.abs(n) >= 10000 ? n.toLocaleString('de-DE') : String(n).replace('.', ',');
 let myId = localStorage.getItem('quizId');
 let serverVersion = null, lastQ = null, lastPh = null;
@@ -534,6 +535,11 @@ function renderSettings() {
         <span class="bgo">›</span></button>`;
     }).join('')}
     <p class="small">Insgesamt ${sum.questions} Fragen. Leichte Fragen kommen zuerst, schwere werden mit jeder Frage wahrscheinlicher.</p>
+    <h3>🏅 Punkte</h3>
+    <div class="seg">${[['speed', 'Schnelligkeit'], ['level', 'Schwierigkeit']].map(([v, l]) => `<button class="${(c.scoring || 'speed') === v ? 'on' : ''}" onclick="cfg().scoring='${v}'; saveCfg()">${l}</button>`).join('')}</div>
+    <p class="small">${(c.scoring || 'speed') === 'level'
+      ? 'Richtige Antwort = 1 bis 3 Punkte, je nach Schwierigkeit. Zuordnung: jedes richtige Paar 1 Punkt. Schätzfrage: wer am nächsten dran ist, bekommt die Punkte. Tempo zählt nicht.'
+      : 'Bis zu 1000 Punkte je Frage: Wer schneller richtig antwortet, bekommt mehr, dazu Bonus für Serien. Schätz- und Zuordnungsfragen geben Teilpunkte.'}</p>
     <h3>⭐ Spezialfrage</h3>
     <label class="switch"><input type="checkbox" ${c.special.on ? 'checked' : ''} onchange="setSpecial(this.checked)"><span>Eine zufällige Spezialfrage pro Spiel</span></label>
     ${c.special.on ? `<div class="seg">${[2, 3, 4].map(m => `<button class="${c.special.mult === m ? 'on' : ''}" onclick="setMult(${m})">×${m}</button>`).join('')}</div>
@@ -654,7 +660,7 @@ function renderModerator() {
     <div class="mstatus">${esc(MOD_STATUS[ph] || '')}</div>
     ${h ? `<div class="mq">${h.special ? '<div class="pqstar">⭐ Spezialfrage (die Spieler wissen es noch nicht)</div>' : ''}<div class="mcat">${esc(h.category)}</div><div class="mtext">${esc(h.text)}</div>${sol}</div>` : ''}
     ${showAnswered ? `<div class="mans"><b>${done} von ${active.length}</b> haben geantwortet<div class="mavs">${active.map(p => `<span class="${p.answered ? 'on' : ''}" style="--pc:${p.color}">${p.avatar}</span>`).join('')}</div></div>` : ''}
-    ${ph === 'end' && S.players[0] ? `<div class="mq"><div class="mtext">🏆 ${esc(S.players[0].name)} gewinnt mit ${S.players[0].score} Punkten</div></div>` : ''}
+    ${ph === 'end' && S.players[0] ? `<div class="mq"><div class="mtext">🏆 ${esc(S.players[0].name)} gewinnt mit ${S.players[0].score} ${S.players[0].score === 1 ? 'Punkt' : 'Punkten'}</div></div>` : ''}
     ${act ? `<button class="btn ${act[1]} mbtn" onclick="advance()">${act[0]}</button>` : ''}
   </div>`;
 }
@@ -872,8 +878,8 @@ function renderRank(end) {
   main.innerHTML = `<div class="center">
     <p>${end ? 'Endergebnis' : 'Zwischenstand'}</p>
     <div class="rank">${me.rank === 1 && end ? '🏆' : me.rank + '.'}</div>
-    <h1>${end ? (me.rank === 1 ? 'Du hast gewonnen!' : `Platz ${me.rank}`) : `${me.score} Punkte`}</h1>
-    <p>${me.rank === 1 ? (end ? `${me.score} Punkte – stark!` : 'Du führst! 🔥') : `${gap} Punkte hinter ${esc(ahead.name)}`}</p>
+    <h1>${end ? (me.rank === 1 ? 'Du hast gewonnen!' : `Platz ${me.rank}`) : pts(me.score)}</h1>
+    <p>${me.rank === 1 ? (end ? `${pts(me.score)} – stark!` : 'Du führst! 🔥') : `${pts(gap)} hinter ${esc(ahead.name)}`}</p>
     ${me.isVip ? `<button class="btn ${end ? '' : 'ghost'}" onclick="advance()">${end ? 'Neue Runde' : 'Weiter'}</button>` : ''}
   </div>`;
 }

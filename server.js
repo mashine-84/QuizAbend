@@ -155,7 +155,7 @@ function loadPacks() {
 
 // ---------- Einstellungen: Frageblöcke (je mit eigener Paketauswahl) + Spezialfrage ----------
 const MAX_BLOCKS = 6;
-let settings = { blocks: [{ count: DEFAULT_PER_GAME, disabled: [] }], special: { on: false, mult: 2 }, sound: { on: true }, pause: { on: true, minutes: 10 }, pub: { on: false } };
+let settings = { blocks: [{ count: DEFAULT_PER_GAME, disabled: [] }], special: { on: false, mult: 2 }, sound: { on: true }, pause: { on: true, minutes: 10 }, pub: { on: false }, scoring: 'speed' };
 try {
   const raw = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
   if (Array.isArray(raw.blocks)) settings.blocks = raw.blocks;
@@ -164,6 +164,7 @@ try {
   if (raw.sound) settings.sound = raw.sound;
   if (raw.pause) settings.pause = raw.pause;
   if (raw.pub) settings.pub = raw.pub;
+  if (raw.scoring) settings.scoring = raw.scoring;
 } catch (_) {}
 function saveSettings() { try { fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2)); } catch (_) {} }
 
@@ -177,7 +178,8 @@ function cleanSettings(input) {
     special: { on: !!sp.on, mult: [2, 3, 4].includes(Number(sp.mult)) ? Number(sp.mult) : 2 },
     sound: { on: so.on === undefined ? true : !!so.on },
     pause: { on: pa.on === undefined ? true : !!pa.on, minutes: Math.max(0, Math.min(60, Math.round(Number(pa.minutes ?? 10)))) },
-    pub: { on: !!pu.on } };
+    pub: { on: !!pu.on },
+    scoring: input.scoring === 'level' ? 'level' : 'speed' };   // speed: bis ~1000 je Frage nach Tempo; level: Punkte = Schwierigkeit
 }
 
 const blockPacks = b => packs.filter(p => !b.disabled.includes(p.id));
@@ -195,7 +197,7 @@ function blockSummary(b) {
 function packSummary() {
   const blocks = settings.blocks.map(blockSummary);
   return { blocks, totalPacks: packs.length, questions: blocks.reduce((s, b) => s + b.plays, 0),
-    special: settings.special, sound: settings.sound, pause: settings.pause, pub: settings.pub, errors: packErrors.length };
+    special: settings.special, sound: settings.sound, pause: settings.pause, pub: settings.pub, scoring: settings.scoring, errors: packErrors.length };
 }
 
 function packList() {
@@ -411,7 +413,7 @@ function startGame() {
   for (const p of players.values()) { p.score = 0; p.streak = 0; }
   const pub = pubActive(), host = vipId();
   state = newGameState();
-  state.pub = pub; state.hostId = pub ? host : null;
+  state.pub = pub; state.hostId = pub ? host : null; state.scoring = settings.scoring;
   state.pubSpecial = pub && settings.special.on ? (pubPlan && pubPlan.special) || null : null;
   state.questions = questions;
   state.opening = openingInfo(questions);
@@ -437,6 +439,7 @@ function openingInfo(questions) {
     blocks: blocks.filter(Boolean), questions: questions.length, categories: cats, types,
     special: settings.special && settings.special.on ? settings.special.mult : null,
     pause: settings.pause && settings.pause.on && blocks.length > 1 ? settings.pause.minutes : null,
+    scoring: settings.scoring,
   };
 }
 
@@ -505,6 +508,7 @@ const round10 = x => Math.round(x / 10) * 10;
 
 function scoreQuestion() {
   const q = currentQuestion();
+  if ((state.scoring || settings.scoring) === 'level') return scoreByLevel(q);
   const speed = a => Math.max(0, state.answerEnds - a.at) / q.timeMs; // 1 = sofort, 0 = letzte Sekunde
   const list = [...players.values()];
   if (q.kind === 'estimate') {
@@ -539,6 +543,39 @@ function scoreQuestion() {
       const a = state.answers[p.id];
       const ok = !!a && a.choice === q.correct;
       const gain = ok ? round10(500 + 500 * speed(a)) + streakBonus(p, true) : (streakBonus(p, false), 0);
+      p.score += gain;
+      state.results[p.id] = { gain, correct: ok, answered: !!a, choice: a ? a.choice : null };
+    }
+  }
+}
+
+// Alternative Wertung: richtige Antwort = so viele Punkte wie die Schwierigkeit (1–3).
+// Zuordnung: jedes richtige Paar 1 Punkt. Schätzfrage: wer am nächsten dran ist (bei Toleranz nur innerhalb).
+function scoreByLevel(q) {
+  const list = [...players.values()], lv = q.level || 1;
+  if (q.kind === 'estimate') {
+    const tol = q.tolerance, inRange = d => tol === null || d <= tol;
+    const diffs = list.map(p => state.answers[p.id]).filter(Boolean).map(a => Math.abs(a.value - q.value)).filter(inRange);
+    const best = diffs.length ? Math.min(...diffs) : null;
+    for (const p of list) {
+      const a = state.answers[p.id];
+      if (!a) { state.results[p.id] = { gain: 0, correct: false, answered: false }; continue; }
+      const diff = Math.abs(a.value - q.value), closest = best !== null && diff === best;
+      const gain = closest ? lv : 0;
+      p.score += gain;
+      state.results[p.id] = { gain, correct: closest, exact: diff === 0, answered: true, value: a.value, outOfRange: !inRange(diff) };
+    }
+  } else if (q.kind === 'match') {
+    for (const p of list) {
+      const a = state.answers[p.id];
+      if (!a) { state.results[p.id] = { gain: 0, correct: false, answered: false, pairs: q.left.map(() => false) }; continue; }
+      const pairs = q.solution.map((r, i) => a.order[i] === r), k = pairs.filter(Boolean).length;
+      p.score += k;
+      state.results[p.id] = { gain: k, correct: k === pairs.length, answered: true, pairs, right: k };
+    }
+  } else {
+    for (const p of list) {
+      const a = state.answers[p.id], ok = !!a && a.choice === q.correct, gain = ok ? lv : 0;
       p.score += gain;
       state.results[p.id] = { gain, correct: ok, answered: !!a, choice: a ? a.choice : null };
     }
