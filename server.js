@@ -668,6 +668,7 @@ function baseView() {
   const ph = state.phase;
   const v = {
     phase: ph, vip: vipId(), minPlayers: minPlayers(), maxPlayers: MAX_PLAYERS,
+    taken: [...players.values()].map(p => p.avatar),   // vergebene Emojis (auch das des Gamemasters)
     pub: pubActive() ? { host: (() => { const h = players.get(hostId()); return h ? { id: h.id, name: h.name, avatar: h.avatar, color: h.color } : null; })() } : null,
     players: ranking(), qNum: state.idx + 1, qTotal: state.questions.length,
     remainingMs: state.frozen ? state.frozen.remaining : state.phaseEnds ? Math.max(0, state.phaseEnds - Date.now()) : 0, phaseMs: state.phaseMs,

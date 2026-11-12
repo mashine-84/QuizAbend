@@ -277,7 +277,7 @@ function render() {
   header();
   const me = S.me;
   const lobbyKey = S.phase === 'lobby' ? [S.players.filter(p => p.connected).length, JSON.stringify(S.packs), ui.settings].join(',') : '';
-  const joinKey = me ? '' : S.players.map(p => p.avatar).join('');
+  const joinKey = me ? '' : (S.taken || S.players.map(p => p.avatar)).join('');
   const hostKey = ui.host ? [S.players.map(p => p.id + p.name + p.connected).join(','), ui.renaming].join('|') : '';
   const key = [joinKey, hostKey, ui.host, S.frozen, JSON.stringify(S.system), S.kicked, S.phase, S.qNum, me ? me.id : '-', me && JSON.stringify(me.answer && (me.answer.choice ?? me.answer.value ?? me.answer.order)),
     me && me.isVip, lobbyKey, S.question && S.question.step,
@@ -339,7 +339,7 @@ function waitingFor(a) {
 function renderJoin() {
   myId = null; localStorage.removeItem('quizId');
   const full = S.players.length >= S.maxPlayers;
-  const taken = new Set(S.players.map(p => p.avatar));
+  const taken = new Set(S.taken || S.players.map(p => p.avatar));   // inkl. Gamemaster (steht im Pub-Quiz nicht in der Spielerliste)
   const prev = document.getElementById('name');
   const name = prev ? prev.value : (localStorage.getItem('quizName') || '');
   const fav = localStorage.getItem('quizAvatar');
