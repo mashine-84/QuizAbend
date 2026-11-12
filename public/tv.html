@@ -29,6 +29,8 @@
 
   /* Lobby */
   .lobby.drift, html.lite .lobby.drift { transition: transform 6s ease-in-out !important; }
+  .gmline { display: flex; align-items: center; gap: .8vw; font-size: 1.8vw; font-weight: 800; color: var(--muted); margin-bottom: 1.6vh; }
+  .gmline b { color: #fff; } .gmline .av { width: 3vw; height: 3vw; border-radius: 50%; background: var(--pc); display: grid; place-items: center; font-size: 1.8vw; }
   .lobby { flex: 1; display: grid; grid-template-columns: 1fr 1.25fr; gap: 4vw; align-items: center; }
   .join h1 { font-size: 5.4vw; line-height: 1; font-weight: 900; letter-spacing: -0.03em; }
   .join h1 span { color: var(--c); }
@@ -357,7 +359,7 @@ function qNumText() {
 function qTop() {
   return topbar(`<span id="spb"></span>${badge(S.question)}<span class="pill">${qNumText()}</span>`);
 }
-const IN_Q = ['intro', 'media', 'preview', 'question', 'special', 'votes', 'reveal'];
+const IN_Q = ['intro', 'media', 'preview', 'question', 'locked', 'special', 'votes', 'reveal'];
 const fmt = n => Math.abs(n) >= 10000 ? n.toLocaleString('de-DE') : String(n).replace('.', ',');
 
 function render() {
@@ -480,6 +482,9 @@ function renderLobby() {
   }
   const n = S.players.filter(p => p.connected).length;
   const need = Math.max(0, S.minPlayers - n);
+  const gm = S.pub && S.pub.host;   // Pub-Quiz: der Host moderiert und steht nicht in der Spielerliste
+  const vipName = (S.players.find(p => p.id === S.vip) || {}).name || '';
+  const starter = gm ? `🎤 <b>${esc(gm.name)}</b>` : `👑 <b>${esc(vipName)}</b>`;
   app.innerHTML = topbar(`<span class="pill">${n} / ${S.maxPlayers} Spieler</span>`) + `
     <div class="lobby" style="transform:${lobbyShift()}">
       <div class="join">
@@ -487,10 +492,11 @@ function renderLobby() {
         ${joinBox()}
       </div>
       <div>
+        ${gm ? `<div class="gmline" style="--pc:${gm.color}">🎤 Gamemaster: <span class="av">${gm.avatar}</span><b>${esc(gm.name)}</b> <small>· Pub-Quiz</small></div>` : ''}
         <div class="slots">${slots.join('')}</div>
         ${packLine()}
         ${soundHint()}
-        <div class="hint">${need > 0 ? `Noch <b>${need}</b> Spieler${need > 1 ? '' : ''} nötig …` : `👑 <b>${esc((S.players.find(p => p.id === S.vip) || {}).name || '')}</b> startet das Spiel am Handy – oder <b>Leertaste</b> drücken`}</div>
+        <div class="hint">${need > 0 ? `Noch <b>${need}</b> Spieler nötig …` : `${starter} startet das Spiel am Handy – oder <b>Leertaste</b> drücken`}</div>
       </div>
     </div>`;
 }
@@ -744,6 +750,10 @@ function updateMain() {
   const byId = Object.fromEntries(S.players.map(p => [p.id, p]));
   document.getElementById('chips').innerHTML = chips();
   specialOverlay();
+  if (S.phase === 'locked') {   // Pub-Quiz: Zeit vorbei, der Gamemaster löst gleich auf
+    const n = document.getElementById('num'); if (n) n.innerHTML = '<span class="timesup">Stopp!</span>';
+    const arc = document.getElementById('arc'); if (arc) arc.style.strokeDashoffset = 276.5;
+  }
   if (S.phase === 'special' || S.phase === 'votes' || S.phase === 'reveal') {
     const n = document.getElementById('num');
     if (n) n.innerHTML = S.phase === 'reveal' ? '✓' : '<span class="timesup">Stopp!</span>';
