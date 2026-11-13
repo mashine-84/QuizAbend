@@ -793,7 +793,7 @@ async function playAudio(url, o) {
     buf.copyToChannel(part, c);
   }
   // Ausschnitt so oft wie eingestellt abspielen, mit kurzer Pause dazwischen; kurzes Ein-/Ausblenden gegen Knackser
-  const n = o.repeat || 1, GAP = 1.2;
+  const n = o.repeat || 1, GAP = o.gap || 2.5;   // deutlich hörbare Pause zwischen den Wiederholungen
   const t0 = audioCtx.currentTime + 0.05, len = buf.duration, total = n * len + (n - 1) * GAP;
   const srcs = [];
   for (let k = 0; k < n; k++) {
@@ -817,7 +817,9 @@ async function playAudio(url, o) {
     if (!b || S.phase !== 'media' || S.qNum !== key) { clearInterval(tick); return; }
     const el = audioCtx.currentTime - t0;
     b.style.width = Math.min(100, el / total * 100) + '%';
-    const r = document.getElementById('arep'); if (r) r.textContent = `${Math.min(n, Math.floor(Math.max(0, el) / (len + GAP)) + 1)}. Mal von ${n}`;
+    const r = document.getElementById('arep');
+    if (r) { const k = Math.min(n - 1, Math.floor(Math.max(0, el) / (len + GAP))), inGap = el - k * (len + GAP) > len && k < n - 1;
+      r.textContent = inGap ? `Pause … gleich das ${k + 2}. Mal` : `${k + 1}. Mal von ${n}`; }
   }, 200);
 }
 

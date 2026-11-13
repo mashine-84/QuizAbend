@@ -108,7 +108,10 @@ function normalizeQuestion(q, dir, packName, packLevel) {
     // "wiederholen": so oft ist der Ausschnitt zu hören (1–5), z. B. 3 bei einer Sekunde aus einem Song
     const repeat = q.wiederholen === undefined ? 1 : Number(q.wiederholen);
     if (!(Number.isInteger(repeat) && repeat >= 1 && repeat <= 5)) throw new Error('"wiederholen" muss eine ganze Zahl von 1 bis 5 sein (so oft ist der Ton zu hören)');
-    base.audioOpts = { start, dauer, reverse: !!q.rueckwaerts, repeat };
+    // "pause": Sekunden Stille zwischen den Wiederholungen (Standard 2,5)
+    const gap = q.pause === undefined ? 2.5 : Number(q.pause);
+    if (!(gap >= 0.5 && gap <= 10)) throw new Error('"pause" muss eine Sekundenzahl von 0,5 bis 10 sein');
+    base.audioOpts = { start, dauer, reverse: !!q.rueckwaerts, repeat, gap };
   }
   if (q.zuordnen) {
     const pairs = Array.isArray(q.zuordnen) ? q.zuordnen : Object.entries(q.zuordnen);
