@@ -13,6 +13,7 @@ const DEFAULT_PER_GAME = Number(process.env.FRAGEN) || 10;
 const QUESTION_TIME_MS = (Number(process.env.SEKUNDEN) || 20) * 1000;
 const MATCH_TIME_MS = 30000;   // Zuordnen braucht etwas länger
 const TF_TIME_MS = 30000;      // Richtig oder falsch: mehrere Aussagen lesen
+const IDENT_MS = 4900;         // Opener „Vier Kacheln“ (Spielstart und nach der Pause), passend zu sounds/opener.mp3
 const TIEBREAK_MS = 6000;      // Ansage „Stechen!“ bei Gleichstand auf Platz 1
 const TIEBREAK_MAX = 10;       // Sicherheitsnetz: so oft wird höchstens gestochen (eigentlich entscheidet schon die erste Runde)
 const LOBBY_AWAY_MS = 15 * 60000;   // Lobby: so lange bleibt ein Spieler mit gesperrtem Handy angemeldet
@@ -453,8 +454,14 @@ function startGame() {
   state.pubSpecial = pub && settings.special.on ? (pubPlan && pubPlan.special) || null : null;
   state.questions = questions;
   state.opening = openingInfo(questions);
-  setPhase('opening', OPENING_MS, nextQuestion);
+  showIdent(() => setPhase('opening', OPENING_MS, nextQuestion));   // erst der Opener, dann das Intro
   return true;
+}
+
+// Opener (Branding-Einspieler): läuft beim Spielstart und nach der Pause; überspringbar
+function showIdent(next) {
+  state.identNext = next;
+  setPhase('ident', IDENT_MS, next);
 }
 
 // Was erwartet uns heute? Kategorien gemischt, damit die Reihenfolge nichts verrät
@@ -696,8 +703,9 @@ function showScores() { setPhase('scores', SCORES_MS, afterScores); }
 const PAUSE_GRACE_MS = 1500;
 function startBlockPause() {
   const ms = settings.pause.minutes * 60000;
-  setPhase('pause', ms ? ms + PAUSE_GRACE_MS : 0, nextQuestion);
+  setPhase('pause', ms ? ms + PAUSE_GRACE_MS : 0, afterPause);
 }
+function afterPause() { showIdent(nextQuestion); }   // nach der Pause holt der Opener alle zurück an den Fernseher
 
 // Spiel jederzeit anhalten: Timer einfrieren und später an derselben Stelle weitermachen
 function freeze() {
@@ -738,7 +746,8 @@ function advance() {
       else afterReveal();
       break;
     case 'scores': afterScores(); break;
-    case 'pause': nextQuestion(); break;
+    case 'pause': afterPause(); break;
+    case 'ident': state.identNext ? state.identNext() : nextQuestion(); break;
     case 'end':
       for (const p of players.values()) { p.score = 0; p.streak = 0; }
       state = newGameState();
@@ -1062,7 +1071,7 @@ function serveMedia(req, res, rel) {
 }
 
 // Musik (Intro, letzte Pausenminute): eigene Datei sounds/<name>.* hat Vorrang vor sounds/standard/
-const MUSIC = ['pause-finale', 'quiz-intro', 'block-start', 'aufloesung', 'siegerehrung', 'rangliste', 'spezialfrage', 'countdown'];
+const MUSIC = ['opener', 'pause-finale', 'quiz-intro', 'block-start', 'aufloesung', 'siegerehrung', 'rangliste', 'spezialfrage', 'countdown'];
 function musicFile(name) {
   for (const dir of [SOUNDS_DIR, path.join(SOUNDS_DIR, 'standard')]) {
     for (const ext of Object.keys(AUDIO_TYPES)) {
