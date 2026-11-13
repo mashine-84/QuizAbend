@@ -363,6 +363,7 @@ function render() {
     return renderInfo('⚔️', 'Stechen läuft …', `${S.players.filter(p => S.tiebreak.ids.includes(p.id)).map(p => `${p.avatar} ${esc(p.name)}`).join(' · ')} schätzen um Platz 1.<br>Schau auf den Fernseher 👀`);
   if (S.phase === 'special') return renderInfo('⭐', 'Spezialfrage!', `Diese Frage zählt <b>×${S.special.mult}</b> Punkte!<br>Schau auf den Fernseher 👀`, 'special');
   if (S.phase === 'intro') return renderInfo(S.question.icon, S.question.label, `Kategorie: ${esc(S.question.category)}<br>Gleich geht's los – schau auf den Fernseher!`);
+  if (S.phase === 'media' && S.question.flash) return renderInfo('📸', 'Merk dir das Bild!', 'Es ist nur kurz auf dem Fernseher zu sehen – danach kommt die Frage, ohne Bild.');
   if (S.phase === 'media') return S.question.audio
     ? renderInfo('🎧', 'Hör genau hin!', (S.question.audioOpts && S.question.audioOpts.reverse ? '⏪ Der Ausschnitt läuft rückwärts!<br>' : '') + 'Der Ton kommt vom Fernseher – danach kommt die Frage dazu.')
     : renderInfo('👀', 'Schau genau hin!', 'Das Video läuft auf dem Fernseher – danach kommt die Frage dazu.');
@@ -729,7 +730,7 @@ function modAction() {
   return null;
 }
 const MOD_STATUS = {
-  opening: 'Intro läuft auf dem Fernseher', tiebreak: 'Gleichstand auf Platz 1 – gleich kommt das Stechen (Schätzfrage)', block: 'Block-Ansage', intro: 'Ansage der Frageart', media: 'Video/Audio läuft', preview: 'Vorschau der Begriffe',
+  opening: 'Intro läuft auf dem Fernseher', tiebreak: 'Gleichstand auf Platz 1 – gleich kommt das Stechen (Schätzfrage)', block: 'Block-Ansage', intro: 'Ansage der Frageart', media: 'Video/Audio/Merkbild läuft', preview: 'Vorschau der Begriffe',
   question: 'Die Spieler antworten – nach Ablauf der Zeit löst du auf', locked: 'Zeit ist um – jetzt auflösen', special: 'Spezialfrage wird enthüllt', votes: 'Die Stimmen werden gezeigt',
   reveal: 'Auflösung', scores: 'Zwischenstand wird gezeigt', end: 'Spiel vorbei',
 };

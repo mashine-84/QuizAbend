@@ -255,6 +255,10 @@
   /* Videofrage */
   .vwrap { position: fixed; inset: 0; background: #000; display: grid; place-items: center; z-index: 40; }
   .vwrap video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+  .vwrap.flash img { width: 100%; height: 100%; object-fit: contain; }
+  .vwrap .fhint { position: absolute; top: 2.4vh; left: 50%; transform: translateX(-50%); background: rgba(20,16,43,.85); color: #fff; font-weight: 900; font-size: 2vw; padding: .6vh 1.6vw; border-radius: 99px; }
+  .vwrap .fbar { position: absolute; left: 0; right: 0; bottom: 0; height: 1.2vh; background: rgba(255,255,255,.15); }
+  .vwrap .fbar i { display: block; height: 100%; width: 100%; background: var(--c); }
   .vhint { position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%); background: rgba(0,0,0,.75); color: #fff; padding: 1vh 2vw; border-radius: 99px; font-size: 1.6vw; font-weight: 700; z-index: 41; }
 
   /* Soundcheck */
@@ -448,7 +452,7 @@ function render() {
   if (S.phase === 'tiebreak') return fresh ? renderTiebreak() : null;
   if (S.phase === 'pause') return fresh ? renderBlockPause() : null;
   if (stage === 'intro') return fresh ? renderIntro() : null;
-  if (stage === 'media') return fresh ? (S.question.audio ? renderAudio() : renderVideo()) : null;
+  if (stage === 'media') return fresh ? (S.question.flash ? renderFlash() : S.question.audio ? renderAudio() : renderVideo()) : null;
   if (stage === 'preview') return fresh ? renderPreview() : null;
   if (inQ) return fresh ? renderMain() : updateMain();
   { const ov = document.getElementById('special'); if (ov && S.phase !== 'special') ov.remove(); }
@@ -704,6 +708,12 @@ function systemOverlay() {
 
 // ---------- Videofrage: Video im Vollbild, danach die Frage ----------
 function videoMsg(event, extra) { fetch('/api/media', { method: 'POST', body: JSON.stringify({ role: 'tv', event, ...extra }) }); }
+// Merkbild: Bild im Vollbild, unten ein Balken, der die verbleibende Zeit zeigt – danach verschwindet es
+function renderFlash() {
+  app.innerHTML = `<div class="vwrap flash"><img src="${S.question.flash}" alt="">
+    <div class="fhint">📸 Merk dir das Bild!</div><div class="fbar"><i id="fbar"></i></div></div>`;
+}
+
 function renderVideo() {
   const q = S.question;
   app.innerHTML = `<div class="vwrap"><video id="vid" src="${q.video}" playsinline preload="auto"></video>
@@ -1177,6 +1187,8 @@ function tick() {
       }
     } else if (S.phase === 'intro') {
       const n = document.getElementById('inum'); if (n) n.textContent = Math.max(1, Math.ceil(left / 1000));
+    } else if (S.phase === 'media' && S.question.flash) {
+      const b = document.getElementById('fbar'); if (b) b.style.width = (left / S.phaseMs * 100) + '%';
     } else if (S.phase === 'preview') {
       const b = document.getElementById('pbar'); if (b) b.style.width = (left / S.phaseMs * 100) + '%';
     }
