@@ -13,6 +13,8 @@ const DEFAULT_PER_GAME = Number(process.env.FRAGEN) || 10;
 const QUESTION_TIME_MS = (Number(process.env.SEKUNDEN) || 20) * 1000;
 const MATCH_TIME_MS = 30000;   // Zuordnen braucht etwas länger
 const TF_TIME_MS = 30000;      // Richtig oder falsch: mehrere Aussagen lesen
+const TIEBREAK_MS = 6000;      // Ansage „Stechen!“ bei Gleichstand auf Platz 1
+const TIEBREAK_MAX = 3;        // höchstens so viele Stechen hintereinander, danach teilen sie sich Platz 1
 const LOBBY_AWAY_MS = 15 * 60000;   // Lobby: so lange bleibt ein Spieler mit gesperrtem Handy angemeldet
 const INTRO_MS = 3000;         // Ankündigung mit Countdown 3-2-1
 const PREVIEW_MS = 6000;       // Zuordnen: Begriffe vorab zeigen
@@ -476,6 +478,7 @@ function nextQuestion() {
 }
 
 function beginQuestion() {
+  if (currentQuestion().tiebreak) return startAnswering();   // Stechen: die Ansage „Stechen!“ ersetzt die Fragen-Ansage
   if (currentQuestion().label) setPhase('intro', INTRO_MS, afterIntro); // neue Fragearten werden angekündigt
   else startAnswering();
 }
@@ -500,6 +503,7 @@ function startAnswering() {
 function endAnswering() {
   // Pub-Quiz: Antworten sind zu, aufgelöst wird erst auf Knopfdruck des Hosts
   if (state.pub && state.phase === 'question') return setPhase('locked', 0, null);
+  if (currentQuestion().tiebreak) return showAnswers();   // beim Stechen keine Spezialfrage
   // Spezialfrage: genau einmal pro Spiel. Chance steigt linear von 1 % (erste Frage) auf 100 % (letzte Frage)
   if (settings.special.on && !state.specialDone && state.pubSpecial) {
     // vom Host festgelegte Spezialfrage
@@ -531,6 +535,7 @@ const round10 = x => Math.round(x / 10) * 10;
 
 function scoreQuestion() {
   const q = currentQuestion();
+  if (inTiebreak(q)) return scoreTiebreak(q);
   if ((state.scoring || settings.scoring) === 'level') return scoreByLevel(q);
   const speed = a => Math.max(0, state.answerEnds - a.at) / q.timeMs; // 1 = sofort, 0 = letzte Sekunde
   const list = [...players.values()];
@@ -647,6 +652,7 @@ function reveal() {
 
 function afterReveal() {
   const last = state.idx >= state.questions.length - 1;
+  if (last && startTiebreak()) return;   // Gleichstand auf Platz 1: erst stechen, dann Rangliste und Siegerehrung
   const next = state.questions[state.idx + 1];
   const blockEnd = next && next.block !== currentQuestion().block;
   if (last || blockEnd || (SCORES_EVERY && (state.idx + 1) % SCORES_EVERY === 0)) showScores();
@@ -699,6 +705,7 @@ function advance() {
   switch (state.phase) {
     case 'lobby': if (connectedCount() >= minPlayers()) startGame(); break;
     case 'opening': nextQuestion(); break;
+    case 'tiebreak': nextQuestion(); break;
     case 'block': beginQuestion(); break;
     case 'intro': afterIntro(); break;
     case 'media': afterMedia(); break;
@@ -725,21 +732,71 @@ function connectedCount() { return [...players.values()].filter(p => p.connected
 const minPlayers = () => pubActive() ? 1 : MIN_PLAYERS;
 
 function allAnswered() {
-  const active = [...players.values()].filter(p => p.connected && isPlayer(p));
+  const q = currentQuestion();
+  const active = [...players.values()].filter(p => p.connected && isPlayer(p) && mayAnswer(q, p));
   return active.length > 0 && active.every(p => state.answers[p.id]);
 }
 
 // =====================================================================
 // Ansichten für TV und Handy
 // =====================================================================
+// Plätze mit Gleichstand: gleiche Punkte = gleicher Platz, danach geht es mit der Position weiter (1, 1, 3)
 function ranking() {
-  return [...players.values()].filter(isPlayer)
+  const list = [...players.values()].filter(isPlayer)
     .sort((a, b) => b.score - a.score || a.joinedAt - b.joinedAt)
     .map(p => ({ id: p.id, name: p.name, color: p.color, avatar: p.avatar, score: p.score, connected: p.connected, joined: p.joinedAt,
       answered: !!state.answers[p.id], result: state.results[p.id] || null }));
+  list.forEach((p, i) => { p.place = i && p.score === list[i - 1].score ? list[i - 1].place : i + 1; });
+  return list;
 }
 
-function rankOf(id) { return ranking().findIndex(p => p.id === id) + 1; }
+function rankOf(id) { const p = ranking().find(x => x.id === id); return p ? p.place : 0; }
+
+// ---------- Stechen: Gleichstand auf Platz 1 am Spielende ----------
+function topTied() {
+  const top = ranking().filter(p => p.place === 1);
+  return top.length > 1 ? top.map(p => p.id) : null;
+}
+// Schätzfrage aus allen geladenen Paketen: möglichst die schwierigste, die in diesem Spiel noch nicht dran war
+function pickTiebreakQuestion() {
+  const used = new Set(state.questions.map(q => q.uid));
+  const all = packs.flatMap(p => p.questions).filter(q => q.kind === 'estimate' && !q.video && !q.audio && !q.flash && !used.has(q.uid));
+  for (const lv of [3, 2, 1]) {
+    const c = all.filter(q => (q.level || 1) === lv);
+    if (c.length) return c[Math.floor(Math.random() * c.length)];
+  }
+  return null;
+}
+function startTiebreak() {
+  const ids = topTied();
+  const round = ((state.tiebreak && state.tiebreak.round) || 0) + 1;
+  if (!ids || round > TIEBREAK_MAX) return false;   // kein Gleichstand – oder schon oft genug gestochen: Platz 1 wird geteilt
+  const q = pickTiebreakQuestion();
+  if (!q) return false;
+  const prev = currentQuestion();
+  state.questions.push({ ...prepareQuestion(q), label: null, block: prev.block, bi: prev.bi, blockCount: prev.blockCount, blockNames: prev.blockNames,
+    blockQ: prev.blockQ, blockLen: prev.blockLen, tiebreak: true });
+  state.tiebreak = { ids, round };
+  setPhase('tiebreak', TIEBREAK_MS, nextQuestion);
+  return true;
+}
+const inTiebreak = q => !!(q && q.tiebreak && state.tiebreak);
+const mayAnswer = (q, p) => !inTiebreak(q) || state.tiebreak.ids.includes(p.id);
+// Wertung des Stechens: nur wer am nächsten dran ist (und das allein), bekommt 1 Punkt – das reicht zum Entscheiden
+function scoreTiebreak(q) {
+  const ids = state.tiebreak.ids;
+  const diffs = ids.map(id => state.answers[id]).filter(Boolean).map(a => Math.abs(a.value - q.value));
+  const best = diffs.length ? Math.min(...diffs) : null;
+  const winners = best === null ? [] : ids.filter(id => state.answers[id] && Math.abs(state.answers[id].value - q.value) === best);
+  for (const id of ids) {
+    const p = players.get(id), a = state.answers[id];
+    if (!p) continue;
+    if (!a) { state.results[id] = { gain: 0, correct: false, answered: false }; continue; }
+    const diff = Math.abs(a.value - q.value), win = winners.length === 1 && winners[0] === id;
+    if (win) p.score += 1;
+    state.results[id] = { gain: win ? 1 : 0, correct: diff === best, exact: diff === 0, answered: true, value: a.value, outOfRange: false };
+  }
+}
 
 function baseView() {
   const q = currentQuestion();
@@ -756,9 +813,11 @@ function baseView() {
     block: q ? { num: q.block + 1, total: q.blockCount, names: q.blockNames, q: q.blockQ, len: q.blockLen } : null,
     nextBlock: (() => { const n = state.questions[state.idx + 1]; return n && q && n.block !== q.block ? { num: n.block + 1, total: n.blockCount, names: n.blockNames } : null; })(),
     special: state.special && ['special', 'votes', 'reveal'].includes(ph) ? { mult: settings.special.mult } : null,
+    // Stechen um Platz 1: wer darf antworten (nur in der Ansage und während der Stechen-Frage)
+    tiebreak: state.tiebreak && (ph === 'tiebreak' || (q && q.tiebreak)) ? { ids: state.tiebreak.ids, round: state.tiebreak.round } : null,
   };
   if (q && ['intro', 'media', 'preview', 'question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
-    const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category }; // Schwierigkeit wird im Spiel nicht verraten …
+    const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category, tiebreak: !!q.tiebreak }; // Schwierigkeit wird im Spiel nicht verraten …
     // … außer bei Punkten nach Schwierigkeit: dann steht oben, was die Frage bringt (Zuordnen: 1 Punkt je Paar)
     if ((state.scoring || settings.scoring) === 'level') { vq.points = stepCount(q) ? 1 : (q.level || 1); vq.perPair = q.kind === 'match'; vq.perItem = q.kind === 'tf'; }
     if (ph === 'media') { vq.video = q.video || null; vq.audio = q.audio || null; vq.audioOpts = q.audioOpts || null; }
@@ -1074,7 +1133,7 @@ const server = http.createServer(async (req, res) => {
     const body = await readBody(req);
     const pl = players.get(body.id);
     const q = currentQuestion();
-    const answer = pl && isPlayer(pl) && state.phase === 'question' && !state.frozen && !state.answers[pl.id] && validAnswer(q, body);
+    const answer = pl && isPlayer(pl) && mayAnswer(q, pl) && state.phase === 'question' && !state.frozen && !state.answers[pl.id] && validAnswer(q, body);
     if (!answer) return json(res, 409, { ok: false });
     state.answers[pl.id] = { ...answer, at: Date.now() };
     if (allAnswered()) endAnswering(); else broadcast();

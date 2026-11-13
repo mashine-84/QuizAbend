@@ -206,6 +206,7 @@ async function onPhase(phase, info = {}) {
   switch (phase) {
     case 'opening': mood = { color: VIOLET, bri: 40, ms: 2500 }; break;
     case 'block': mood = { color: VIOLET, bri: 45, ms: 1000 }; break;
+    case 'tiebreak': mood = { color: GOLD, bri: 80, ms: 600 }; break;                    // Stechen um Platz 1
     case 'intro': case 'preview': case 'question': case 'locked': case 'votes': key = 'question'; mood = { color: DEEP, bri: 22, ms: 1200 }; break;
     case 'media': mood = { color: DEEP, bri: 8, ms: 1000 }; break;                       // Video/Audio: fast dunkel
     case 'special': mood = { color: GOLD, bri: 100, ms: 300, pulse: true }; break;     // pulsiert nur, solange der Screen da ist
