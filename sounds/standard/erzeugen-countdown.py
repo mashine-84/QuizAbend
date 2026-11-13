@@ -1,9 +1,9 @@
 # Erzeugt sounds/standard/countdown.mp3 (selbst komponiert, frei nutzbar):
-# die letzten 10 Sekunden einer Frage – wie die Pausenmusik (Uhrticken, Bass-Puls, Streicher), nur zurückhaltender:
+# die letzten 10 Sekunden einer Frage (+ 1,8 s Ausklang nach Ablauf der Zeit) – wie die Pausenmusik (Uhrticken, Bass-Puls, Streicher), nur zurückhaltender:
 # kein Herzschlag-Kick, keine tiefen Schläge, leiser gemischt (Platz für den Auflösungs-Jingle danach).
 #   python3 erzeugen-countdown.py /tmp/cd.wav && ffmpeg -i /tmp/cd.wav -b:a 128k countdown.mp3
 import numpy as np, scipy.signal as sg, scipy.io.wavfile as wf, sys
-SR = 44100; DUR = 10.0; N = int(SR * DUR)
+SR = 44100; DUR = 10.0; TAIL = 1.8; N = int(SR * (DUR + TAIL))
 L = np.zeros(N); R = np.zeros(N)
 rng = np.random.default_rng(11)
 
@@ -62,7 +62,7 @@ for i, x in enumerate(grid):
 for start, end, sh in ((0, 5, 0), (5, DUR, 1)):
     n = int((end - start) * SR); tt = np.arange(n) / SR
     s = sum(lp(saw(note(m + sh), n, (-0.006, 0, 0.006)), 900) for m in (45, 52, 57)) / 3
-    e = np.minimum(1, tt / 0.4) * np.minimum(1, (n / SR - tt) / 0.05)
+    e = np.minimum(1, tt / 0.4) * np.minimum(1, (n / SR - tt) / (0.05 if end < DUR else 0.25))
     add(s * e * np.interp(tt + start, [0, 5, DUR], [0.06, 0.08, 0.10]), start)
 
 # 5) Sanfter Riser in den letzten 3 Sekunden
@@ -71,13 +71,23 @@ noise = rng.standard_normal(n); ns = np.zeros(n)
 for a in range(0, n, 2048):
     fc = 500 + 5000 * (a / n) ** 2; ns[a:a+2048] = hp(noise[a:a+2048], fc, 1)
 sw = np.sin(2 * np.pi * np.cumsum(300 + 900 * (tt / 3) ** 2) / SR)
-add((ns * 0.6 + sw * 0.4) * (tt / 3) ** 2, DUR - 3, gain=0.12)
+add((ns * 0.6 + sw * 0.4) * (tt / 3) ** 2 * np.minimum(1, (3 - tt) / 0.2), DUR - 3, gain=0.12)
 
-# Hall, sanft, kurzer Ausklang am Ende (der Auflösungs-Jingle übernimmt)
+# 6) Zeit vorbei: weicher Schlussakkord (b-Moll, wie die letzte Rückung), klingt aus statt abzubrechen
+n = int(TAIL * SR); tt = np.arange(n) / SR
+chord = sum(lp(saw(note(m), n, (-0.004, 0.004)), 1800) for m in (46, 58, 61, 65, 70)) / 5
+bell = sum(np.sin(2*np.pi*note(m)*tt) for m in (82, 85, 89)) / 3
+add(chord * np.minimum(1, tt / 0.01) * np.exp(-tt * 2.2) * 0.22 + bell * np.exp(-tt * 3.0) * 0.05, DUR)
+
+# Lautstärke: leise anfangen und langsam steigern (Fade-in über 2 s, dann bis zum Ende anwachsen)
+tt = np.arange(N) / SR
+level = np.interp(tt, [0, 2, 5, 8, 9.9, DUR, DUR + TAIL], [0.0, 0.25, 0.45, 0.75, 1.0, 1.0, 1.0])
+L *= level; R *= level
+
+# Hall, sanft
 ir_n = int(1.0 * SR); ir = rng.standard_normal(ir_n) * np.exp(-np.arange(ir_n) / SR * 5); ir = lp(ir, 5000) * 0.02
 L = L + sg.fftconvolve(L, ir)[:N] * 0.8; R = R + sg.fftconvolve(R, ir[::-1].copy())[:N] * 0.8
 mix = np.stack([L, R], 1)
-mix[:int(0.3 * SR)] *= np.linspace(0, 1, int(0.3 * SR))[:, None]
-mix[-int(0.12 * SR):] *= np.linspace(1, 0, int(0.12 * SR))[:, None]
+mix[-int(0.3 * SR):] *= np.linspace(1, 0, int(0.3 * SR))[:, None]
 mix *= 0.6 / np.abs(mix).max()          # bewusst leiser als die anderen Jingles: Reserve, kein Übersteuern
 wf.write(sys.argv[1], SR, (mix * 32767).astype(np.int16))
