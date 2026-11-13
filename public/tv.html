@@ -154,6 +154,13 @@
   .mpool { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1vh 1.2vw; flex: none; min-height: calc(2.2vw + 2vh); }
   .mpool .pbar { width: 50vw; }
   .mid.ghost { visibility: hidden; }
+  /* Stechen */
+  .tbplayers { display: flex; align-items: center; justify-content: center; gap: 2.4vw; flex-wrap: wrap; margin: 2vh 0; }
+  .tbplayers span { display: flex; flex-direction: column; align-items: center; gap: 1vh; font-size: 2.4vw; font-weight: 900; animation: pop .5s cubic-bezier(.2,1.6,.4,1) both; }
+  .tbplayers i { font-style: normal; width: 9vw; height: 9vw; border-radius: 50%; display: grid; place-items: center; font-size: 5.4vw; background: var(--pc); border: .35vw solid #fff; }
+  .tbplayers b { font-size: 2.6vw; color: var(--c); font-weight: 900; }
+  .tbsub { font-size: 2vw; font-weight: 700; color: var(--muted); margin-top: 1vh; }
+  html.lite .tbplayers span { animation: pop .5s cubic-bezier(.2,1.6,.4,1) both !important; }
   /* Richtig oder falsch */
   .tflist { display: grid; grid-auto-rows: minmax(0, calc(var(--row) * 1.15)); align-content: center; gap: 1.4vh; }
   .tfrow { display: flex; align-items: center; gap: 1.4vw; background: #4b3aa8; border-radius: 1.2vw; padding: 0 1.4vw 0 1vw; min-height: 0;
@@ -413,10 +420,11 @@ function qNumText() {
 }
 // Punkte nach Schwierigkeit: was die Frage bringt
 function ptsText(q) {
-  if (!q || !q.points) return '';
+  if (!q || !q.points || q.tiebreak) return '';
   return q.perPair ? '1 Punkt je Paar' : q.perItem ? '1 Punkt je Aussage' : q.points === 1 ? '1 Punkt' : q.points + ' Punkte';
 }
 function qTop() {
+  if (S.question && S.question.tiebreak) return topbar(`<span class="pill ptspill">⚔️ Stechen um Platz 1</span>`);
   const pt = ptsText(S.question);
   return topbar(`<span id="spb"></span>${badge(S.question)}${pt ? `<span class="pill ptspill">${pt}</span>` : ''}<span class="pill">${qNumText()}</span>`);
 }
@@ -441,6 +449,7 @@ function render() {
   if (S.phase === 'lobby') { prevScores = {}; return renderLobby(); }
   if (S.phase === 'opening') return fresh ? renderOpening() : null;
   if (S.phase === 'block') return fresh ? renderBlock() : null;
+  if (S.phase === 'tiebreak') return fresh ? renderTiebreak() : null;
   if (S.phase === 'pause') return fresh ? renderBlockPause() : null;
   if (stage === 'intro') return fresh ? renderIntro() : null;
   if (stage === 'media') return fresh ? (S.question.flash ? renderFlash() : S.question.audio ? renderAudio() : renderVideo()) : null;
@@ -501,6 +510,17 @@ function openingTick() {
   const n = slides[cur].querySelector('[data-count]');
   // über 2,6 s, am Ende sanft abbremsend – so kann man jede Zahl mitlesen
   if (n) { const p = Math.min(1, Math.max(0, t - OPEN_SLIDES[cur] - 0.2) / 2.6); n.textContent = Math.round(Number(n.dataset.count) * (1 - Math.pow(1 - p, 2))); }
+}
+
+// Gleichstand auf Platz 1: Ansage des Stechens (ohne Kopfzeile, wie die Block-Ansage)
+function renderTiebreak() {
+  const tied = S.players.filter(p => S.tiebreak.ids.includes(p.id));
+  app.innerHTML = `<div class="intro tbreak">
+    <div class="icat">Gleichstand auf Platz 1${S.tiebreak.round > 1 ? ' – schon wieder!' : ''}</div>
+    <div class="ilabel">⚔️ Stechen!</div>
+    <div class="tbplayers">${tied.map((p, i) => `<span style="--pc:${p.color};animation-delay:${0.3 + i * 0.25}s"><i>${p.avatar}</i>${esc(p.name)}</span>`).join('<b>vs</b>')}</div>
+    <div class="tbsub">Eine Schätzfrage entscheidet – wer am nächsten dran ist, gewinnt. Gleich nah? Dann zählt, wer schneller war.</div></div>`;
+  shot(specialSound, 0.9);
 }
 
 function renderBlock() {
@@ -574,7 +594,8 @@ function chips() {
     || (q.kind === 'tf' && S.phase === 'reveal' && q.step < (q.statements || []).length)
     || (q.kind === 'estimate' && S.phase === 'reveal' && estLanded !== S.qNum);   // Schätzfrage: erst wenn die Zahl steht
   // Wer gerade nicht verbunden ist (Handy im Standby), bleibt sichtbar – mit 💤
-  return S.players.map(p => {
+  const tb = q.tiebreak && S.tiebreak ? S.tiebreak.ids : null;   // Stechen: nur die Punktgleichen
+  return S.players.filter(p => !tb || tb.includes(p.id)).map(p => {
     let cls = p.answered ? 'done' : p.connected ? '' : 'away', extra = p.connected || p.answered ? '' : ' 💤';
     if (S.phase === 'reveal' && p.result && !hideResult) {
       cls = p.result.correct ? 'ok' : (p.result.gain ? 'done' : 'bad');
@@ -1211,8 +1232,8 @@ function renderScores() {
     rows.forEach((r, from) => {
       const to = rank.findIndex(p => p.id === r.dataset.id);
       r.style.transform = `translateY(${(to - from) * pitch}px)`;
-      r.classList.toggle('lead', to === 0);
-      setTimeout(() => { r.querySelector('.pos').textContent = (to + 1) + '.'; r.classList.add('ranked'); }, SORT_S * 1000);
+      r.classList.toggle('lead', rank[to].place === 1);
+      setTimeout(() => { r.querySelector('.pos').textContent = rank[to].place + '.'; r.classList.add('ranked'); }, SORT_S * 1000);   // Gleichstand = gleicher Platz
     });
   }, 500 + GROW_S * 1000 + 500);
 }
@@ -1229,15 +1250,18 @@ function countUp(els) {
 
 function renderEnd() {
   shot(winSound, 0.9);
-  const P = S.players, order = [1, 0, 2], heights = ['34vh', '24vh', '17vh'];
+  // Plätze mit Gleichstand: gleiche Punkte = gleicher Platz und gleich hohes Treppchen
+  const P = S.players, order = [1, 0, 2], heights = { 1: '34vh', 2: '24vh', 3: '17vh' };
+  const winners = P.filter(p => p.place === 1).map(p => esc(p.name));
+  const title = !P.length ? 'Spiel vorbei' : winners.length > 1 ? `${winners.slice(0, -1).join(', ')} & ${winners[winners.length - 1]} gewinnen gemeinsam!` : `${winners[0]} gewinnt!`;
   app.innerHTML = topbar(`<span class="pill">Spiel vorbei</span>`) + `
-    <div class="board"><h2>🏆 ${P[0] ? esc(P[0].name) + ' gewinnt!' : 'Spiel vorbei'}</h2>
+    <div class="board"><h2>🏆 ${title}</h2>
       <div class="podium">${order.filter(i => P[i]).map(i => `
         <div class="step" style="--pc:${P[i].color};animation-delay:${(2 - i) * 0.35}s">
           <div class="who"><div class="big">${P[i].avatar}</div>${esc(P[i].name)}</div>
-          <div class="block" style="height:${heights[i]}">${i + 1}<small>${P[i].score} ${P[i].score === 1 ? 'Punkt' : 'Punkte'}</small></div></div>`).join('')}
+          <div class="block" style="height:${heights[P[i].place] || '14vh'}">${P[i].place}<small>${P[i].score} ${P[i].score === 1 ? 'Punkt' : 'Punkte'}</small></div></div>`).join('')}
       </div>
-      <div class="others">${P.slice(3).map((p, i) => `<span>${i + 4}. ${p.avatar} ${esc(p.name)} – ${p.score}</span>`).join(' · ')}</div>
+      <div class="others">${P.slice(3).map(p => `<span>${p.place}. ${p.avatar} ${esc(p.name)} – ${p.score}</span>`).join(' · ')}</div>
       <div class="hint">👑 Neue Runde am Handy starten – oder <b>Leertaste</b></div>
     </div>`;
   confetti();

@@ -313,11 +313,12 @@ function header() {
 
 // Punkte nach Schwierigkeit: was die Frage bringt
 function ptsText(q) {
-  if (!q || !q.points) return '';
+  if (!q || !q.points || q.tiebreak) return '';
   return q.perPair ? '1 Punkt je Paar' : q.perItem ? '1 Punkt je Aussage' : q.points === 1 ? '1 Punkt' : q.points + ' Punkte';
 }
 function qline(extra) {
   const q = S.question, pt = ptsText(q);
+  if (q && q.tiebreak) return `<div class="qline"><span class="badge">⚔️ Stechen um Platz 1</span>${extra ? ' · ' + extra : ''}</div>`;
   return `<div class="qline">${q && q.label ? `<span class="badge">${q.icon} ${esc(q.label)}</span>` : ''}${pt ? `<span class="ptsbadge">${pt}</span>` : ''}${S.block && S.block.total > 1 && S.block.len ? `Block ${S.block.num}/${S.block.total} · Frage ${S.block.q} / ${S.block.len}` : `Frage ${S.qNum} / ${S.qTotal}`}${extra ? ' · ' + extra : ''}</div>`;
 }
 
@@ -351,6 +352,15 @@ function render() {
     return;
   }
   if (S.phase === 'block') return renderInfo('📦', S.block.total > 1 ? `Block ${S.block.num} von ${S.block.total}` : 'Los geht\'s!', `${esc(S.block.names.join(', '))}<br>Schau auf den Fernseher!`);
+  if (S.phase === 'tiebreak') {
+    const names = S.players.filter(p => S.tiebreak.ids.includes(p.id)).map(p => `${p.avatar} ${esc(p.name)}`).join(' · ');
+    return S.tiebreak.ids.includes(me.id)
+      ? renderInfo('⚔️', 'Stechen!', `Gleichstand auf Platz 1: ${names}<br>Eine Schätzfrage entscheidet – wer am nächsten dran ist, gewinnt. Gleich nah? Dann zählt, wer schneller war.`, 'special')
+      : renderInfo('⚔️', 'Stechen um Platz 1', `${names} sind punktgleich.<br>Eine Schätzfrage entscheidet – nur sie dürfen antworten. Schau auf den Fernseher 👀`);
+  }
+  // Stechen: Wer nicht punktgleich ist, schaut nur zu
+  if (S.question && S.question.tiebreak && S.tiebreak && !S.tiebreak.ids.includes(me.id) && ['question', 'votes', 'reveal'].includes(S.phase))
+    return renderInfo('⚔️', 'Stechen läuft …', `${S.players.filter(p => S.tiebreak.ids.includes(p.id)).map(p => `${p.avatar} ${esc(p.name)}`).join(' · ')} schätzen um Platz 1.<br>Schau auf den Fernseher 👀`);
   if (S.phase === 'special') return renderInfo('⭐', 'Spezialfrage!', `Diese Frage zählt <b>×${S.special.mult}</b> Punkte!<br>Schau auf den Fernseher 👀`, 'special');
   if (S.phase === 'intro') return renderInfo(S.question.icon, S.question.label, `Kategorie: ${esc(S.question.category)}<br>Gleich geht's los – schau auf den Fernseher!`);
   if (S.phase === 'media' && S.question.flash) return renderInfo('📸', 'Merk dir das Bild!', 'Es ist nur kurz auf dem Fernseher zu sehen – danach kommt die Frage, ohne Bild.');
@@ -704,6 +714,7 @@ function renderPlanPick() {
 function modAction() {
   const ph = S.phase, h = S.me.hostQ || {}, q = S.question || {};
   if (ph === 'opening') return ['⏭ Intro überspringen', 'ghost'];
+  if (ph === 'tiebreak') return ['⏭ Weiter zur Stechen-Frage', 'ghost'];
   if (ph === 'block') return ['⏭ Weiter zur Frage', 'ghost'];
   if (ph === 'intro' || ph === 'media' || ph === 'preview') return ['⏭ Überspringen', 'ghost'];
   if (ph === 'question') return ['⏹ Antworten jetzt schließen', 'ghost'];
@@ -719,7 +730,7 @@ function modAction() {
   return null;
 }
 const MOD_STATUS = {
-  opening: 'Intro läuft auf dem Fernseher', block: 'Block-Ansage', intro: 'Ansage der Frageart', media: 'Video/Audio/Merkbild läuft', preview: 'Vorschau der Begriffe',
+  opening: 'Intro läuft auf dem Fernseher', tiebreak: 'Gleichstand auf Platz 1 – gleich kommt das Stechen (Schätzfrage)', block: 'Block-Ansage', intro: 'Ansage der Frageart', media: 'Video/Audio/Merkbild läuft', preview: 'Vorschau der Begriffe',
   question: 'Die Spieler antworten – nach Ablauf der Zeit löst du auf', locked: 'Zeit ist um – jetzt auflösen', special: 'Spezialfrage wird enthüllt', votes: 'Die Stimmen werden gezeigt',
   reveal: 'Auflösung', scores: 'Zwischenstand wird gezeigt', end: 'Spiel vorbei',
 };
@@ -980,13 +991,15 @@ function renderRank(end) {
       return;
     }
   }
-  const me = S.me, ahead = S.players[me.rank - 2];
+  // Gleichstand = gleicher Platz; „vor dir“ ist der Spieler mit den nächstmehr Punkten
+  const me = S.me, ahead = S.players.filter(p => p.score > me.score).pop();
   const gap = ahead ? ahead.score - me.score : 0;
+  const tied = S.players.filter(p => p.id !== me.id && p.score === me.score).map(p => esc(p.name));
   main.innerHTML = `<div class="center">
     <p>${end ? 'Endergebnis' : 'Zwischenstand'}</p>
     <div class="rank">${me.rank === 1 && end ? '🏆' : me.rank + '.'}</div>
-    <h1>${end ? (me.rank === 1 ? 'Du hast gewonnen!' : `Platz ${me.rank}`) : pts(me.score)}</h1>
-    <p>${me.rank === 1 ? (end ? `${pts(me.score)} – stark!` : 'Du führst! 🔥') : `${pts(gap)} hinter ${esc(ahead.name)}`}</p>
+    <h1>${end ? (me.rank === 1 ? (tied.length ? 'Geteilter Sieg!' : 'Du hast gewonnen!') : `Platz ${me.rank}`) : pts(me.score)}</h1>
+    <p>${me.rank === 1 ? (end ? `${pts(me.score)} – stark!` : tied.length ? `Gleichauf mit ${tied.join(', ')} 🤝` : 'Du führst! 🔥') : `${pts(gap)} hinter ${esc(ahead.name)}${tied.length ? ` · gleichauf mit ${tied.join(', ')}` : ''}`}</p>
     ${me.isVip ? `<button class="btn ${end ? '' : 'ghost'}" onclick="advance()">${end ? 'Neue Runde' : 'Weiter'}</button>` : ''}
   </div>`;
 }
