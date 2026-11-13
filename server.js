@@ -40,6 +40,25 @@ const SOUNDS_DIR = path.join(__dirname, 'sounds');
 const HOTSPOT_FILE = path.join(__dirname, 'hotspot.json'); // von raspberry-pi/setup.sh angelegt: {ssid, password}
 const UNDER_SYSTEMD = !!process.env.INVOCATION_ID;           // läuft als Dienst (Pi) -> Neustart nach Update automatisch
 const SETTINGS_FILE = path.join(__dirname, 'einstellungen.json');
+const HISTORY_FILE = path.join(__dirname, 'verlauf.json');   // welche Frage wann zuletzt gespielt wurde (über Spiele hinweg)
+
+// ---------- Verlauf: möglichst keine Wiederholungen über mehrere Spieleabende ----------
+let history = {};
+try { history = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8')) || {}; } catch (_) { history = {}; }
+let historyTimer = null;
+function markPlayed(uid) {
+  history[uid] = Date.now();
+  clearTimeout(historyTimer);
+  historyTimer = setTimeout(() => { try { fs.writeFileSync(HISTORY_FILE, JSON.stringify(history)); } catch (e) { console.log('  Verlauf nicht gespeichert:', e.message); } }, 1500);
+}
+// Aus einer Auswahl die „frischesten“ Fragen: nie gespielte zuerst, sonst das älteste Drittel
+function fresher(list) {
+  if (list.length < 2) return list;
+  const unplayed = list.filter(q => !history[q.uid]);
+  if (unplayed.length) return unplayed;
+  const sorted = [...list].sort((a, b) => history[a.uid] - history[b.uid]);
+  return sorted.slice(0, Math.max(1, Math.ceil(sorted.length / 3)));
+}
 const VIDEO_TYPES = { '.mp4': 'video/mp4', '.m4v': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/mp4' };
 const AUDIO_TYPES = { '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.ogg': 'audio/ogg', '.opus': 'audio/ogg', '.wav': 'audio/wav' };
 const MEDIA_MAX_MS = 5 * 60 * 1000; // Sicherheitsnetz, falls der Fernseher das Ende von Video/Audio nicht meldet
@@ -234,7 +253,9 @@ function packList() {
     if (!g) groups.push(g = { name: p.group, packs: [] });
     g.packs.push({ id: p.id, name: p.name, count: p.questions.length, kinds: p.kinds, levels: p.levels });
   }
-  return { groups, errors: packErrors, settings, summary: packSummary(), system: systemInfo() };
+  const all = packs.flatMap(p => p.questions);
+  const played = all.filter(q => history[q.uid]).length;
+  return { groups, errors: packErrors, settings, summary: packSummary(), system: systemInfo(), history: { played, total: all.length } };
 }
 
 // Wahrscheinlichkeit der Schwierigkeitsstufen für Frage g (0-basiert) von total
@@ -355,7 +376,7 @@ function buildGame() {
       if (!left.length) break;
       const byLevel = [1, 2, 3].map(l => left.filter(q => q.level === l));
       const w = levelWeights(out.length, total).map((x, i) => byLevel[i].length ? x : 0);
-      const list = byLevel[pickWeighted(w)];
+      const list = fresher(byLevel[pickWeighted(w)]);   // bevorzugt Fragen, die noch nicht (oder lange nicht) dran waren
       const q = list[Math.floor(Math.random() * list.length)];
       used.add(q);
       out.push({ ...prepareQuestion(q), block: n, bi: b.bi, blockCount: plan.length, blockNames: b.names });
@@ -412,7 +433,7 @@ function planAction(body) {
       if (!it) return { ok: false };
       const m = byUid(), cur = m.get(it.uid), free = poolOf(it.bi).filter(q => !used.has(q.uid));
       if (!free.length) return { ok: false, text: 'Keine weiteren Fragen in diesem Block.' };
-      const same = free.filter(q => q.level === cur.level), list = same.length ? same : free;
+      const same = free.filter(q => q.level === cur.level), list = fresher(same.length ? same : free);
       const pick = list[Math.floor(Math.random() * list.length)];
       if (pubPlan.special === it.uid) pubPlan.special = pick.uid;
       it.uid = pick.uid;
@@ -501,6 +522,7 @@ function nextQuestion() {
 }
 
 function beginQuestion() {
+  markPlayed(currentQuestion().uid);
   if (currentQuestion().tiebreak) return startAnswering();   // Stechen: die Ansage „Stechen!“ ersetzt die Fragen-Ansage
   if (currentQuestion().label) setPhase('intro', INTRO_MS, afterIntro); // neue Fragearten werden angekündigt
   else startAnswering();
@@ -829,7 +851,7 @@ function pickTiebreakQuestion() {
   const used = new Set(state.questions.map(q => q.uid));
   const all = packs.flatMap(p => p.questions).filter(q => q.kind === 'estimate' && !q.video && !q.audio && !q.flash && !used.has(q.uid));
   for (const lv of [3, 2, 1]) {
-    const c = all.filter(q => (q.level || 1) === lv);
+    const c = fresher(all.filter(q => (q.level || 1) === lv));
     if (c.length) return c[Math.floor(Math.random() * c.length)];
   }
   return null;
@@ -1252,6 +1274,16 @@ const server = http.createServer(async (req, res) => {
     if (pubPlan && pubPlan.special && !settings.special.on) pubPlan.special = null;
     saveSettings();
     broadcast();
+    return json(res, 200, packList());
+  }
+
+  // Verlauf zurücksetzen: danach gelten alle Fragen wieder als neu (nur 👑, nur in der Lobby)
+  if (req.method === 'POST' && p === '/api/verlauf') {
+    const body = await readBody(req);
+    if (body.id !== vipId() || state.phase !== 'lobby') return json(res, 403, { ok: false });
+    history = {};
+    try { fs.writeFileSync(HISTORY_FILE, '{}'); } catch (_) {}
+    pubPlan = null;
     return json(res, 200, packList());
   }
 
