@@ -335,6 +335,7 @@
   .others { display: flex; gap: 1.2vw; flex-wrap: wrap; justify-content: center; font-size: 1.6vw; color: var(--muted); }
 
   .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1) both; }
+  html.lite #sbtitle.pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1) both !important; }
   @keyframes pop { from { transform: scale(.6); opacity: 0; } }
   .fade { animation: fade .4s both; } @keyframes fade { from { opacity: 0; transform: translateY(1.5vh); } }
   .status { position: fixed; left: 50%; bottom: 1.5vh; transform: translateX(-50%); font-size: 1.1vw; color: var(--muted); opacity: .7; }
@@ -1206,7 +1207,7 @@ function renderScores() {
   const last = S.qNum >= S.qTotal, blockNum = S.block && S.block.total > 1 ? S.block.num : 0;
   // ohne Kopfzeile (OLED-Schonung) – die Block-Info steht in der Überschrift
   app.innerHTML = `
-    <div class="board sboard"><h2>${last && rank.filter(p => p.place === 1).length > 1 ? '⚔️ Gleichstand – gleich wird gestochen!' : last ? 'Gleich kommt die Siegerehrung …' : blockNum ? `Zwischenstand nach Block ${blockNum} von ${S.block.total}` : 'Zwischenstand'}</h2>
+    <div class="board sboard"><h2 id="sbtitle">${last ? 'Endstand' : blockNum ? `Zwischenstand nach Block ${blockNum} von ${S.block.total}` : 'Zwischenstand'}</h2>
       <div class="rows">${start.map((p, i) => {
         return `<div class="row" data-id="${p.id}" style="--pc:${p.color};animation-delay:${i * 0.07}s"><span class="pos"></span><span class="av">${p.avatar}</span>
           <span class="nm">${esc(p.name)}</span><span class="bar"><i data-w="${p.score / max}"></i></span>
@@ -1236,6 +1237,12 @@ function renderScores() {
       setTimeout(() => { r.querySelector('.pos').textContent = rank[to].place + '.'; r.classList.add('ranked'); }, SORT_S * 1000);   // Gleichstand = gleicher Platz
     });
   }, 500 + GROW_S * 1000 + 500);
+  // Spielende: erst wenn alle einsortiert sind, verrät die Überschrift, wie es weitergeht (sonst wäre die Spannung weg)
+  if (last) setTimeout(() => {
+    const h = document.getElementById('sbtitle'); if (!h) return;
+    h.textContent = rank.filter(p => p.place === 1).length > 1 ? '⚔️ Gleichstand – gleich wird gestochen!' : 'Gleich kommt die Siegerehrung …';
+    h.classList.add('pop');
+  }, 500 + GROW_S * 1000 + 500 + SORT_S * 1000 + 300);
 }
 
 function countUp(els) {
