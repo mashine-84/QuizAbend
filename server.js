@@ -663,7 +663,8 @@ function reveal() {
 
 function afterReveal() {
   const last = state.idx >= state.questions.length - 1;
-  if (last && startTiebreak()) return;   // Gleichstand auf Platz 1: erst stechen, dann Rangliste und Siegerehrung
+  // nach dem Stechen direkt zur Siegerehrung (oder noch einmal stechen, falls niemand geantwortet hat)
+  if (currentQuestion().tiebreak) { if (!startTiebreak()) setPhase('end'); return; }
   const next = state.questions[state.idx + 1];
   const blockEnd = next && next.block !== currentQuestion().block;
   if (last || blockEnd || (SCORES_EVERY && (state.idx + 1) % SCORES_EVERY === 0)) showScores();
@@ -676,7 +677,8 @@ function isBlockEnd() {
 }
 
 function afterScores() {
-  if (state.idx >= state.questions.length - 1) setPhase('end');
+  // Spielende: erst die Rangliste, dann bei Gleichstand auf Platz 1 das Stechen, danach das Podest
+  if (state.idx >= state.questions.length - 1) { if (!startTiebreak()) setPhase('end'); }
   else if (isBlockEnd() && settings.pause.on) startBlockPause();
   else nextQuestion();
 }
@@ -786,7 +788,7 @@ function startTiebreak() {
   if (!q) {
     // keine Schätzfrage mehr übrig (oder Sicherheitsnetz): das Los entscheidet – auf dem Podest gibt es nur einen Ersten
     const p = players.get(ids[Math.floor(Math.random() * ids.length)]);
-    if (p) { p.score += 1; console.log('  Stechen: keine Schätzfrage mehr übrig – Los entscheidet für', p.name); }
+    if (p) { p.score += 0.5; console.log('  Stechen: keine Schätzfrage mehr übrig – Los entscheidet für', p.name); }
     return false;
   }
   const prev = currentQuestion();
@@ -798,7 +800,7 @@ function startTiebreak() {
 }
 const inTiebreak = q => !!(q && q.tiebreak && state.tiebreak);
 const mayAnswer = (q, p) => !inTiebreak(q) || state.tiebreak.ids.includes(p.id);
-// Wertung des Stechens: wer am nächsten dran ist, bekommt 1 Punkt – das reicht zum Entscheiden.
+// Wertung des Stechens: wer am nächsten dran ist, bekommt einen halben Punkt – das reicht zum Entscheiden.
 // Gleich nah dran? Dann gewinnt, wer schneller geantwortet hat. Hat niemand geantwortet, wird erneut gestochen.
 function scoreTiebreak(q) {
   const ids = state.tiebreak.ids;
@@ -811,8 +813,8 @@ function scoreTiebreak(q) {
     if (!p) continue;
     if (!a) { state.results[id] = { gain: 0, correct: false, answered: false }; continue; }
     const diff = Math.abs(a.value - q.value), win = winner === id;
-    if (win) p.score += 1;
-    state.results[id] = { gain: win ? 1 : 0, correct: win, exact: diff === 0, answered: true, value: a.value, outOfRange: false };
+    if (win) p.score += 0.5;
+    state.results[id] = { gain: win ? 0.5 : 0, correct: win, exact: diff === 0, answered: true, value: a.value, outOfRange: false };
   }
 }
 
