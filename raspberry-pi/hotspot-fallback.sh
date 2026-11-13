@@ -26,7 +26,7 @@ export OUT="$STATUS"
 [ -f "$LOG" ] && tail -n 150 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
 chmod 644 "$LOG" "$STATUS" 2>/dev/null
 
-log "---- Start (Pi hochgefahren) ----"
+log "---- Start (Pi hochgefahren – Uhrzeit bis zur Internet-Verbindung evtl. ungenau) ----"
 if ! command -v nmcli >/dev/null; then log "NetworkManager fehlt – kein eigenes WLAN möglich"; status fehler "NetworkManager (nmcli) fehlt"; exit 0; fi
 
 TEST=0
@@ -52,11 +52,16 @@ if ! nmcli -t -f NAME con show | grep -qx "$CON"; then
   PW=$(python3 -c "import json;print(json.load(open('$HS'))['password'])")
   log "Hotspot-Verbindung fehlt – lege sie an (WLAN-Name $SSID)"
   if ! out=$(nmcli con add type wifi ifname wlan0 con-name "$CON" autoconnect no ssid "$SSID" \
-      mode ap 802-11-wireless.band bg ipv4.method shared \
-      wifi-sec.key-mgmt wpa-psk wifi-sec.proto rsn wifi-sec.pairwise ccmp wifi-sec.group ccmp wifi-sec.psk "$PW" 2>&1); then
+      mode ap 802-11-wireless.band bg 802-11-wireless.channel 6 ipv4.method shared \
+      wifi-sec.key-mgmt wpa-psk wifi-sec.proto rsn wifi-sec.pairwise ccmp wifi-sec.group ccmp wifi-sec.pmf disable wifi-sec.psk "$PW" 2>&1); then
     log "Anlegen fehlgeschlagen: $out"; status fehler "Hotspot konnte nicht angelegt werden: $out"; exit 1
   fi
 fi
+
+# Der WLAN-Chip des Pi kann im Hotspot-Betrieb kein PMF ("802.1X supplicant took too long to authenticate"),
+# außerdem hilft ein fester Kanal. Gilt auch für Verbindungen, die eine ältere Version angelegt hat.
+nmcli con modify "$CON" 802-11-wireless-security.pmf disable 802-11-wireless.band bg 802-11-wireless.channel 6 >/dev/null 2>&1 \
+  || log "Hinweis: Hotspot-Einstellungen ließen sich nicht anpassen"
 
 # Ist ein bekanntes WLAN in Reichweite? (bis zu 45 s warten)
 if [ "$TEST" = 0 ]; then
@@ -72,17 +77,22 @@ if [ "$TEST" = 0 ]; then
   log "Kein bekanntes WLAN gefunden – starte eigenes WLAN"
 fi
 
-# Eigenes WLAN starten (mehrere Versuche – das WLAN-Modul kann noch mit der Suche beschäftigt sein)
+# Eigenes WLAN starten (mehrere Versuche – das WLAN-Modul kann noch mit der Suche beschäftigt sein).
+# Versuch 1–2: WPA2/CCMP wie eingerichtet; Versuch 3–4: Verschlüsselungsdetails dem Pi überlassen.
 ok=0
-for try in 1 2 3 4 5; do
+for try in 1 2 3 4; do
+  if [ "$try" = 3 ]; then
+    log "Probiere Variante 2: Verschlüsselungsdetails automatisch"
+    nmcli con modify "$CON" 802-11-wireless-security.proto "" 802-11-wireless-security.pairwise "" 802-11-wireless-security.group "" >/dev/null 2>&1
+  fi
   nmcli dev disconnect wlan0 >/dev/null 2>&1   # laufende Suche nach dem Heim-WLAN abbrechen
   sleep 2
   if out=$(nmcli con up "$CON" 2>&1); then ok=1; break; fi
-  log "Versuch $try fehlgeschlagen: $out"
-  sleep 5
+  log "Versuch $try fehlgeschlagen: $(echo "$out" | head -1)"
+  sleep 3
 done
 if [ "$ok" = 0 ]; then status fehler "Eigenes WLAN ließ sich nicht starten: $out"; exit 1; fi
-log "Eigenes WLAN läuft (Adresse 10.42.0.1)"
+log "Eigenes WLAN läuft (Adresse 10.42.0.1, Versuch $try)"
 status hotspot "Eigenes WLAN läuft$([ "$TEST" = 1 ] && echo ' (Test)')"
 
 if [ "$TEST" = 1 ]; then

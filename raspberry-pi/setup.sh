@@ -102,8 +102,8 @@ if command -v nmcli >/dev/null; then
     PW=$(python3 -c "import json;print(json.load(open('$HS'))['password'])")
     sudo nmcli con delete QuizAbend-Hotspot >/dev/null 2>&1 || true
     sudo nmcli con add type wifi ifname wlan0 con-name QuizAbend-Hotspot autoconnect no ssid "$SSID" \
-      mode ap 802-11-wireless.band bg ipv4.method shared \
-      wifi-sec.key-mgmt wpa-psk wifi-sec.proto rsn wifi-sec.pairwise ccmp wifi-sec.group ccmp wifi-sec.psk "$PW" >/dev/null
+      mode ap 802-11-wireless.band bg 802-11-wireless.channel 6 ipv4.method shared \
+      wifi-sec.key-mgmt wpa-psk wifi-sec.proto rsn wifi-sec.pairwise ccmp wifi-sec.group ccmp wifi-sec.pmf disable wifi-sec.psk "$PW" >/dev/null
     chmod +x "$DIR/raspberry-pi/hotspot-fallback.sh"
     sudo tee /etc/systemd/system/quizabend-hotspot.service >/dev/null <<UNIT
 [Unit]
