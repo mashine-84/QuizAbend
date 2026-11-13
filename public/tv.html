@@ -373,6 +373,23 @@
   .oplayers span { display: flex; flex-direction: column; align-items: center; gap: .6vh; background: rgba(255,255,255,.08); border: 2px solid var(--pc); border-radius: 2vh; padding: 2vh 1.6vw; font-size: 2vw; font-weight: 800; min-width: 9vw; }
   .oplayers i { font-style: normal; font-size: 5.5vw; line-height: 1; }
   .opening .anim, html.lite .opening .anim { animation: var(--an) !important; }
+  /* Opener „Vier Kacheln“ */
+  .ident { position: fixed; inset: 0; z-index: 35; background: var(--bg); overflow: hidden; }
+  .ident.anim, .ident .anim, html.lite .ident.anim, html.lite .ident .anim { animation: var(--an) !important; }
+  .igrid { position: absolute; left: 50%; top: 50%; width: 30vw; height: 30vw; margin: -15vw 0 0 -15vw; transform: rotate(-8deg); display: grid; grid-template-columns: 1fr 1fr; gap: 1.6vw; }
+  .it { border-radius: 2.6vw; will-change: transform; }
+  .iq { position: absolute; left: 50%; top: 50%; width: 15vw; height: 15vw; margin: -7.5vw 0 0 -7.5vw; border-radius: 50%; background: #fff; border: 1.1vw solid var(--bg);
+    display: grid; place-items: center; color: var(--bg); font-size: 10vw; font-weight: 900; line-height: 1; }
+  .iword { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; overflow: hidden; padding: 2vh 0; }
+  .ilogo { font-size: 11vw; font-weight: 900; letter-spacing: -0.03em; line-height: 1; } .ilogo span { color: var(--c); }
+  .itag { font-size: 2.6vw; font-weight: 800; color: var(--muted); margin-top: 1.4vh; }
+  .iglint { position: absolute; top: 0; bottom: 0; left: 50%; width: 9vw; margin-left: -4.5vw; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); transform: translateX(-70vw) skewX(-18deg); }
+  @keyframes itin { from { transform: translate(var(--fx), var(--fy)) scale(.5) rotate(25deg); opacity: 0; } }
+  @keyframes itout { to { transform: translate(var(--tx), var(--ty)) scale(.32); opacity: .9; } }
+  @keyframes iqout { to { transform: scale(0); opacity: 0; } }
+  @keyframes ilogo { from { transform: translateY(8vh) scale(.92); opacity: 0; } }
+  @keyframes iglint { from { transform: translateX(-70vw) skewX(-18deg); } to { transform: translateX(70vw) skewX(-18deg); } }
+  @keyframes ifade { to { opacity: 0; } }
   @keyframes opop { from { transform: scale(.3); opacity: 0; } }
   @keyframes oup { from { transform: translateY(4vh); opacity: 0; } }
   @keyframes ozoom { from { transform: scale(.5); opacity: 0; } }
@@ -455,6 +472,7 @@ function render() {
 
   document.getElementById('status').style.display = (!KIOSK && (S.phase === 'lobby' || S.phase === 'end')) ? '' : 'none';
   if (S.phase === 'lobby') { prevScores = {}; return renderLobby(); }
+  if (S.phase === 'ident') return fresh ? renderIdent() : null;
   if (S.phase === 'opening') return fresh ? renderOpening() : null;
   if (S.phase === 'block') return fresh ? renderBlock() : null;
   if (S.phase === 'tiebreak') return fresh ? renderTiebreak() : null;
@@ -564,8 +582,32 @@ function joinBox() {
 const SHIFTS = [[0, 0], [1.2, .8], [.4, 1.6], [-.8, 1], [-1.2, -.4], [-.4, -1.4], [.8, -1], [1.2, .2]];
 const lobbyShift = () => { const [x, y] = SHIFTS[Math.floor(Date.now() / 20000) % SHIFTS.length]; return `translate(${x}vw, ${y}vh)`; };
 setInterval(() => { const l = document.querySelector('.lobby'); if (l) { l.classList.add('drift'); l.style.transform = lobbyShift(); } }, 20000);
+// ---------- Opener „Vier Kacheln“ (Spielstart und nach der Pause) ----------
+// Zeiten passen zu sounds/standard/opener.mp3 (128 BPM): Kacheln rasten bei 0,47 / 0,70 / 0,94 / 1,17 s ein,
+// „?“ bei 1,41 s, Logo ab 1,9 s, Glanz bei 3,75 s, Ausblenden ab 4,45 s. Nur transform/opacity – läuft auch am Pi.
+function renderIdent() {
+  const E8 = 0.234, cols = ['#e5484d', '#3e8ef7', '#f5b014', '#2fb36d'];
+  const from = [['-45vw', '-40vh'], ['45vw', '-40vh'], ['-45vw', '40vh'], ['45vw', '40vh']];
+  const to = [['-31vw', '-15vh'], ['31vw', '-17vh'], ['-31vw', '17vh'], ['31vw', '15vh']];   // ab der Kachel-Mitte: landen nahe den Ecken
+  app.innerHTML = `<div class="ident anim" style="--an:ifade .4s 4.45s ease-in forwards">
+    <div class="igrid">${cols.map((c, i) => `<i class="it anim" style="background:${c};--fx:${from[i][0]};--fy:${from[i][1]};--tx:${to[i][0]};--ty:${to[i][1]};
+      --an:itin .42s ${(0.47 + i * E8 - 0.28).toFixed(2)}s cubic-bezier(.2,1.5,.4,1) both, itout .75s 1.88s cubic-bezier(.6,0,.25,1) forwards"></i>`).join('')}</div>
+    <div class="iq anim" style="--an:opop .45s 1.41s cubic-bezier(.2,1.6,.4,1) both, iqout .4s 1.88s ease-in forwards">?</div>
+    <div class="iword"><div class="ilogo anim" style="--an:ilogo .7s 2s cubic-bezier(.2,1.2,.4,1) both">Quiz<span>Abend</span></div>
+      <div class="itag anim" style="--an:oup .5s 2.45s both">Handy raus. Hirn an.</div>
+      <i class="iglint anim" style="--an:iglint .9s 3.75s ease-in-out both"></i></div>
+  </div>`;
+  identTick();
+}
+function identTick() {
+  const left = (S.frozen ? S.remainingMs : Math.max(0, deadline - Date.now())) / 1000;
+  const t = (S.phaseMs || 4900) / 1000 - left;
+  openerMusic.lastLeft = left;
+  if (!S.frozen) openerMusic.play(t, left);
+}
+
 function renderLobby() {
-  if (soundOn()) introMusic.load();                 // Intro-Musik schon mal laden
+  if (soundOn()) { introMusic.load(); openerMusic.load(); }   // Intro-Musik und Opener schon mal laden
   const slots = [];
   for (let i = 0; i < S.maxPlayers; i++) {
     const p = S.players[i];
@@ -670,7 +712,7 @@ function floatyIcons() {
 }
 function renderBlockPause() {
   const nb = S.nextBlock;
-  finale.buf = null; if (soundOn()) finale.load();
+  finale.buf = null; if (soundOn()) { finale.load(); openerMusic.load(); }   // Opener läuft nach der Pause
   // ohne Kopfzeile (OLED-Schonung)
   app.innerHTML = `<div class="intro bpause">
     <div class="floaty">${floatyIcons()}</div>
@@ -1145,6 +1187,7 @@ function makeTrack(name) {
   };
 }
 const introMusic = makeTrack('quiz-intro');
+const openerMusic = makeTrack('opener');
 const blockMusic = makeTrack('block-start');
 const scoresMusic = makeTrack('rangliste');   // läuft synchron zum Balken-Aufbau und Einsortieren
 const revealSound = makeTrack('aufloesung'), winSound = makeTrack('siegerehrung'), specialSound = makeTrack('spezialfrage');
@@ -1182,6 +1225,8 @@ function tick() {
   if ((!S || S.phase !== 'question') && (countdownMusic.started || countdownMusic.src)) countdownMusic.leave();
   if ((!S || S.phase !== 'opening') && (introMusic.started || introMusic.src)) introMusic.leave();
   if (S && S.phase === 'opening') openingTick();
+  if ((!S || S.phase !== 'ident') && (openerMusic.started || openerMusic.src)) openerMusic.leave();
+  if (S && S.phase === 'ident') identTick();
   // Musik, die genau eine Phase begleitet (Block-Ansage, Rangliste)
   for (const [phase, m] of [['block', blockMusic], ['scores', scoresMusic]]) {
     if ((!S || S.phase !== phase) && (m.started || m.src)) m.leave();

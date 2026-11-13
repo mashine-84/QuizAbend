@@ -361,6 +361,7 @@ function render() {
   if (S.phase === 'pause') return renderPause();
   if (me.isHost) return renderModerator();
   if (S.phase === 'locked') return renderInfo('🔒', me.answer ? 'Eingeloggt!' : 'Zeit ist um!', 'Der Gamemaster löst gleich auf – schau auf den Fernseher.');
+  if (S.phase === 'ident') return renderInfo('🎬', 'QuizAbend', 'Schau auf den Fernseher 👀');
   if (S.phase === 'opening') {
     renderInfo('🎬', 'Gleich geht\'s los!', 'Schau auf den Fernseher – dort siehst du, was euch heute erwartet.');
     if (me.isVip) main.querySelector('.center').insertAdjacentHTML('beforeend', '<button class="btn ghost" style="margin-top:3vh" onclick="advance()">⏭ Intro überspringen</button>');
@@ -728,6 +729,7 @@ function renderPlanPick() {
 // ---------- Pub-Quiz: Moderator-Ansicht (Host spielt nicht mit) ----------
 function modAction() {
   const ph = S.phase, h = S.me.hostQ || {}, q = S.question || {};
+  if (ph === 'ident') return ['⏭ Opener überspringen', 'ghost'];
   if (ph === 'opening') return ['⏭ Intro überspringen', 'ghost'];
   if (ph === 'tiebreak') return ['⏭ Weiter zur Stechen-Frage', 'ghost'];
   if (ph === 'block') return ['⏭ Weiter zur Frage', 'ghost'];
@@ -745,7 +747,7 @@ function modAction() {
   return null;
 }
 const MOD_STATUS = {
-  opening: 'Intro läuft auf dem Fernseher', tiebreak: 'Gleichstand auf Platz 1 – gleich kommt das Stechen (Schätzfrage)', block: 'Block-Ansage', intro: 'Ansage der Frageart', media: 'Video/Audio/Merkbild läuft', preview: 'Vorschau der Begriffe',
+  ident: 'Opener läuft auf dem Fernseher', opening: 'Intro läuft auf dem Fernseher', tiebreak: 'Gleichstand auf Platz 1 – gleich kommt das Stechen (Schätzfrage)', block: 'Block-Ansage', intro: 'Ansage der Frageart', media: 'Video/Audio/Merkbild läuft', preview: 'Vorschau der Begriffe',
   question: 'Die Spieler antworten – nach Ablauf der Zeit löst du auf', locked: 'Zeit ist um – jetzt auflösen', special: 'Spezialfrage wird enthüllt', votes: 'Die Stimmen werden gezeigt',
   reveal: 'Auflösung', scores: 'Zwischenstand wird gezeigt', end: 'Spiel vorbei',
 };

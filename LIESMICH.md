@@ -173,6 +173,7 @@ Achte auf die Kommas zwischen den Einträgen. Neue oder geänderte Dateien ersch
 Alle Stücke sind selbst erzeugt, frei nutzbar und klingen einheitlich (A-Dur, 128 BPM, gleiche Klänge). Sie liegen in `sounds/standard/`:
 | Datei | Wann | Länge |
 |---|---|---|
+| `opener.mp3` | Opener „Vier Kacheln“ beim Spielstart und nach der Pause (Erkennungsmotiv A – Cis – E – A); die Animation am Fernseher ist auf diese Zeiten abgestimmt | 4,9 s |
 | `quiz-intro.mp3` | Intro beim Spielstart, Folien wechseln im Takt | 22,5 s |
 | `block-start.mp3` | Ansage eines neuen Frageblocks | 4,5 s |
 | `aufloesung.mp3` | Auflösung jeder Frage | 1,6 s |

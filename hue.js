@@ -204,6 +204,7 @@ async function onPhase(phase, info = {}) {
   if (phase === 'opening' && !snapshot) await takeSnapshot();
   let mood, key = phase;
   switch (phase) {
+    case 'ident': mood = { color: VIOLET, bri: 30, ms: 800 }; break;                      // Opener: kurz abdunkeln
     case 'opening': mood = { color: VIOLET, bri: 40, ms: 2500 }; break;
     case 'block': mood = { color: VIOLET, bri: 45, ms: 1000 }; break;
     case 'tiebreak': mood = { color: GOLD, bri: 80, ms: 600 }; break;                    // Stechen um Platz 1
