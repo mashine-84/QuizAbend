@@ -65,6 +65,7 @@
   .answered { flex: 1; display: flex; flex-wrap: wrap; gap: .8vw; justify-content: flex-end; }
   .chip { display: flex; align-items: center; gap: .5vw; background: rgba(255,255,255,.08); border-radius: 99px; padding: .4vw 1vw .4vw .5vw; font-weight: 700; font-size: 1.3vw; opacity: .45; transition: all .3s; }
   .chip .dot { width: 2.4vw; height: 2.4vw; border-radius: 50%; display: grid; place-items: center; background: var(--pc); font-size: 1.4vw; }
+  .chip.away { opacity: .3; }
   .chip.done { opacity: 1; background: rgba(255,255,255,.18); transform: translateY(-.3vh); }
   .chip.ok { background: rgba(47,179,109,.35); opacity: 1; }
   .chip.bad { background: rgba(229,72,77,.3); opacity: 1; }
@@ -561,8 +562,9 @@ function chips() {
   const hideResult = (q.kind === 'match' && S.phase === 'reveal' && q.step < (q.left || []).length)
     || (q.kind === 'tf' && S.phase === 'reveal' && q.step < (q.statements || []).length)
     || (q.kind === 'estimate' && S.phase === 'reveal' && estLanded !== S.qNum);   // Schätzfrage: erst wenn die Zahl steht
-  return S.players.filter(p => p.connected || p.answered).map(p => {
-    let cls = p.answered ? 'done' : '', extra = '';
+  // Wer gerade nicht verbunden ist (Handy im Standby), bleibt sichtbar – mit 💤
+  return S.players.map(p => {
+    let cls = p.answered ? 'done' : p.connected ? '' : 'away', extra = p.connected || p.answered ? '' : ' 💤';
     if (S.phase === 'reveal' && p.result && !hideResult) {
       cls = p.result.correct ? 'ok' : (p.result.gain ? 'done' : 'bad');
       extra = p.result.correct ? ' ✓' : p.result.gain ? ' ≈' : (p.result.answered ? ' ✗' : ' –');   // Punkte gibt's erst am Blockende
