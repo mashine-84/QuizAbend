@@ -163,7 +163,7 @@ try {
   if (raw.special) settings.special = raw.special;
   if (raw.sound) settings.sound = raw.sound;
   if (raw.pause) settings.pause = raw.pause;
-  if (raw.pub) settings.pub = raw.pub;
+  // Pub-Quiz-Modus wird bewusst nicht übernommen: nach jedem Start ist der normale Modus aktiv
   if (raw.scoring) settings.scoring = raw.scoring;
 } catch (_) {}
 function saveSettings() { try { fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2)); } catch (_) {} }

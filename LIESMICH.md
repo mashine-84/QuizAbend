@@ -181,7 +181,7 @@ Die Erzeuger-Skripte liegen daneben. Jede Datei lässt sich ersetzen, hier am Be
 - Wird die Pause verlängert oder übersprungen, blendet die Musik aus. Ist „Sounds“ in den Einstellungen aus, bleibt es still.
 
 ## 🍻 Pub-Quiz-Modus
-Einschalten unter ⚙️ Einstellungen › Spieleinstellungen › **Pub-Quiz-Modus**. Der 👑-Spieler wird zum **Gamemaster**: Er steht nicht in der Spielerliste, beantwortet keine Fragen und taucht nicht in der Rangliste auf. Auf dem Fernseher steht er in der Lobby als „🎤 Gamemaster“.
+Einschalten unter ⚙️ Einstellungen › Spieleinstellungen › **Pub-Quiz-Modus**. Der 👑-Spieler wird zum **Gamemaster**: Er steht nicht in der Spielerliste, beantwortet keine Fragen und taucht nicht in der Rangliste auf. Auf dem Fernseher steht er in der Lobby als „🎤 Gamemaster“. Nach jedem Neustart des Pi ist er wieder aus, Standard ist der normale Modus.
 
 **Vor dem Spiel – „📋 Fragen planen“** (in der Lobby oder in den Spieleinstellungen): Das Quiz zieht die Fragen wie gewohnt, der Gamemaster kann sie danach bearbeiten:
 - **↑ / ↓** ändern die Reihenfolge, auch über Blockgrenzen hinweg (die oberste Frage eines Blocks rutscht mit ↑ ans Ende des vorherigen Blocks).
