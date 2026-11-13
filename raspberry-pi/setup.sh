@@ -104,6 +104,12 @@ if command -v nmcli >/dev/null; then
     sudo nmcli con add type wifi ifname wlan0 con-name QuizAbend-Hotspot autoconnect no ssid "$SSID" \
       mode ap 802-11-wireless.band bg 802-11-wireless.channel 6 ipv4.method shared \
       wifi-sec.key-mgmt wpa-psk wifi-sec.proto rsn wifi-sec.pairwise ccmp wifi-sec.group ccmp wifi-sec.pmf disable wifi-sec.psk "$PW" >/dev/null
+    # hostapd: damit läuft das eigene WLAN zuverlässig (der NetworkManager-Hotspot klappt mit dem Pi-3-Chip oft nicht)
+    if sudo apt-get install -y -q --no-install-recommends hostapd >/dev/null; then
+      sudo systemctl disable --now hostapd >/dev/null 2>&1 || true   # startet das Quiz selbst, nur wenn nötig
+    else
+      echo "    (hostapd ließ sich nicht installieren – wird beim nächsten Start mit Internet nachgeholt)"
+    fi
     chmod +x "$DIR/raspberry-pi/hotspot-fallback.sh"
     sudo tee /etc/systemd/system/quizabend-hotspot.service >/dev/null <<UNIT
 [Unit]
