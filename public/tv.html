@@ -570,7 +570,7 @@ function joinBox() {
   if (!w) return `<p>QR-Code scannen oder Adresse im Handy-Browser öffnen.<br>Alle Handys müssen im selben WLAN sein.</p>
     <div class="qrbox"><div class="qr">${QR.toSvg(j.url)}</div>${addr}</div>`;
   // Eigenes WLAN des Pi: erst WLAN-QR, dann Quiz-QR
-  return `<p>Der Pi hat ein eigenes WLAN – erst verbinden, dann das Quiz öffnen.</p>
+  return `<p>Der Pi hat ein eigenes WLAN – verbinden, dann öffnet sich das Quiz meist von selbst (sonst 2. QR-Code).</p>
     <div class="qrbox two">
       <div class="qstep"><div class="qr sm">${QR.toSvg(`WIFI:T:WPA;S:${wifiEsc(w.ssid)};P:${wifiEsc(w.password)};;`)}</div>
         <div class="url"><b>1. WLAN</b>${esc(w.ssid)}<small>Passwort: ${esc(w.password)}</small></div></div>

@@ -121,10 +121,12 @@ CONF
   ip link set $IF up
   if ! out=$("$DNSMASQ" --interface=$IF --bind-interfaces --except-interface=lo --listen-address=10.42.0.1 \
       --dhcp-range=10.42.0.10,10.42.0.100,255.255.255.0,12h --dhcp-authoritative \
-      --address=/quizabend.local/10.42.0.1 $([ "$host" != quizabend ] && echo "--address=/$host.local/10.42.0.1") --no-resolv --no-hosts \
+      --address=/#/10.42.0.1 --no-resolv --no-hosts \
       --pid-file="$DNS_PID" 2>&1); then
     log "dnsmasq startet nicht: $out"
   fi
+  # --address=/#/: jeder Name zeigt auf den Pi (auch quizabend.local). So landen die Internet-Prüfungen der Handys
+  # beim Quiz, und das Handy öffnet die Quiz-Seite von selbst („Im Netzwerk anmelden“).
   # Handys, die sich verbinden (oder scheitern), ins Protokoll schreiben (endet mit hostapd)
   ( tail --pid="$(cat "$HAP_PID")" -n 0 -F "$HAP_LOG" 2>/dev/null | grep --line-buffered -E 'AP-STA-CONNECTED|AP-STA-DISCONNECTED|4-Way Handshake failed|pre-shared key may be incorrect|deauthenticated due to' \
       | while read -r l; do log "Handy: ${l#*$IF: }"; done ) >/dev/null 2>&1 &
@@ -162,6 +164,11 @@ PW=$(python3 -c "import json;print(json.load(open('$HS'))['password'])")
 HOSTAPD=$(command -v hostapd || ls /usr/sbin/hostapd 2>/dev/null)
 DNSMASQ=$(command -v dnsmasq || ls /usr/sbin/dnsmasq 2>/dev/null)
 log "hostapd: ${HOSTAPD:-nicht installiert}"
+
+# Notlösung über den NetworkManager: dessen dnsmasq soll ebenfalls alle Namen auf den Pi zeigen lassen
+# (damit sich die Quiz-Seite auch dort von selbst öffnet)
+mkdir -p /etc/NetworkManager/dnsmasq-shared.d 2>/dev/null && \
+  echo 'address=/#/10.42.0.1' > /etc/NetworkManager/dnsmasq-shared.d/quizabend-captive.conf 2>/dev/null
 
 # Hotspot-Verbindung des NetworkManagers anlegen, falls sie fehlt (Notlösung ohne hostapd)
 if ! nmcli -t -f NAME con show | grep -qx "$CON"; then
