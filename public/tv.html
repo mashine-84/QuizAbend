@@ -136,6 +136,13 @@
   .estq.noimg .estpanel.side { width: 86vw; flex-direction: row; align-items: stretch; gap: 1.6vw; background: none; padding: 0; }
   .estpanel.side .eresult { flex: 0 0 28vw; flex-direction: column; align-items: center; justify-content: center; gap: 1vh; margin: 0; background: rgba(255,255,255,.06); border-radius: 1.4vw; }
   .estpanel.side .eresult .ebig, .estpanel.side .eresult.many .ebig { font-size: 5.8vw; min-width: 0; text-align: center; }
+  /* Übergang zur Auflösung (Timing und Kurve wie beim Zuordnen) */
+  .estq.noimg .estpanel.side { transition: width .8s cubic-bezier(.45,0,.2,1), gap .8s cubic-bezier(.45,0,.2,1); }
+  .estpanel.side .eresult { min-width: 0; overflow: hidden; transition: flex-basis .8s cubic-bezier(.45,0,.2,1), opacity .45s ease .85s; }
+  .estq.noimg .estpanel.side.pre { width: 60vw; gap: 0; }
+  .estpanel.side.pre .eresult { flex-basis: 0; opacity: 0; }
+  html.lite .estq.noimg .estpanel.side { transition: width .8s cubic-bezier(.45,0,.2,1), gap .8s cubic-bezier(.45,0,.2,1) !important; }
+  html.lite .estpanel.side .eresult { transition: flex-basis .8s cubic-bezier(.45,0,.2,1), opacity .45s ease .85s !important; }
   .estpanel.side .elist { flex: 1; min-width: 0; background: rgba(255,255,255,.06); border-radius: 1.4vw; padding: 1.6vh 1.2vw; justify-content: center; }
   .erow .ev { min-width: 11vw; text-align: right; }
   .erow.truth .ev { margin-left: 0; }
@@ -1014,16 +1021,24 @@ function renderEstimate(byId) {
       ${res ? `<span class="eg ${res.correct ? '' : res.gain ? 'mid' : 'no'}">${res.correct ? '✓' : res.gain ? '≈' : '✗'}</span>` : '<span class="eg"></span>'}</div>`;   // Punkte gibt's erst am Blockende
   }).join('');
   box.classList.add('reveal');
-  if (!q.image) box.classList.add('side');   // ohne Bild: Ergebnis als eigene Karte links neben der Liste
+  // ohne Bild: Ergebnis als eigene Karte links neben der Liste. Übergang wie beim Zuordnen:
+  // die Box mit den Schätzungen gleitet weich nach rechts (0,8 s), dann blendet links die Ergebnis-Karte ein
+  const side = !q.image;
+  if (side) box.classList.add('side', 'pre');
   box.innerHTML = `<div class="eresult ${many}"><span class="elabel">Richtig</span><span class="ebig" id="ebig">&nbsp;</span></div>
     <div class="elist ${many}" id="elist">${rowsHtml(byValue, false)}</div>`;
-  slotRoll(document.getElementById('ebig'), q, unit, rows, () => {
-    const l = document.getElementById('elist');
-    if (l) sortEstimateRows(l, rows, byId, q, unit, dunit, sign, () => { estLanded = S.qNum; const c = document.getElementById('chips'); if (c) c.innerHTML = chips(); });
-    shot(revealSound, 0.85);
-  });
+  if (side) { void box.offsetWidth; requestAnimationFrame(() => box.classList.remove('pre')); }
+  setTimeout(() => {
+    if (!document.contains(box)) return;
+    slotRoll(document.getElementById('ebig'), q, unit, rows, () => {
+      const l = document.getElementById('elist');
+      if (l) sortEstimateRows(l, rows, byId, q, unit, dunit, sign, () => { estLanded = S.qNum; const c = document.getElementById('chips'); if (c) c.innerHTML = chips(); });
+      shot(revealSound, 0.85);
+    });
+  }, side ? EST_SHIFT_MS : 0);
 }
 
+const EST_SHIFT_MS = 1350;   // Box nach rechts (0,8 s) + Ergebnis-Karte einblenden (0,45 s), dann startet die Slotmaschine
 // Wie bei der Rangliste: Zeilen gleiten auf ihre Plätze (nach Abstand), danach erscheinen Abstand und ✓/≈/✗
 const EST_SORT_S = 1.3;
 function sortEstimateRows(list, rows, byId, q, unit, dunit, sign, done) {
