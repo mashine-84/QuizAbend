@@ -461,6 +461,9 @@ function renderOpening() {
   const cats = o.categories.slice(0, 18), more = o.categories.length - cats.length;
   const players = S.players.filter(p => p.connected);
   const an = (name, dur, delay) => `--an:${name} ${dur}s ${delay || 0}s cubic-bezier(.2,1.4,.4,1) both`;
+  // „So wird gefragt“: ruhiger – weich von unten einblenden statt aufploppen, gleichmäßig über ~1,8 s verteilt
+  const calm = (delay, dur = .9) => `--an:oup ${dur}s ${delay}s cubic-bezier(.25,.8,.35,1) both`;
+  const tStep = Math.min(.5, 1.8 / Math.max(o.types.length, 1));
   // ohne Kopfzeile (OLED-Schonung)
   app.innerHTML = `<div class="opening">
     <div class="os"><div class="ologo anim">Quiz<span>Abend</span></div><div class="osub anim">Heute Abend erwartet euch …</div></div>
@@ -470,8 +473,8 @@ function renderOpening() {
     <div class="os"><div class="olabel anim" style="${an('oup', .5)}">Das kommt dran</div>
       <div class="ochips ${cats.length > 10 ? 'many' : ''}">${cats.map((c, i) => `<span class="anim" style="${an('opop', .45, .3 + i * (2.4 / Math.max(cats.length, 1)))}">${esc(c)}</span>`).join('')}${more > 0 ? `<span class="anim more" style="${an('opop', .45, 2.8)}">+ ${more} weitere</span>` : ''}</div>
       <div class="osub anim" style="${an('oup', .5, 2.9)}">Reihenfolge? Wird nicht verraten 🤫</div></div>
-    <div class="os"><div class="olabel anim" style="${an('oup', .4)}">So wird gefragt</div><div class="otypes">${o.types.map((t, i) => `<span class="anim" style="${an('opop', .5, i * .25)}"><i>${t.icon}</i>${esc(t.label)}</span>`).join('')}</div>
-      ${o.special ? `<div class="ospecial anim" style="${an('opop', .6, .4 + o.types.length * .25)}">⭐ Irgendwo versteckt: eine Spezialfrage mit ×${o.special} Punkten</div>` : ''}</div>
+    <div class="os"><div class="olabel anim" style="${an('oup', .5)}">So wird gefragt</div><div class="otypes">${o.types.map((t, i) => `<span class="anim" style="${calm(.35 + i * tStep)}"><i>${t.icon}</i>${esc(t.label)}</span>`).join('')}</div>
+      ${o.special ? `<div class="ospecial anim" style="${calm(.6 + o.types.length * tStep, .8)}">⭐ Irgendwo versteckt: eine Spezialfrage mit ×${o.special} Punkten</div>` : ''}</div>
     <div class="os"><div class="olabel anim" style="${an('oup', .4)}">Mit dabei</div>
       <div class="oplayers">${players.map((p, i) => `<span class="anim" style="--pc:${p.color};${an('opop', .45, .15 + i * .12)}"><i>${p.avatar}</i>${esc(p.name)}</span>`).join('')}</div></div>
     <div class="os"><div class="ologo anim" style="${an('ozoom', .6)}">Viel Glück! 🍀</div></div>
