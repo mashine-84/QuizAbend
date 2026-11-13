@@ -14,7 +14,7 @@ const QUESTION_TIME_MS = (Number(process.env.SEKUNDEN) || 20) * 1000;
 const MATCH_TIME_MS = 30000;   // Zuordnen braucht etwas länger
 const TF_TIME_MS = 30000;      // Richtig oder falsch: mehrere Aussagen lesen
 const TIEBREAK_MS = 6000;      // Ansage „Stechen!“ bei Gleichstand auf Platz 1
-const TIEBREAK_MAX = 3;        // höchstens so viele Stechen hintereinander, danach teilen sie sich Platz 1
+const TIEBREAK_MAX = 10;       // Sicherheitsnetz: so oft wird höchstens gestochen (eigentlich entscheidet schon die erste Runde)
 const LOBBY_AWAY_MS = 15 * 60000;   // Lobby: so lange bleibt ein Spieler mit gesperrtem Handy angemeldet
 const INTRO_MS = 3000;         // Ankündigung mit Countdown 3-2-1
 const PREVIEW_MS = 6000;       // Zuordnen: Begriffe vorab zeigen
@@ -770,9 +770,14 @@ function pickTiebreakQuestion() {
 function startTiebreak() {
   const ids = topTied();
   const round = ((state.tiebreak && state.tiebreak.round) || 0) + 1;
-  if (!ids || round > TIEBREAK_MAX) return false;   // kein Gleichstand – oder schon oft genug gestochen: Platz 1 wird geteilt
-  const q = pickTiebreakQuestion();
-  if (!q) return false;
+  if (!ids) return false;   // kein Gleichstand auf Platz 1
+  const q = round <= TIEBREAK_MAX ? pickTiebreakQuestion() : null;
+  if (!q) {
+    // keine Schätzfrage mehr übrig (oder Sicherheitsnetz): das Los entscheidet – auf dem Podest gibt es nur einen Ersten
+    const p = players.get(ids[Math.floor(Math.random() * ids.length)]);
+    if (p) { p.score += 1; console.log('  Stechen: keine Schätzfrage mehr übrig – Los entscheidet für', p.name); }
+    return false;
+  }
   const prev = currentQuestion();
   state.questions.push({ ...prepareQuestion(q), label: null, block: prev.block, bi: prev.bi, blockCount: prev.blockCount, blockNames: prev.blockNames,
     blockQ: prev.blockQ, blockLen: prev.blockLen, tiebreak: true });
@@ -782,19 +787,21 @@ function startTiebreak() {
 }
 const inTiebreak = q => !!(q && q.tiebreak && state.tiebreak);
 const mayAnswer = (q, p) => !inTiebreak(q) || state.tiebreak.ids.includes(p.id);
-// Wertung des Stechens: nur wer am nächsten dran ist (und das allein), bekommt 1 Punkt – das reicht zum Entscheiden
+// Wertung des Stechens: wer am nächsten dran ist, bekommt 1 Punkt – das reicht zum Entscheiden.
+// Gleich nah dran? Dann gewinnt, wer schneller geantwortet hat. Hat niemand geantwortet, wird erneut gestochen.
 function scoreTiebreak(q) {
   const ids = state.tiebreak.ids;
-  const diffs = ids.map(id => state.answers[id]).filter(Boolean).map(a => Math.abs(a.value - q.value));
-  const best = diffs.length ? Math.min(...diffs) : null;
-  const winners = best === null ? [] : ids.filter(id => state.answers[id] && Math.abs(state.answers[id].value - q.value) === best);
+  const answered = ids.filter(id => state.answers[id])
+    .map(id => ({ id, diff: Math.abs(state.answers[id].value - q.value), at: state.answers[id].at }))
+    .sort((a, b) => a.diff - b.diff || a.at - b.at);
+  const best = answered.length ? answered[0].diff : null, winner = answered.length ? answered[0].id : null;
   for (const id of ids) {
     const p = players.get(id), a = state.answers[id];
     if (!p) continue;
     if (!a) { state.results[id] = { gain: 0, correct: false, answered: false }; continue; }
-    const diff = Math.abs(a.value - q.value), win = winners.length === 1 && winners[0] === id;
+    const diff = Math.abs(a.value - q.value), win = winner === id;
     if (win) p.score += 1;
-    state.results[id] = { gain: win ? 1 : 0, correct: diff === best, exact: diff === 0, answered: true, value: a.value, outOfRange: false };
+    state.results[id] = { gain: win ? 1 : 0, correct: win, exact: diff === 0, answered: true, value: a.value, outOfRange: false };
   }
 }
 

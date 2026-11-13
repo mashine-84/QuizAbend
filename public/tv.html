@@ -515,7 +515,7 @@ function renderTiebreak() {
     <div class="icat">Gleichstand auf Platz 1${S.tiebreak.round > 1 ? ' – schon wieder!' : ''}</div>
     <div class="ilabel">⚔️ Stechen!</div>
     <div class="tbplayers">${tied.map((p, i) => `<span style="--pc:${p.color};animation-delay:${0.3 + i * 0.25}s"><i>${p.avatar}</i>${esc(p.name)}</span>`).join('<b>vs</b>')}</div>
-    <div class="tbsub">Eine Schätzfrage entscheidet – wer am nächsten dran ist, gewinnt.</div></div>`;
+    <div class="tbsub">Eine Schätzfrage entscheidet – wer am nächsten dran ist, gewinnt. Gleich nah? Dann zählt, wer schneller war.</div></div>`;
   shot(specialSound, 0.9);
 }
 

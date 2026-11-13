@@ -355,7 +355,7 @@ function render() {
   if (S.phase === 'tiebreak') {
     const names = S.players.filter(p => S.tiebreak.ids.includes(p.id)).map(p => `${p.avatar} ${esc(p.name)}`).join(' · ');
     return S.tiebreak.ids.includes(me.id)
-      ? renderInfo('⚔️', 'Stechen!', `Gleichstand auf Platz 1: ${names}<br>Eine Schätzfrage entscheidet – wer am nächsten dran ist, gewinnt.`, 'special')
+      ? renderInfo('⚔️', 'Stechen!', `Gleichstand auf Platz 1: ${names}<br>Eine Schätzfrage entscheidet – wer am nächsten dran ist, gewinnt. Gleich nah? Dann zählt, wer schneller war.`, 'special')
       : renderInfo('⚔️', 'Stechen um Platz 1', `${names} sind punktgleich.<br>Eine Schätzfrage entscheidet – nur sie dürfen antworten. Schau auf den Fernseher 👀`);
   }
   // Stechen: Wer nicht punktgleich ist, schaut nur zu
