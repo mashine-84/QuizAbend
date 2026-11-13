@@ -461,7 +461,8 @@ function renderOpening() {
   const cats = o.categories.slice(0, 18), more = o.categories.length - cats.length;
   const players = S.players.filter(p => p.connected);
   const an = (name, dur, delay) => `--an:${name} ${dur}s ${delay || 0}s cubic-bezier(.2,1.4,.4,1) both`;
-  app.innerHTML = topbar(`<span class="pill">Gleich geht's los</span>`) + `<div class="opening">
+  // ohne Kopfzeile (OLED-Schonung)
+  app.innerHTML = `<div class="opening">
     <div class="os"><div class="ologo anim">Quiz<span>Abend</span></div><div class="osub anim">Heute Abend erwartet euch …</div></div>
     <div class="os"><div class="obig anim" data-count="${nb}">0</div><div class="olabel anim">${nb === 1 ? 'Block' : 'Blöcke'}</div>
       ${nb > 1 ? `<div class="osub anim">${same ? `je ${o.blocks[0]} Fragen` : o.blocks.join(' + ') + ' Fragen'}${o.pause != null ? ` · 🍺 Pause nach jedem Block` : ''}</div>` : ''}</div>
@@ -621,7 +622,8 @@ const sfx = {
 function renderBlockPause() {
   const nb = S.nextBlock;
   finale.buf = null; if (soundOn()) finale.load();
-  app.innerHTML = topbar(`<span class="pill">Pause</span>`) + `<div class="intro bpause">
+  // ohne Kopfzeile (OLED-Schonung)
+  app.innerHTML = `<div class="intro bpause">
     <div class="floaty">${['🍺', '🚻', '🍕', '🥤', '🍿', '☕'].map((e, i) => `<span style="left:${8 + i * 16}%;animation-delay:${i * 0.7}s">${e}</span>`).join('')}</div>
     <div class="ilabel">☕ Pause!</div>
     <div class="icat">Getränke holen · Klo · durchatmen</div>
@@ -1153,8 +1155,9 @@ function renderScores() {
   const rank = S.players, max = Math.max(1, ...rank.map(p => p.score));
   const start = [...rank].sort((a, b) => a.joined - b.joined);
   const last = S.qNum >= S.qTotal, blockNum = S.block && S.block.total > 1 ? S.block.num : 0;
-  app.innerHTML = topbar(`<span class="pill">${blockNum ? `Nach Block ${blockNum} von ${S.block.total}` : 'Endstand'}</span>`) + `
-    <div class="board sboard"><h2>${last ? 'Gleich kommt die Siegerehrung …' : 'Zwischenstand'}</h2>
+  // ohne Kopfzeile (OLED-Schonung) – die Block-Info steht in der Überschrift
+  app.innerHTML = `
+    <div class="board sboard"><h2>${last ? 'Gleich kommt die Siegerehrung …' : blockNum ? `Zwischenstand nach Block ${blockNum} von ${S.block.total}` : 'Zwischenstand'}</h2>
       <div class="rows">${start.map((p, i) => {
         return `<div class="row" data-id="${p.id}" style="--pc:${p.color};animation-delay:${i * 0.07}s"><span class="pos"></span><span class="av">${p.avatar}</span>
           <span class="nm">${esc(p.name)}</span><span class="bar"><i data-w="${p.score / max}"></i></span>
