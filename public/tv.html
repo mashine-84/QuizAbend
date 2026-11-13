@@ -271,12 +271,12 @@
   .bpause { position: relative; overflow: hidden; }
   .floaty { position: absolute; inset: 0; pointer-events: none; }
   .floaty span { position: absolute; bottom: -10vh; font-size: 5vw; opacity: .5; animation: floatup 9s linear infinite; will-change: transform; }
-  @keyframes floatup { to { transform: translateY(-120vh) rotate(25deg); } }
+  @keyframes floatup { to { transform: translateY(-120vh) rotate(var(--rot, 25deg)); } }
   .pcount { font-size: 10vw; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; margin: 1vh 0; }
   .nextb { font-size: 2vw; margin-top: 1vh; } .nextb b { color: var(--c); }
   /* Pi (Lite-Modus): Schweben trotzdem an – nur transform, läuft auf der GPU. Ruckelt es, diese Zeile durch
      „html.lite .floaty { display: none; }“ ersetzen. */
-  html.lite .floaty span { animation-name: floatup !important; animation-duration: 9s !important; animation-timing-function: linear !important; animation-iteration-count: infinite !important; }
+  html.lite .floaty span { animation-name: floatup !important; animation-timing-function: linear !important; animation-iteration-count: infinite !important; }
 
   /* Overlays: angehalten / System */
   .overlay { position: fixed; inset: 0; z-index: 70; background: rgba(20,16,43,.88); display: grid; place-items: center; }
@@ -624,12 +624,23 @@ const sfx = {
 };
 
 // ---------- Pause zwischen den Blöcken ----------
+// Schwebende Icons: zufällig verteilt (Spalte mit etwas Versatz, Tempo, Größe, Drehung, Startpunkt),
+// negative Verzögerung = sie sind sofort an verschiedenen Höhen unterwegs statt in einer Reihe
+function floatyIcons() {
+  const icons = ['🍺', '🚻', '🍕', '🥤', '🍿', '☕', '🍻', '🥨'].sort(() => Math.random() - 0.5), n = icons.length;
+  return icons.map((e, i) => {
+    const left = (i + 0.15 + Math.random() * 0.7) / n * 96;            // jede Spalte bekommt eins, darin zufällig
+    const dur = 8 + Math.random() * 6, delay = -Math.random() * dur;
+    const size = 3.6 + Math.random() * 2.6, rot = Math.round((Math.random() * 2 - 1) * 40);
+    return `<span style="left:${left.toFixed(1)}%;font-size:${size.toFixed(1)}vw;--rot:${rot}deg;animation-duration:${dur.toFixed(1)}s !important;animation-delay:${delay.toFixed(1)}s !important">${e}</span>`;
+  }).join('');
+}
 function renderBlockPause() {
   const nb = S.nextBlock;
   finale.buf = null; if (soundOn()) finale.load();
   // ohne Kopfzeile (OLED-Schonung)
   app.innerHTML = `<div class="intro bpause">
-    <div class="floaty">${['🍺', '🚻', '🍕', '🥤', '🍿', '☕'].map((e, i) => `<span style="left:${8 + i * 16}%;animation-delay:${i * 0.7}s !important">${e}</span>`).join('')}</div>
+    <div class="floaty">${floatyIcons()}</div>
     <div class="ilabel">☕ Pause!</div>
     <div class="icat">Getränke holen · Klo · durchatmen</div>
     <div class="pcount" id="pcount">${S.phaseMs ? '' : '⏸'}</div>
