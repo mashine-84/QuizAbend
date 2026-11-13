@@ -170,6 +170,7 @@ Alle Stücke sind selbst erzeugt, frei nutzbar und klingen einheitlich (A-Dur, 1
 | `aufloesung.mp3` | Auflösung jeder Frage | 1,6 s |
 | `rangliste.mp3` | Rangliste am Blockende: Spannung, solange die Balken wachsen, Auflösung beim Einsortieren | 13 s |
 | `spezialfrage.mp3` | Alarm, wenn die Spezialfrage eingeblendet wird | 3,5 s |
+| `countdown.mp3` | letzte 10 Sekunden einer Frage, baut Spannung auf (wie die Pausenmusik, nur dezenter), endet genau mit der Zeit | 10 s |
 | `pause-finale.mp3` | letzte Minute der Pause, ein Schlag pro Sekunde zum Countdown | 60 s |
 | `siegerehrung.mp3` | Siegerpodest | 10 s |
 

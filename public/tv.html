@@ -379,9 +379,8 @@ function render() {
   if (S.phase !== 'media' && window.__stopAudio) { window.__stopAudio(); window.__stopAudio = null; }
   // Treffer bei der Auflösung (Schätzfrage: erst wenn die Zahl steht; Zuordnen: bei jedem Paar, das einrastet)
   if (S.phase === 'reveal' && lastPhase !== 'reveal' && !(S.question && ['estimate', 'match'].includes(S.question.kind))) shot(revealSound, 0.85);
-  if (S.phase === 'lobby' && lastPhase !== 'lobby') [blockMusic, scoresMusic, revealSound, winSound, specialSound].forEach(t => { t.buf = null; }); // neu laden (falls Datei getauscht)
-  if (soundOn()) [blockMusic, scoresMusic, revealSound, winSound, specialSound].forEach(t => t.load());
-  if (S.phase === 'question' && lastPhase !== 'question') lastTickSec = null;
+  if (S.phase === 'lobby' && lastPhase !== 'lobby') [blockMusic, scoresMusic, revealSound, winSound, specialSound, countdownMusic].forEach(t => { t.buf = null; }); // neu laden (falls Datei getauscht)
+  if (soundOn()) [blockMusic, scoresMusic, revealSound, winSound, specialSound, countdownMusic].forEach(t => t.load());
   lastKey = key; lastPhase = S.phase;
   frozenOverlay(); systemOverlay();
 
@@ -539,7 +538,7 @@ function renderIntro() {
     <div class="icat">${esc(q.category)}</div><div class="inum" id="inum"></div></div>`;
 }
 
-// ---------- Sounds: Ticken wird live erzeugt, Musik/Jingles kommen aus sounds/ ----------
+// ---------- Sounds: Musik/Jingles kommen aus sounds/ ----------
 function soundOn() { return !S || !S.packs || !S.packs.sound || S.packs.sound.on; }
 function ctx() {
   audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -565,37 +564,6 @@ const sfx = {
     node.connect(g).connect(c.destination);
     o.start(start); o.stop(start + dur + 0.05);
     return o;
-  },
-  // Countdown der letzten 5 Sekunden im Stil der Pausenmusik: Uhr-Klick + kurzer Synth-Stab,
-  // der jede Sekunde einen Halbton steigt (wie die Tonart-Rückungen der Pausenmusik); die letzte Sekunde hell und voller.
-  noise(c) {
-    if (!this.nbuf) { const n = c.sampleRate * 0.04, b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; this.nbuf = b; }
-    const src = c.createBufferSource(); src.buffer = this.nbuf; return src;
-  },
-  stab(midi, t, dur, gain, cutoff) {
-    const c = ctx(), g = c.createGain(), f = c.createBiquadFilter();
-    f.type = 'lowpass'; f.frequency.setValueAtTime(cutoff, t); f.frequency.exponentialRampToValueAtTime(cutoff * 0.35, t + dur);
-    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    f.connect(g).connect(c.destination);
-    for (const det of [-6, 6]) {
-      const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 440 * 2 ** ((midi - 69) / 12); o.detune.value = det;
-      o.connect(f); o.start(t); o.stop(t + dur + 0.05);
-    }
-  },
-  tick(sec) {
-    if (!soundOn()) return;
-    try {
-      const c = ctx(), t = c.currentTime + 0.01, last = sec === 1;
-      // Uhr-Klick (wie das Ticken der Pausenmusik)
-      const n = this.noise(c), hp = c.createBiquadFilter(), ng = c.createGain();
-      hp.type = 'highpass'; hp.frequency.value = 3500;
-      ng.gain.setValueAtTime(0.25, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
-      n.connect(hp).connect(ng).connect(c.destination); n.start(t); n.stop(t + 0.04);
-      this.tone(last ? 2400 : 1900, t, 0.03, { gain: 0.12 });
-      // Synth-Stab in a-Moll, steigt von Sekunde zu Sekunde
-      const root = 57 + (5 - sec);
-      for (const m of last ? [root + 12, root + 15, root + 19, root + 24] : [root + 12, root + 15, root + 19]) this.stab(m, t, last ? 0.5 : 0.22, last ? 0.07 : 0.05, last ? 5000 : 2600);
-    } catch (_) {}
   },
 };
 
@@ -813,7 +781,7 @@ function updateMain() {
         slot.classList.add('filled'); row.classList.add('locked');
         slot.innerHTML = `<span class="mans ${ans.length > 36 ? 'xl' : ans.length > 22 ? 'l' : ''}">${esc(ans)}</span>
           <span class="voters">${right.length ? right.map((p, k) => avatarHtml(p, 0.15 + k * 0.1)).join('') : '<span class="none">keiner</span>'}</span>`;
-        snapSound(); shot(revealSound, 0.7);
+        snapSound(); shot(revealSound, 0.6, true);
       };
       flyPiece(document.querySelector(`.mpiece[data-j="${j}"]`), slot, fill);
     }
@@ -1003,11 +971,23 @@ const blockMusic = makeTrack('block-start');
 const scoresMusic = makeTrack('rangliste');   // läuft synchron zum Balken-Aufbau und Einsortieren
 const revealSound = makeTrack('aufloesung'), winSound = makeTrack('siegerehrung'), specialSound = makeTrack('spezialfrage');
 // kurze Jingles einfach abspielen
-function shot(track, gain) {
+// solo: einen noch klingenden Durchgang desselben Jingles vorher kurz ausblenden (sonst addieren sie sich und es knackt)
+function shot(track, gain, solo) {
   if (!soundOn() || !track.buf) return;
-  try { const c = ctx(), src = c.createBufferSource(), g = c.createGain(); g.gain.value = gain; src.buffer = track.buf; src.connect(g).connect(c.destination); src.start(); } catch (_) {}
+  try {
+    const c = ctx(), now = c.currentTime;
+    if (solo && track.shotSrc) { const o = track.shotSrc; o.g.gain.cancelScheduledValues(now); o.g.gain.setValueAtTime(o.g.gain.value, now); o.g.gain.linearRampToValueAtTime(0, now + 0.08); o.src.stop(now + 0.1); }
+    const src = c.createBufferSource(), g = c.createGain(); g.gain.value = gain; src.buffer = track.buf; src.connect(g).connect(c.destination); src.start(now + 0.02);
+    track.shotSrc = { src, g }; src.onended = () => { if (track.shotSrc && track.shotSrc.src === src) track.shotSrc = null; };
+  } catch (_) {}
 }
 const finale = makeTrack('pause-finale');
+const countdownMusic = makeTrack('countdown');
+countdownMusic.update = function (left) {
+  this.lastLeft = left;
+  if (!this.buf || left > this.buf.duration) return;
+  this.play(this.buf.duration - left, left);
+};
 // Pausenmusik: startet bei 1:00 (bzw. so, dass ein kürzerer Song genau zum Ende aufhört)
 finale.update = function (left) {
   this.lastLeft = left;
@@ -1017,9 +997,9 @@ finale.update = function (left) {
   this.play(lead - left, left);
 };
 
-let lastTickSec = null;
 function tick() {
   if ((!S || S.phase !== 'pause') && (finale.started || finale.src)) finale.leave();
+  if ((!S || S.phase !== 'question') && (countdownMusic.started || countdownMusic.src)) countdownMusic.leave();
   if ((!S || S.phase !== 'opening') && (introMusic.started || introMusic.src)) introMusic.leave();
   if (S && S.phase === 'opening') openingTick();
   // Musik, die genau eine Phase begleitet (Block-Ansage, Rangliste)
@@ -1042,9 +1022,8 @@ function tick() {
   } else if (S && S.question) {
     const left = S.frozen ? S.remainingMs : Math.max(0, deadline - Date.now());
     if (S.phase === 'question') {
-      // Ticken in den letzten 5 Sekunden
-      const sec = Math.ceil(left / 1000);
-      if (!S.frozen && sec >= 1 && sec <= 5 && sec !== lastTickSec) { lastTickSec = sec; sfx.tick(sec); }
+      // Spannungs-Musik für die letzten Sekunden (endet genau mit der Zeit)
+      if (S.frozen) countdownMusic.stop(); else countdownMusic.update(left / 1000);
       const arc = document.getElementById('arc'), num = document.getElementById('num');
       if (arc) {
         arc.style.strokeDashoffset = 276.5 * (1 - left / S.phaseMs);
