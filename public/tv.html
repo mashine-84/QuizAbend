@@ -340,6 +340,14 @@
   .step .block { width: 100%; border-radius: 1.2vw 1.2vw 0 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 2vh; font-weight: 900; font-size: 4vw; background: var(--pc); box-shadow: inset 0 -1vh 0 rgba(0,0,0,.2); }
   .step .block small { font-size: 1.6vw; opacity: .9; }
   @keyframes rise { from { opacity: 0; transform: translateY(10vh); } }
+  .awards { display: flex; gap: 1.2vw; justify-content: center; flex-wrap: wrap; margin: 1.6vh 0 .6vh; }
+  .award { display: flex; align-items: center; gap: .9vw; background: rgba(255,255,255,.07); border-left: .35vw solid var(--pc); border-radius: 1vw; padding: 1vh 1.2vw; max-width: 22vw;
+    animation: pop .5s cubic-bezier(.2,1.6,.4,1) both; }
+  html.lite .award { animation-name: pop !important; animation-duration: .5s !important; animation-fill-mode: both !important; animation-timing-function: cubic-bezier(.2,1.6,.4,1) !important; }
+  .award .aicon { font-size: 2.8vw; line-height: 1; }
+  .award .atitle { font-size: 1.05vw; font-weight: 900; color: var(--c); text-transform: uppercase; letter-spacing: .06em; }
+  .award .awho { font-size: 1.5vw; font-weight: 900; }
+  .award .adet { font-size: 1.05vw; color: var(--muted); font-weight: 700; }
   .others { display: flex; gap: 1.2vw; flex-wrap: wrap; justify-content: center; font-size: 1.6vw; color: var(--muted); }
 
   .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1) both; }
@@ -1340,9 +1348,19 @@ function renderEnd() {
           <div class="block" style="height:${heights[P[i].place] || '14vh'}">${P[i].place}<small>${fmtScore(P[i].score)} ${P[i].score === 1 ? 'Punkt' : 'Punkte'}</small></div></div>`).join('')}
       </div>
       <div class="others">${P.slice(3).map(p => `<span>${p.place}. ${p.avatar} ${esc(p.name)} – ${fmtScore(p.score)}</span>`).join(' · ')}</div>
+      ${awardsHtml(P)}
       <div class="hint">👑 Neue Runde am Handy starten – oder <b>Leertaste</b></div>
     </div>`;
   confetti();
+}
+
+// Sonderpreise unter dem Podest: erscheinen nacheinander, nachdem das Podest steht
+function awardsHtml(P) {
+  const A = S.awards || [];
+  if (!A.length) return '';
+  return `<div class="awards">${A.map((a, i) => { const p = P.find(x => x.id === a.id); if (!p) return '';
+    return `<div class="award" style="--pc:${p.color};animation-delay:${2.2 + i * 0.6}s !important"><div class="aicon">${a.icon}</div>
+      <div class="atext"><div class="atitle">${esc(a.title)}</div><div class="awho">${p.avatar} ${esc(p.name)}</div><div class="adet">${esc(a.text)}</div></div></div>`; }).join('')}</div>`;
 }
 
 function confetti() {

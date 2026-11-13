@@ -199,6 +199,8 @@
   .ib { border: none; background: rgba(255,255,255,.12); color: #fff; border-radius: 10px; min-width: 40px; height: 36px; font: inherit; font-size: 15px; font-weight: 800; }
   .ib.warn { background: #e5484d; padding: 0 10px; }
   .btn.danger { background: #e5484d; color: #fff; }
+  .myaward { background: rgba(245,176,20,.15); border: 2px solid var(--c); border-radius: 14px; padding: 10px 14px; margin-bottom: 12px; font-size: 18px; }
+  .myaward small { display: block; color: var(--muted); font-size: 14px; margin-top: 2px; }
   .histline { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(255,255,255,.06); border-radius: 12px; padding: 10px 12px; margin-top: 10px; font-size: 15px; }
   .histline .mini { font: inherit; font-size: 14px; font-weight: 800; color: #fff; background: rgba(255,255,255,.12); border: 0; border-radius: 10px; padding: 8px 12px; flex: none; }
   .histline .mini.danger { background: #e5484d; }
@@ -1027,6 +1029,7 @@ function renderRank(end) {
   main.innerHTML = `<div class="center">
     <p>${end ? 'Endergebnis' : 'Zwischenstand'}</p>
     <div class="rank">${me.rank === 1 && end ? '🏆' : me.rank + '.'}</div>
+    ${end && S.awards ? S.awards.filter(a => a.id === me.id).map(a => `<div class="myaward">${a.icon} <b>${esc(a.title)}</b><small>${esc(a.text)}</small></div>`).join('') : ''}
     <h1>${end ? (me.rank === 1 ? (tied.length ? 'Geteilter Sieg!' : 'Du hast gewonnen!') : `Platz ${me.rank}`) : pts(me.score)}</h1>
     <p>${me.rank === 1 ? (end ? `${pts(me.score)} – stark!` : tied.length ? `Gleichauf mit ${tied.join(', ')} 🤝` : 'Du führst! 🔥') : `${pts(gap)} hinter ${esc(ahead.name)}${tied.length ? ` · gleichauf mit ${tied.join(', ')}` : ''}`}</p>
     ${me.isVip ? `<button class="btn ${end ? '' : 'ghost'}" onclick="advance()">${end ? 'Neue Runde' : 'Weiter'}</button>` : ''}
