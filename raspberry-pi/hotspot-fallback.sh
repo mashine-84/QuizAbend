@@ -132,6 +132,18 @@ CONF
   return 0
 }
 
+# quizabend.local (mDNS über avahi): Nach einem WLAN-Wechsel meint avahi gern, der Name sei schon vergeben,
+# und weicht auf quizabend-2.local aus. Neustart von avahi holt den richtigen Namen zurück.
+refresh_mdns() {   # refresh_mdns <immer|bei-konflikt>
+  systemctl is-active --quiet avahi-daemon 2>/dev/null || { log "Hinweis: avahi läuft nicht – quizabend.local geht nicht"; return; }
+  local conflict
+  conflict=$(journalctl -b -u avahi-daemon --no-pager 2>/dev/null | grep -i "conflict" | tail -n 1)
+  [ -n "$conflict" ] && log "avahi: ${conflict#*]: }"
+  if [ "$1" = immer ] || [ -n "$conflict" ]; then
+    systemctl restart avahi-daemon >/dev/null 2>&1 && log "avahi neu gestartet – Adresse $(hostname 2>/dev/null).local"
+  fi
+}
+
 # Infos fürs Protokoll
 log "WLAN-Gerät: $(nmcli -t -f DEVICE,TYPE,STATE dev 2>/dev/null | grep ':wifi:' | tr '\n' ' ')"
 log "Ländercode: $(iw reg get 2>/dev/null | grep -m1 country | cut -d: -f1 | tr -d '\t')"
@@ -175,7 +187,7 @@ if [ "$TEST" = 0 ]; then
     if [ "$state" = "connected" ]; then
       net=$(nmcli -t -f NAME,DEVICE con show --active 2>/dev/null | grep ':wlan0$' | cut -d: -f1)
       log "Mit WLAN „$net“ verbunden – kein eigenes WLAN nötig"; status heim "Mit WLAN „$net“ verbunden"
-      install_hostapd; exit 0
+      refresh_mdns bei-konflikt; install_hostapd; exit 0
     fi
     [ $((i % 15)) = 0 ] && log "Noch kein WLAN (Status: ${state:-unbekannt}) …"
     sleep 1
@@ -202,6 +214,7 @@ else
   METHOD=NetworkManager
 fi
 log "Eigenes WLAN „$SSID“ läuft über $METHOD (Adresse 10.42.0.1, Versuch $try)"
+refresh_mdns immer
 status hotspot "Eigenes WLAN läuft über $METHOD$([ "$TEST" = 1 ] && echo ' (Test)')"
 
 if [ "$TEST" = 1 ]; then
@@ -218,10 +231,9 @@ if [ "$TEST" = 1 ]; then
   fi
   log "Test beendet – verbinde wieder mit dem Heim-WLAN"
   status test "Test erfolgreich: Eigenes WLAN lief $((TEST_SECONDS / 60)) Minuten über $METHOD$PHONES"
-  # Wieder zu Hause: hostapd nachinstallieren, falls es noch fehlt
-  if [ -z "$HOSTAPD" ]; then
-    for _ in $(seq 1 60); do nmcli -t -f DEVICE,STATE dev 2>/dev/null | grep -q "^$IF:connected" && break; sleep 1; done
-    install_hostapd
-  fi
+  # Wieder zu Hause: quizabend.local auffrischen und hostapd nachinstallieren, falls es noch fehlt
+  for _ in $(seq 1 60); do nmcli -t -f DEVICE,STATE dev 2>/dev/null | grep -q "^$IF:connected" && break; sleep 1; done
+  refresh_mdns immer
+  install_hostapd
 fi
 exit 0
