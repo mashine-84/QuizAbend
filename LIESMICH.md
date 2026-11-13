@@ -40,6 +40,9 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 - **Steuern ohne Tastatur:** Der 👑-Spieler startet und überspringt alles am Handy.
 - **Feste Adresse:** Das Setup nennt den Pi `quizabend`. Die Handys erreichen das Quiz dann auch über **http://quizabend.local**. Der QR-Code nutzt weiterhin die IP, das klappt auf jedem Handy. Mit `--name NAME` wählst du einen anderen Namen.
 - **Eigenes WLAN für unterwegs:** Findet der Pi beim Start kein bekanntes WLAN, macht er nach etwa 45 Sekunden ein eigenes WLAN „QuizAbend“ auf. Name und Passwort stehen mit WLAN-QR-Code auf dem Fernseher. Zu Hause verbindet er sich wie gewohnt mit deinem WLAN, dort funktionieren dann auch Updates. Mit Netzwerkkabel geht beides gleichzeitig. Abschalten mit `--ohne-hotspot`.
+  - **Prüfen ohne SSH:** Am Handy des 👑 unter ⚙️ Einstellungen › Systemeinstellungen › **📶 Eigenes WLAN** steht, ob es eingerichtet ist, WLAN-Name und Passwort, was beim letzten Start passiert ist und das Protokoll.
+  - **🧪 Eigenes WLAN testen:** Der Pi startet neu und öffnet 3 Minuten lang sein eigenes WLAN, auch wenn dein WLAN da ist. Handy damit verbinden, `http://quizabend.local` oder `http://10.42.0.1` öffnen. Danach verbindet er sich wieder mit deinem WLAN, das Ergebnis steht in den Systemeinstellungen.
+  - Das Startskript versucht es bis zu 5-mal und legt die Hotspot-Verbindung selbst an, falls sie fehlt. Nur der Startdienst selbst braucht einmalig `setup.sh` (steht sonst als Hinweis am Handy).
 - **Update, Neustart, Ausschalten:** Unter ⚙️ Einstellungen am Handy des 👑-Spielers. Bitte den Pi so ausschalten statt einfach den Stecker zu ziehen, das schont die SD-Karte.
 - **Fragen ändern:** Dateien im Ordner `fragen/` bearbeiten oder neue dazulegen. Ein Neustart ist nicht nötig, neue Pakete erscheinen beim nächsten Öffnen der Paketauswahl.
 - **Updates holen:** `cd QuizAbend && git pull && sudo systemctl restart quizabend`

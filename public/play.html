@@ -77,6 +77,9 @@
   .mavs span.on { opacity: 1; background: var(--pc); }
   .mbtn { position: fixed; left: 16px; right: 16px; bottom: 16px; width: auto; z-index: 5; }
   .mbtn.ghost { background: #2c2552; }
+  .wlog summary { cursor: pointer; color: var(--muted); font-weight: 700; padding: 6px 0; }
+  .wlog pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 1.45; background: rgba(0,0,0,.3); border-radius: 10px; padding: 10px; max-height: 320px; overflow: auto; }
+  .sysout code { display: block; margin-top: 6px; font-size: 12px; word-break: break-all; }
   .later { font-size: 15px; opacity: .8; margin-top: 18px; }
   .res .gain { font-size: 30px; font-weight: 900; background: rgba(0,0,0,.18); padding: 8px 22px; border-radius: 99px; }
   .rank { font-size: 64px; font-weight: 900; color: var(--c); }
@@ -425,7 +428,23 @@ function systemSection(sys) {
     ${sys.canUpdate ? btn('update', `<span class="${ui.updating ? 'spin' : ''}">${RELOAD_SVG}</span> ${ui.updating ? 'Update läuft …' : 'Update holen'}`) : ''}
     ${sys.canPower ? btn('reboot', '🔄 Pi neu starten') + btn('poweroff', '🔌 Pi ausschalten', 'danger') : ''}
     ${ui.sys ? `<div class="sysout ${ui.sys.ok ? '' : 'bad'}">${esc(ui.sys.text)}</div>` : ''}
-    ${sys.canUpdate && !sys.autoRestart ? '<p class="small">Nach einem Update den Server neu starten.</p>' : ''}`;
+    ${sys.canUpdate && !sys.autoRestart ? '<p class="small">Nach einem Update den Server neu starten.</p>' : ''}
+    ${wifiSection(sys, btn)}`;
+}
+// Eigenes WLAN: Stand, letzter Start, Test und Protokoll – damit man ohne SSH sieht, was los ist
+function wifiSection(sys, btn) {
+  const w = sys.wifi;
+  if (!w) return '';
+  const RES = { heim: ['✓', 'Heim-WLAN'], hotspot: ['📶', 'Eigenes WLAN'], test: ['✅', 'Test'], fehler: ['❌', 'Fehler'] };
+  const st = w.status, r = st && (RES[st.result] || ['•', st.result]);
+  const when = st ? new Date(st.time).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+  const ready = w.service === 'enabled';
+  return `<h3>📶 Eigenes WLAN</h3>
+    ${ready ? `<p class="small">Eingerichtet ✓ · WLAN-Name <b>${esc(w.ssid || 'QuizAbend')}</b>${w.password ? ` · Passwort <b>${esc(w.password)}</b>` : ''}${w.active ? ' · <b>läuft gerade</b>' : ''}${w.connection === false ? '<br>Die Hotspot-Verbindung fehlt noch – sie wird beim nächsten Start automatisch angelegt.' : ''}</p>`
+      : `<div class="sysout bad">Nicht eingerichtet: Der Startdienst für das eigene WLAN fehlt (${esc(w.service || 'unbekannt')}). Einmalig nötig – per SSH, z. B. mit einer SSH-App am Handy im selben WLAN:<br><code>cd ~/QuizAbend && ./raspberry-pi/setup.sh --ohne-desktop --720p</code></div>`}
+    ${st ? `<div class="sysout ${st.result === 'fehler' ? 'bad' : ''}">${r[0]} Letzter Start (${when}): ${esc(st.detail)}</div>` : ready ? '<p class="small">Noch kein Protokoll – es entsteht beim nächsten Start des Pi.</p>' : ''}
+    ${ready && sys.canPower ? btn('hotspottest', '🧪 Eigenes WLAN testen') + `<p class="small">Der Pi startet neu und öffnet 3 Minuten lang das WLAN „${esc(w.ssid || 'QuizAbend')}“, auch wenn dein WLAN da ist. Verbinde dein Handy damit und öffne <b>http://quizabend.local</b> oder <b>http://10.42.0.1</b>. Danach verbindet sich der Pi wieder mit deinem WLAN – hier steht dann das Ergebnis.</p>` : ''}
+    ${w.log && w.log.length ? `<details class="wlog"><summary>Protokoll anzeigen</summary><pre>${esc(w.log.join('\n'))}</pre></details>` : ''}`;
 }
 async function sysAction(a) {
   if (a !== 'update' && ui.confirm !== a) { ui.confirm = a; lastKey = ''; render(); return; } // Sicherheitsabfrage

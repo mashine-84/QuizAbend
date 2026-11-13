@@ -821,7 +821,27 @@ const kickedIds = new Set();
 
 function systemInfo() {
   return { canUpdate: fs.existsSync(path.join(__dirname, '.git')), canPower: process.platform === 'linux' && UNDER_SYSTEMD,
-    autoRestart: UNDER_SYSTEMD, hostname: os.hostname() };
+    autoRestart: UNDER_SYSTEMD, hostname: os.hostname(), wifi: wifiInfo() };
+}
+
+// ---------- Eigenes WLAN: Stand fürs Handy (ohne SSH prüfbar) ----------
+let wifiCache = { service: null, connection: null };
+function refreshWifi() {
+  if (process.platform !== 'linux') return;
+  execFile('systemctl', ['is-enabled', 'quizabend-hotspot.service'], { timeout: 3000 }, (err, out) => { wifiCache.service = String(out || '').trim() || 'fehlt'; });
+  execFile('nmcli', ['-t', '-f', 'NAME', 'con', 'show'], { timeout: 3000 }, (err, out) => {
+    wifiCache.connection = err ? null : String(out).split('\n').includes('QuizAbend-Hotspot');
+  });
+}
+refreshWifi(); setInterval(refreshWifi, 30000);
+function wifiInfo() {
+  if (process.platform !== 'linux') return null;
+  let status = null, log = [];
+  try { status = JSON.parse(fs.readFileSync(path.join(__dirname, 'hotspot-status.json'), 'utf8')); } catch (_) {}
+  try { log = fs.readFileSync(path.join(__dirname, 'hotspot.log'), 'utf8').trim().split('\n').slice(-40); } catch (_) {}
+  const hs = hotspot() || (() => { try { return JSON.parse(fs.readFileSync(HOTSPOT_FILE, 'utf8')); } catch (_) { return null; } })();
+  return { service: wifiCache.service, connection: wifiCache.connection, status, log, active: !!hotspot(),
+    ssid: hs && hs.ssid, password: hs && hs.password, testPending: fs.existsSync(path.join(__dirname, 'hotspot-test')) };
 }
 
 function runSystem(action) {
@@ -838,8 +858,17 @@ function runSystem(action) {
         }
         resolve({ ok: true, changed, restart: changed && UNDER_SYSTEMD, text });
       });
-    } else if (action === 'reboot' || action === 'poweroff') {
+    } else if (action === 'reboot' || action === 'poweroff' || action === 'hotspottest') {
       if (!systemInfo().canPower) return resolve({ ok: false, text: 'Nur auf dem Raspberry Pi (als Dienst) möglich.' });
+      if (action === 'hotspottest') {   // Merker für das Startskript: eigenes WLAN sofort für 3 Minuten
+        try { fs.writeFileSync(path.join(__dirname, 'hotspot-test'), new Date().toISOString()); } catch (e) { return resolve({ ok: false, text: 'Konnte den Test nicht vorbereiten: ' + e.message }); }
+        systemMsg = { icon: '📶', text: 'Test: eigenes WLAN', sub: 'Pi startet neu und öffnet für 3 Minuten das WLAN „' + ((wifiInfo() || {}).ssid || 'QuizAbend') + '“.' };
+        broadcast();
+        setTimeout(() => execFile('sudo', ['-n', '/usr/bin/systemctl', 'reboot'], (err, out, errOut) => {
+          if (err) { systemMsg = null; broadcast(); console.error('  Neustart fehlgeschlagen:', errOut || err.message); }
+        }), 1500);
+        return resolve({ ok: true });
+      }
       systemMsg = action === 'reboot' ? { icon: '🔄', text: 'Pi startet neu …', sub: 'Gleich geht es weiter.' }
         : { icon: '🔌', text: 'Pi fährt herunter', sub: 'In 30 Sekunden kann der Stecker raus.' };
       broadcast();
