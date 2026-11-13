@@ -981,6 +981,16 @@ function broadcast() {
 }
 
 // ---------- Netzwerk-Infos ----------
+// Anfrage an einen fremden Namen, während das eigene WLAN läuft? (CAPTIVE=1 erzwingt das zum Testen)
+let hotspotCache = { t: 0, on: false };
+function captiveRedirect(req) {
+  const host = String(req.headers.host || '').replace(/:\d+$/, '').toLowerCase();
+  if (!host || /^\d+\.\d+\.\d+\.\d+$/.test(host) || host === 'localhost' || host.endsWith('.local')) return false;
+  if (process.env.CAPTIVE === '1') return true;
+  if (Date.now() - hotspotCache.t > 5000) hotspotCache = { t: Date.now(), on: !!hotspot() };
+  return hotspotCache.on;
+}
+
 function hotspot() {
   // Eigenes WLAN des Pi aktiv? (NetworkManager-Hotspot hat immer 10.42.0.1)
   const active = Object.values(os.networkInterfaces()).flat().some(i => i && i.address === '10.42.0.1');
@@ -1174,6 +1184,14 @@ function validAnswer(q, body) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
+
+  // Eigenes WLAN: Die Handys prüfen beim Verbinden, ob es Internet gibt (z. B. connectivitycheck.gstatic.com,
+  // captive.apple.com). Der Pi beantwortet dort alle Namen selbst – hier leiten wir solche Anfragen auf die
+  // Quiz-Seite um. Dann öffnet das Handy das Quiz von selbst, wie die Anmeldeseite eines Hotel-WLANs.
+  if (captiveRedirect(req)) {
+    res.writeHead(302, { Location: 'http://10.42.0.1/', 'Cache-Control': 'no-store', 'Content-Type': 'text/html; charset=utf-8' });
+    return res.end('<!doctype html><meta charset="utf-8"><title>QuizAbend</title><a href="http://10.42.0.1/">Zum QuizAbend</a>');
+  }
 
   if (req.method === 'GET' && (p === '/' || p === '/play')) return serveFile(res, 'play.html');
   if (req.method === 'GET' && p === '/tv') return serveFile(res, 'tv.html');
