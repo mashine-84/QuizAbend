@@ -717,7 +717,9 @@ function baseView() {
     special: state.special && ['special', 'votes', 'reveal'].includes(ph) ? { mult: settings.special.mult } : null,
   };
   if (q && ['intro', 'media', 'preview', 'question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
-    const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category }; // Schwierigkeit wird im Spiel nicht verraten
+    const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category }; // Schwierigkeit wird im Spiel nicht verraten …
+    // … außer bei Punkten nach Schwierigkeit: dann steht oben, was die Frage bringt (Zuordnen: 1 Punkt je Paar)
+    if ((state.scoring || settings.scoring) === 'level') { vq.points = q.kind === 'match' ? 1 : (q.level || 1); vq.perPair = q.kind === 'match'; }
     if (ph === 'media') { vq.video = q.video || null; vq.audio = q.audio || null; vq.audioOpts = q.audioOpts || null; }
     if (ph !== 'intro' && ph !== 'media' && q.kind === 'match') vq.left = q.left;
     if (['question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
