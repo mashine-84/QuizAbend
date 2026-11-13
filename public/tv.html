@@ -144,8 +144,8 @@
   .mleft::after { content: ''; position: absolute; right: -2.4vh; top: 50%; width: 4.8vh; height: 4.8vh; border-radius: 50%; background: inherit; transform: translateY(-50%); }
   .mterm { min-width: 0; overflow: hidden; }
   .mrow .mright { position: relative; background: rgba(255,255,255,.06); border-radius: 1.2vw; padding: 0 1.2vw 0 4vh; transition: background .3s; }
-  /* Aussparung im rechten Teil: Kreis in Hintergrundfarbe um die Nase des linken Teils – so sieht man, wie die Teile ineinandergreifen */
-  .mrow .mright::before { content: ''; position: absolute; left: calc(-.5vw - 2.9vh); top: 50%; width: 5.8vh; height: 5.8vh; border-radius: 50%; background: var(--bg); transform: translateY(-50%); }
+  /* Aussparung im rechten Teil um die Nase des linken Teils – echt ausgeschnitten (Maske), also durchsichtig */
+  .mrow .mright { -webkit-mask: radial-gradient(circle 2.9vh at -.5vw 50%, transparent 97%, #000 100%); mask: radial-gradient(circle 2.9vh at -.5vw 50%, transparent 97%, #000 100%); }
   .mrow .mright.filled { background: #f5b014; color: #1b1440; animation: snap .35s cubic-bezier(.2,1.6,.4,1); }
   .mrow.locked .mleft, .mrow.locked .mright.filled { background: #2fb36d; color: #fff; }
   @keyframes snap { 0% { transform: translateX(1vw); } 60% { transform: translateX(-.4vw); } }
@@ -153,7 +153,8 @@
   .mpool .pbar { width: 50vw; }
   .mid.ghost { visibility: hidden; }
   .mpiece { position: relative; background: #f5b014; color: #1b1440; font-weight: 800; font-size: 1.8vw; border-radius: .9vw; padding: 1vh 1.4vw 1vh 3.2vh; animation: pop .4s both; white-space: nowrap; }
-  .mpiece::before { content: ''; position: absolute; left: -1.6vh; top: 50%; width: 3.2vh; height: 3.2vh; border-radius: 50%; background: var(--bg); transform: translateY(-50%); }
+  /* Aussparung des Puzzleteils: durchsichtig ausgeschnitten, damit beim Flug kein dunkler Kreis mitfliegt */
+  .mpiece { -webkit-mask: radial-gradient(circle 1.6vh at 0 50%, transparent 97%, #000 100%); mask: radial-gradient(circle 1.6vh at 0 50%, transparent 97%, #000 100%); }
   .mpiece.gone { visibility: hidden; }
   .mpiece.flying { position: fixed; z-index: 30; margin: 0; animation: none; transition: transform .6s cubic-bezier(.5,0,.2,1); }
   html.lite .mpiece.flying { transition: transform .6s cubic-bezier(.5,0,.2,1) !important; }
