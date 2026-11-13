@@ -78,7 +78,8 @@
   .mbtn { position: fixed; left: 16px; right: 16px; bottom: 16px; width: auto; z-index: 5; }
   .mbtn.ghost { background: #2c2552; }
   .wlog summary { cursor: pointer; color: var(--muted); font-weight: 700; padding: 6px 0; }
-  .wlog pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 1.45; background: rgba(0,0,0,.3); border-radius: 10px; padding: 10px; max-height: 320px; overflow: auto; }
+  .wlog pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 1.45; background: rgba(0,0,0,.3); border-radius: 10px; padding: 10px; user-select: text; -webkit-user-select: text; }
+  .wlog .btn { margin: 6px 0; }
   .sysout code { display: block; margin-top: 6px; font-size: 12px; word-break: break-all; }
   .later { font-size: 15px; opacity: .8; margin-top: 18px; }
   .res .gain { font-size: 30px; font-weight: 900; background: rgba(0,0,0,.18); padding: 8px 22px; border-radius: 99px; }
@@ -444,7 +445,18 @@ function wifiSection(sys, btn) {
       : `<div class="sysout bad">Nicht eingerichtet: Der Startdienst für das eigene WLAN fehlt (${esc(w.service || 'unbekannt')}). Einmalig nötig – per SSH, z. B. mit einer SSH-App am Handy im selben WLAN:<br><code>cd ~/QuizAbend && ./raspberry-pi/setup.sh --ohne-desktop --720p</code></div>`}
     ${st ? `<div class="sysout ${st.result === 'fehler' ? 'bad' : ''}">${r[0]} Letzter Start (${when}): ${esc(st.detail)}</div>` : ready ? '<p class="small">Noch kein Protokoll – es entsteht beim nächsten Start des Pi.</p>' : ''}
     ${ready && sys.canPower ? btn('hotspottest', '🧪 Eigenes WLAN testen') + `<p class="small">Der Pi startet neu und öffnet 3 Minuten lang das WLAN „${esc(w.ssid || 'QuizAbend')}“, auch wenn dein WLAN da ist. Verbinde dein Handy damit und öffne <b>http://quizabend.local</b> oder <b>http://10.42.0.1</b>. Danach verbindet sich der Pi wieder mit deinem WLAN – hier steht dann das Ergebnis.</p>` : ''}
-    ${w.log && w.log.length ? `<details class="wlog"><summary>Protokoll anzeigen</summary><pre>${esc(w.log.join('\n'))}</pre></details>` : ''}`;
+    ${w.log && w.log.length ? `<details class="wlog" ${ui.logOpen ? 'open' : ''} ontoggle="ui.logOpen = this.open"><summary>Protokoll anzeigen</summary>
+      <button class="btn ghost sm" onclick="copyLog()">📋 ${ui.logCopied ? 'Kopiert ✓' : 'Protokoll kopieren'}</button><pre id="wlogtext">${esc(w.log.join('\n'))}</pre></details>` : ''}`;
+}
+// Kopieren ohne https: unsichtbares Textfeld + execCommand (navigator.clipboard gibt es nur mit https)
+function copyLog() {
+  const t = document.getElementById('wlogtext'); if (!t) return;
+  const ta = document.createElement('textarea'); ta.value = t.textContent; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, ta.value.length);
+  let ok = false; try { ok = document.execCommand('copy'); } catch (_) {}
+  ta.remove();
+  if (!ok && navigator.clipboard) navigator.clipboard.writeText(t.textContent).then(() => {}, () => {});
+  ui.logCopied = true; lastKey = ''; render(); setTimeout(() => { ui.logCopied = false; lastKey = ''; render(); }, 2000);
 }
 async function sysAction(a) {
   if (a !== 'update' && ui.confirm !== a) { ui.confirm = a; lastKey = ''; render(); return; } // Sicherheitsabfrage
