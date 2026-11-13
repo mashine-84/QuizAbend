@@ -105,7 +105,10 @@ function normalizeQuestion(q, dir, packName, packLevel) {
     if (!base.audio) throw new Error(`Audio "${q.audio}" nicht gefunden (mp3/m4a/ogg/wav in den Ordner "audio" neben der Datei legen)`);
     const start = Number(q.start ?? 0), dauer = q.dauer === undefined ? null : Number(q.dauer);
     if (!(start >= 0) || (dauer !== null && !(dauer > 0))) throw new Error('"start" und "dauer" müssen Sekunden (Zahlen) sein');
-    base.audioOpts = { start, dauer, reverse: !!q.rueckwaerts };
+    // "wiederholen": so oft ist der Ausschnitt zu hören (1–5), z. B. 3 bei einer Sekunde aus einem Song
+    const repeat = q.wiederholen === undefined ? 1 : Number(q.wiederholen);
+    if (!(Number.isInteger(repeat) && repeat >= 1 && repeat <= 5)) throw new Error('"wiederholen" muss eine ganze Zahl von 1 bis 5 sein (so oft ist der Ton zu hören)');
+    base.audioOpts = { start, dauer, reverse: !!q.rueckwaerts, repeat };
   }
   if (q.zuordnen) {
     const pairs = Array.isArray(q.zuordnen) ? q.zuordnen : Object.entries(q.zuordnen);

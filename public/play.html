@@ -366,7 +366,7 @@ function render() {
   if (S.phase === 'intro') return renderInfo(S.question.icon, S.question.label, `Kategorie: ${esc(S.question.category)}<br>Gleich geht's los – schau auf den Fernseher!`);
   if (S.phase === 'media' && S.question.flash) return renderInfo('📸', 'Merk dir das Bild!', 'Es ist nur kurz auf dem Fernseher zu sehen – danach kommt die Frage, ohne Bild.');
   if (S.phase === 'media') return S.question.audio
-    ? renderInfo('🎧', 'Hör genau hin!', (S.question.audioOpts && S.question.audioOpts.reverse ? '⏪ Der Ausschnitt läuft rückwärts!<br>' : '') + 'Der Ton kommt vom Fernseher – danach kommt die Frage dazu.')
+    ? renderInfo('🎧', 'Hör genau hin!', (S.question.audioOpts && S.question.audioOpts.reverse ? '⏪ Der Ausschnitt läuft rückwärts!<br>' : '') + (S.question.audioOpts && S.question.audioOpts.repeat > 1 ? `🔁 Du hörst ihn ${S.question.audioOpts.repeat}-mal.<br>` : '') + 'Der Ton kommt vom Fernseher – danach kommt die Frage dazu.')
     : renderInfo('👀', 'Schau genau hin!', 'Das Video läuft auf dem Fernseher – danach kommt die Frage dazu.');
   if (S.phase === 'preview') return renderInfo('👀', 'Merk dir die Begriffe!', 'Gleich musst du ihnen auf dem Handy die richtigen Partner zuordnen.');
   if (S.phase === 'question') {
