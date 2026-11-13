@@ -496,7 +496,8 @@ function openingTick() {
 function renderBlock() {
   const b = S.block;
   const one = b.total === 1;
-  app.innerHTML = topbar(one ? '' : `<span class="pill">Block ${b.num} / ${b.total}</span>`) + `<div class="intro">
+  // ohne Logo/Kopfzeile: die Block-Info steht groß in der Mitte, und das OLED bekommt eine Pause von den festen Elementen
+  app.innerHTML = `<div class="intro">
     <div class="icat">${one ? `${b.len} Fragen` : `Block ${b.num} von ${b.total}`}</div>
     <div class="ilabel">${b.num === 1 ? 'Los geht\'s!' : b.num === b.total ? 'Letzter Block!' : 'Nächster Block!'}</div>
     <div class="bnames">${b.names.map(n => `<span>${esc(n)}</span>`).join('')}</div></div>`;
