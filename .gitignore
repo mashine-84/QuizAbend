@@ -10,3 +10,6 @@ sounds/siegerehrung.*
 sounds/rangliste.*
 sounds/spezialfrage.*
 hue.json
+hotspot.log
+hotspot-status.json
+hotspot-test
