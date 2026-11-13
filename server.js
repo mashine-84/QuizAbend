@@ -261,7 +261,7 @@ let state = newGameState();
 let timer = null;
 
 function newGameState() {
-  return { phase: 'lobby', questions: [], idx: -1, phaseEnds: 0, phaseMs: 0, startedAt: 0, answers: {}, results: {}, step: 0 };
+  return { phase: 'lobby', questions: [], idx: -1, phaseEnds: 0, phaseMs: 0, startedAt: 0, answers: {}, results: {}, step: 0, stats: {} };
 }
 
 function currentQuestion() { return state.questions[state.idx]; }
@@ -551,6 +551,44 @@ function showAnswers() {
   else setPhase('votes', VOTES_MS, reveal);
 }
 
+// ---------- Auszeichnungen bei der Siegerehrung: Statistik je Spieler während des Spiels ----------
+function recordStats() {
+  const q = currentQuestion();
+  if (!q || q.tiebreak) return;
+  for (const p of players.values()) {
+    if (!isPlayer(p)) continue;
+    const st = state.stats[p.id] || (state.stats[p.id] = { times: [], streak: 0, best: 0, late: 0, est: null });
+    const a = state.answers[p.id], r = state.results[p.id], ok = !!(r && r.correct);
+    const left = a ? Math.max(0, state.answerEnds - a.at) : 0;
+    if (a && ok && q.kind !== 'estimate') st.times.push(q.timeMs - left);
+    st.streak = ok ? st.streak + 1 : 0; st.best = Math.max(st.best, st.streak);
+    if (a && ok && left <= 3000) st.late++;
+    if (a && q.kind === 'estimate') {
+      const err = Math.abs(a.value - q.value) / Math.max(Math.abs(q.value), 1);
+      if (!st.est || err < st.est.err) st.est = { err, value: a.value, target: q.value, unit: q.unit || '', year: !!q.year };
+    }
+  }
+}
+// Sonderpreise: nur wer sie sich verdient hat; Gleichstand -> wer zuerst beigetreten ist
+function computeAwards() {
+  const list = ranking().map(p => ({ p, st: state.stats[p.id] })).filter(x => x.st);
+  // Preise möglichst verteilen: wer schon einen hat, kommt nur zum Zug, wenn sonst niemand die Bedingung erfüllt
+  const out = [], has = id => out.some(o => o.id === id);
+  const best = (score, ok) => { const c = list.filter(x => ok(x.st)).sort((a, b) => score(a.st) - score(b.st) || a.p.joined - b.p.joined); return c.find(x => !has(x.p.id)) || c[0]; };
+  const nf = (n, d = 1) => n.toFixed(d).replace('.', ',');
+  const avg = st => st.times.reduce((s, t) => s + t, 0) / st.times.length;
+  let w = best(avg, st => st.times.length >= 2);
+  if (w) out.push({ icon: '⚡', title: 'Schnellster Finger', id: w.p.id, text: `Ø ${nf(avg(w.st) / 1000)} s bis zur richtigen Antwort` });
+  w = best(st => st.est.err, st => st.est);
+  if (w) { const e = w.st.est, u = e.unit ? ' ' + e.unit : '', f = n => e.year ? String(n) : n.toLocaleString('de-DE');
+    out.push({ icon: '🎯', title: 'Beste Schätzung', id: w.p.id, text: e.err === 0 ? `Punktgenau: ${f(e.value)}${u}` : `${f(e.value)}${u} statt ${f(e.target)}${u}${e.year ? '' : ` – nur ${e.err < 0.1 ? nf(e.err * 100) : Math.round(e.err * 100)} % daneben`}` }); }
+  w = best(st => -st.best, st => st.best >= 3);
+  if (w) out.push({ icon: '🔥', title: 'Längste Serie', id: w.p.id, text: `${w.st.best} richtige Antworten am Stück` });
+  w = best(st => -st.late, st => st.late >= 1);
+  if (w) out.push({ icon: '🍀', title: 'Glückspilz', id: w.p.id, text: `${w.st.late}× in den letzten 3 Sekunden richtig` });
+  return out;
+}
+
 function streakBonus(p, ok) {
   p.streak = ok ? (p.streak || 0) + 1 : 0;
   return ok ? Math.min(p.streak - 1, 3) * 50 : 0;
@@ -654,6 +692,7 @@ function scoreByLevel(q) {
 
 function reveal() {
   scoreQuestion();
+  recordStats();
   if (state.special) {
     const m = settings.special.mult;
     for (const [id, r] of Object.entries(state.results)) {
@@ -850,6 +889,7 @@ function baseView() {
     special: state.special && ['special', 'votes', 'reveal'].includes(ph) ? { mult: settings.special.mult } : null,
     // Stechen um Platz 1: wer darf antworten (nur in der Ansage und während der Stechen-Frage)
     tiebreak: state.tiebreak && (ph === 'tiebreak' || (q && q.tiebreak)) ? { ids: state.tiebreak.ids, round: state.tiebreak.round } : null,
+    awards: ph === 'end' ? computeAwards() : null,   // Sonderpreise bei der Siegerehrung
   };
   if (q && ['intro', 'media', 'preview', 'question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
     const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category, tiebreak: !!q.tiebreak }; // Schwierigkeit wird im Spiel nicht verraten …
