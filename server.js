@@ -13,6 +13,7 @@ const DEFAULT_PER_GAME = Number(process.env.FRAGEN) || 10;
 const QUESTION_TIME_MS = (Number(process.env.SEKUNDEN) || 20) * 1000;
 const MATCH_TIME_MS = 30000;   // Zuordnen braucht etwas länger
 const TF_TIME_MS = 30000;      // Richtig oder falsch: mehrere Aussagen lesen
+const LOBBY_AWAY_MS = 15 * 60000;   // Lobby: so lange bleibt ein Spieler mit gesperrtem Handy angemeldet
 const INTRO_MS = 3000;         // Ankündigung mit Countdown 3-2-1
 const PREVIEW_MS = 6000;       // Zuordnen: Begriffe vorab zeigen
 const VOTES_MS = 3500;         // erst zeigen, wer was gewählt hat …
@@ -1037,10 +1038,11 @@ const server = http.createServer(async (req, res) => {
       clients.delete(client);
       if (pl && ![...clients].some(c => c.playerId === pl.id)) {
         pl.connected = false;
-        // In der Lobby: wer 20 s weg bleibt, wird entfernt (Platz wird frei)
+        // In der Lobby: wer lange weg bleibt, wird entfernt (Platz wird frei). Kurz weg (Handy im Standby,
+        // App gewechselt) zählt nicht – beim Aufwecken verbindet sich das Handy mit derselben Kennung neu.
         if (state.phase === 'lobby') setTimeout(() => {
           if (state.phase === 'lobby' && players.has(pl.id) && !players.get(pl.id).connected) { players.delete(pl.id); broadcast(); }
-        }, 20000);
+        }, LOBBY_AWAY_MS);
         if (state.phase === 'question' && allAnswered()) return endAnswering();
       }
       broadcast();
