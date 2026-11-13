@@ -1030,8 +1030,10 @@ const finale = makeTrack('pause-finale');
 const countdownMusic = makeTrack('countdown');
 countdownMusic.update = function (left) {
   this.lastLeft = left;
-  if (!this.buf || left > this.buf.duration) return;
-  this.play(this.buf.duration - left, left);
+  // Die Zeit läuft bei Sekunde 10 der Datei ab (kürzere Datei: an ihrem Ende); danach darf sie ausklingen
+  const lead = Math.min(10, this.buf ? this.buf.duration : 10);
+  if (!this.buf || left > lead) return;
+  this.play(lead - left, left);
 };
 // Pausenmusik: startet bei 1:00 (bzw. so, dass ein kürzerer Song genau zum Ende aufhört)
 finale.update = function (left) {
