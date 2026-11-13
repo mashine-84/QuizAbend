@@ -86,6 +86,14 @@ function normalizeQuestion(q, dir, packName, packLevel) {
     base.image = resolveImage(dir, String(q.bild));
     if (!base.image) throw new Error(`Bild "${q.bild}" nicht gefunden (in den Ordner "bilder" neben der Datei legen)`);
   }
+  if (q.merken !== undefined && q.merken !== false) {
+    // Merkbild: das Bild erst nur kurz im Vollbild zeigen, die Frage kommt danach ohne Bild
+    const secs = q.merken === true ? 8 : Number(q.merken);
+    if (!base.image) throw new Error('"merken" braucht ein "bild"');
+    if (q.video || q.audio) throw new Error('"merken" geht nicht zusammen mit "video" oder "audio"');
+    if (!(secs >= 2 && secs <= 60)) throw new Error('"merken" muss true oder eine Sekundenzahl von 2 bis 60 sein');
+    base.flash = secs;
+  }
   if (q.video) {
     base.video = resolveImage(dir, String(q.video), 'videos', VIDEO_TYPES);
     if (!base.video) throw new Error(`Video "${q.video}" nicht gefunden (mp4/webm in den Ordner "videos" neben der Datei legen)`);
@@ -316,7 +324,8 @@ function prepareQuestion(q) {
     out.statements = items.map(i => i[0]); out.truths = items.map(i => i[1]);
   }
   const suffix = q.kind === 'estimate' ? ' · Schätzfrage' : q.kind === 'match' ? ' · Zuordnung' : q.kind === 'tf' ? ' · Richtig oder falsch' : '';
-  if (q.video) { out.label = 'Seh-Test' + suffix; out.icon = '👀'; }
+  if (q.flash) { out.label = 'Merkbild' + suffix; out.icon = '📸'; }
+  else if (q.video) { out.label = 'Seh-Test' + suffix; out.icon = '👀'; }
   else if (q.audio) { out.label = 'Soundcheck' + suffix; out.icon = '🎧'; }
   else if (q.kind === 'match') { out.label = 'Zuordnung'; out.icon = '🔗'; }
   else if (q.kind === 'tf') { out.label = 'Richtig oder falsch'; out.icon = '⚖️'; }
@@ -447,7 +456,8 @@ function openingInfo(questions) {
   const cats = shuffle([...new Set(questions.map(q => q.category).filter(Boolean))]);
   const T = [
     ['choice', '❓', 'Quizfragen', q => q.kind === 'choice' && !q.image && !q.video && !q.audio],
-    ['image', '🖼️', 'Bilderrätsel', q => q.image && !q.video && !q.audio],
+    ['image', '🖼️', 'Bilderrätsel', q => q.image && !q.flash && !q.video && !q.audio],
+    ['flash', '📸', 'Merkbild', q => q.flash],
     ['estimate', '🔢', 'Schätzfragen', q => q.kind === 'estimate' && !q.image && !q.video && !q.audio],
     ['match', '🔗', 'Zuordnung', q => q.kind === 'match' && !q.video && !q.audio],
     ['tf', '⚖️', 'Richtig oder falsch', q => q.kind === 'tf' && !q.video && !q.audio],
@@ -482,7 +492,8 @@ function beginQuestion() {
 
 function afterIntro() {
   const q = currentQuestion();
-  if (q.video || q.audio) setPhase('media', MEDIA_MAX_MS, afterMedia); // erst Video/Audio, dann die Frage
+  if (q.flash) setPhase('media', q.flash * 1000, afterMedia);             // Merkbild: Bild nur kurz zeigen, dann die Frage
+  else if (q.video || q.audio) setPhase('media', MEDIA_MAX_MS, afterMedia); // erst Video/Audio, dann die Frage
   else afterMedia();
 }
 
@@ -761,10 +772,10 @@ function baseView() {
     const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category }; // Schwierigkeit wird im Spiel nicht verraten …
     // … außer bei Punkten nach Schwierigkeit: dann steht oben, was die Frage bringt (Zuordnen: 1 Punkt je Paar)
     if ((state.scoring || settings.scoring) === 'level') { vq.points = stepCount(q) ? 1 : (q.level || 1); vq.perPair = q.kind === 'match'; vq.perItem = q.kind === 'tf'; }
-    if (ph === 'media') { vq.video = q.video || null; vq.audio = q.audio || null; vq.audioOpts = q.audioOpts || null; }
+    if (ph === 'media') { vq.video = q.video || null; vq.audio = q.audio || null; vq.audioOpts = q.audioOpts || null; vq.flash = q.flash ? q.image : null; }
     if (ph !== 'intro' && ph !== 'media' && q.kind === 'match') vq.left = q.left;
     if (['question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
-      vq.text = q.text; vq.image = q.image;
+      vq.text = q.text; vq.image = q.flash ? null : q.image;   // Merkbild: in der Frage kein Bild mehr
       if (q.kind === 'choice') vq.answers = q.answers;
       if (q.kind === 'match') vq.right = q.right;
       if (q.kind === 'tf') vq.statements = q.statements;
