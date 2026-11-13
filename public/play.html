@@ -34,7 +34,14 @@
   .ans:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
   .c0 { background: var(--a); } .c1 { background: var(--b); } .c2 { background: var(--c); } .c3 { background: var(--d); }
   .ptsbadge { display: inline-block; color: var(--c); border: 2px solid var(--c); border-radius: 99px; padding: 0 8px; margin-right: 8px; font-weight: 900; }
-  .qline { text-align: center; color: var(--muted); font-weight: 700; margin-bottom: 12px; font-size: 15px; }
+  .qhead { margin-bottom: 12px; }
+  .qrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .qrow .badge { margin: 0; padding: 5px 12px; font-size: 15px; }
+  .qrow .ptsbadge { margin: 0; padding: 2px 10px; font-size: 13px; }
+  .qprog { display: flex; align-items: center; gap: 10px; margin-top: 10px; color: var(--muted); font-weight: 800; font-size: 13px; white-space: nowrap; }
+  .qbar { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
+  .qbar i { display: block; height: 100%; background: var(--c); border-radius: 3px; }
+  .qhint { text-align: center; color: var(--muted); font-weight: 700; font-size: 14px; margin-top: 8px; }
   .chosen { width: 130px; height: 130px; border-radius: 26px; display: grid; place-items: center; font-size: 70px; color: #fff; box-shadow: 0 6px 0 rgba(0,0,0,.3); }
   .res { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px; animation: pop .4s cubic-bezier(.2,1.5,.4,1) both; }
   .res.ok { background: #2fb36d; } .res.bad { background: #e5484d; } .res.none { background: #3b3363; }
@@ -317,10 +324,17 @@ function ptsText(q) {
   if (!q || !q.points || q.tiebreak) return '';
   return q.perPair ? '1 Punkt je Paar' : q.perItem ? '1 Punkt je Aussage' : q.points === 1 ? '1 Punkt' : q.points + ' Punkte';
 }
+// Kopf über der Frage: oben Frageart (links) und Punkte (rechts), darunter Block/Frage mit Fortschrittsbalken
 function qline(extra) {
   const q = S.question, pt = ptsText(q);
-  if (q && q.tiebreak) return `<div class="qline"><span class="badge">⚔️ Stechen um Platz 1</span>${extra ? ' · ' + extra : ''}</div>`;
-  return `<div class="qline">${q && q.label ? `<span class="badge">${q.icon} ${esc(q.label)}</span>` : ''}${pt ? `<span class="ptsbadge">${pt}</span>` : ''}${S.block && S.block.total > 1 && S.block.len ? `Block ${S.block.num}/${S.block.total} · Frage ${S.block.q} / ${S.block.len}` : `Frage ${S.qNum} / ${S.qTotal}`}${extra ? ' · ' + extra : ''}</div>`;
+  const hint = extra ? `<div class="qhint">${extra}</div>` : '';
+  if (q && q.tiebreak) return `<div class="qhead"><div class="qrow"><span class="badge">⚔️ Stechen um Platz 1</span></div>${hint}</div>`;
+  const b = S.block, multi = b && b.total > 1 && b.len;
+  const cur = multi ? b.q : S.qNum, len = multi ? b.len : S.qTotal;
+  return `<div class="qhead">
+    <div class="qrow"><span class="badge">${q && q.label ? `${q.icon} ${esc(q.label)}` : '❓ Quizfrage'}</span>${pt ? `<span class="ptsbadge">${pt}</span>` : ''}</div>
+    <div class="qprog">${multi ? `<span>Block ${b.num}/${b.total}</span>` : ''}<span class="qbar"><i style="width:${len ? Math.round(cur / len * 100) : 0}%"></i></span><span>Frage ${cur}/${len}</span></div>
+    ${hint}</div>`;
 }
 
 function render() {
