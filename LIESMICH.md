@@ -140,6 +140,7 @@ Eine Paketdatei sieht so aus, und die Frageart ergibt sich aus den Feldern:
 |---|---|
 | Auswahl | `"antworten": [...]` mit 2 bis 4 Antworten. **Die erste ist immer die richtige**, im Spiel wird gemischt. |
 | Bilderrätsel | zusätzlich `"bild": "datei.jpg"`. Das Bild in den Ordner `bilder` neben der Datei legen (jpg, png, webp, gif oder svg). |
+| 📸 Merkbild | zusätzlich `"bild": "datei.jpg"` **und** `"merken": 8`. Das Bild erscheint erst 8 Sekunden im Vollbild auf dem Fernseher (wie ein Video), danach kommt die Frage **ohne** Bild. `"merken": true` = 8 Sekunden, erlaubt sind 2 bis 60. Geht mit Auswahl-, Schätz-, Zuordnungs- und Richtig-oder-falsch-Fragen, nicht zusammen mit Video oder Audio. |
 | Schätzfrage | `"schaetzen": 330` statt Antworten, optional mit `"einheit": "m"`. Geht mit oder ohne Bild. Fragen mit „Jahr“ im Text werden automatisch als Jahreszahl erkannt (±2 Jahre). Mit `"toleranz": 5` stellst du die erlaubte Abweichung selbst ein, auch bei normalen Schätzfragen. `"jahr": false` schaltet die Erkennung ab. |
 | 👀 Seh-Test | zusätzlich `"video": "clip.mp4"`. Das Video in den Ordner `videos` neben der Datei legen. Es läuft nach der Ankündigung im Vollbild auf dem Fernseher, danach kommt die Frage. Geht mit jeder Frageart. |
 | 🎧 Soundcheck | zusätzlich `"audio": "lied.mp3"`. Die Datei in den Ordner `audio` neben der Datei legen (mp3, m4a, ogg oder wav). Optional: `"start": 30` und `"dauer": 10` (Sekunden) spielen nur einen Ausschnitt, `"rueckwaerts": true` spielt ihn rückwärts. Geht mit jeder Frageart. |
