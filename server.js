@@ -294,8 +294,12 @@ function prepareQuestion(q) {
   if (q.kind === 'match') {
     const pairs = shuffle(q.pairs);
     out.left = pairs.map(p => p[0]);
-    out.right = shuffle(pairs.map(p => p[1]));
-    out.solution = pairs.map(p => out.right.indexOf(p[1])); // linker Index -> rechter Index
+    // Antworten mischen – aber nie so, dass sie zufällig schon in Lösungsreihenfolge neben den Begriffen stehen
+    for (let tries = 0; tries < 20; tries++) {
+      out.right = shuffle(pairs.map(p => p[1]));
+      out.solution = pairs.map(p => out.right.indexOf(p[1])); // linker Index -> rechter Index
+      if (pairs.length < 2 || out.solution.some((r, i) => r !== i)) break;
+    }
   }
   const suffix = q.kind === 'estimate' ? ' · Schätzfrage' : q.kind === 'match' ? ' · Zuordnung' : '';
   if (q.video) { out.label = 'Seh-Test' + suffix; out.icon = '👀'; }

@@ -153,6 +153,21 @@
   .mpool { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1vh 1.2vw; flex: none; min-height: calc(2.2vw + 2vh); }
   .mpool .pbar { width: 50vw; }
   .mid.ghost { visibility: hidden; }
+  /* Zuordnen: Zeilen links, Antworten als Spalte rechts in einem eigenen Kasten */
+  .qwrap > .mbody { flex: 1 1 0; min-height: 0; display: flex; gap: 2.4vw; align-items: stretch; }
+  .mbody .mlist { flex: 1; min-width: 0; }
+  .mbody .mrow { grid-template-columns: 1fr .62fr; }
+  .mbody .mpool { flex: none; width: 21vw; min-height: 0; flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: center; gap: 1.6vh;
+    background: rgba(255,255,255,.05); border-radius: 1.4vw; padding: 2vh 1.6vw; }
+  .mbody .mpool::before { content: 'Antworten'; color: var(--muted); font-weight: 800; font-size: 1.2vw; letter-spacing: .12em; text-transform: uppercase; text-align: center; }
+  .mbody .mpool .pbar { width: 100%; }
+  .mbody .mpiece { font-size: 2vw; padding: 1.4vh 1.2vw 1.4vh 3.4vh; white-space: normal; line-height: 1.15; }
+  .mbody .mpiece.l { font-size: 1.6vw; } .mbody .mpiece.xl { font-size: 1.3vw; }
+  /* im schmaleren Feld rücken die Avatare der Richtigen zusammen */
+  .mbody .mright .voters { flex: none; flex-wrap: nowrap; }
+  .mbody .mright .vav { width: 2.6vw; height: 2.6vw; font-size: 1.5vw; border-width: .18vw; }
+  .mbody .mright .vav + .vav { margin-left: -1.4vw; }
+  .mbody .mans { flex: 1; min-width: 0; }
   .mpiece { position: relative; background: #f5b014; color: #1b1440; font-weight: 800; font-size: 1.8vw; border-radius: .9vw; padding: 1vh 1.4vw 1vh 3.2vh; animation: pop .4s both; white-space: nowrap; }
   /* Aussparung des Puzzleteils: durchsichtig ausgeschnitten, damit beim Flug kein dunkler Kreis mitfliegt */
   .mpiece { -webkit-mask: radial-gradient(circle 1.6vh at 0 50%, transparent 97%, #000 100%); mask: radial-gradient(circle 1.6vh at 0 50%, transparent 97%, #000 100%); }
@@ -714,8 +729,8 @@ function renderPreview() {
   app.innerHTML = qTop() + `<div class="qwrap fade">
     <div class="qcard compact"><div class="cat">${esc(q.category)}</div><div class="qtext soft">Merkt euch diese Begriffe – gleich kommt die Frage …</div></div>
     <div class="mid ghost"><div class="timer"><svg viewBox="0 0 100 100"></svg><div class="num"></div></div><div class="answered">${chips()}</div></div>
-    <div class="mlist n${q.left.length} ${sizeCls(q.left)}">${q.left.map((t, i) => mrow(i, t, '', i * 0.15)).join('')}</div>
-    <div class="mpool"><div class="pbar"><i id="pbar"></i></div></div></div>`;
+    <div class="mbody"><div class="mlist n${q.left.length} ${sizeCls(q.left)}">${q.left.map((t, i) => mrow(i, t, '', i * 0.15)).join('')}</div>
+    <div class="mpool"><div class="pbar"><i id="pbar"></i></div></div></div></div>`;
 }
 
 // ---------- Frage + Auflösung ----------
@@ -737,8 +752,9 @@ function renderMain() {
     body = `<div class="estq ${q.image ? '' : 'noimg'}">${img}<div class="estpanel" id="est">
       <div class="esthint">${q.year ? '📅 Jahreszahl am Handy eingeben!' : '🔢 Schätzt am Handy!'}${q.unit && !q.year ? `<small>Antwort in ${esc(q.unit)}</small>` : ''}${tolText(q) ? `<small>${tolText(q)}</small>` : ''}</div></div></div>`;
   } else if (q.kind === 'match') {
-    body = `<div class="mlist n${q.left.length} ${sizeCls(q.left)}">${q.left.map((t, i) => mrow(i, t, '<span class="qm">?</span>')).join('')}</div>
-      <div class="mpool">${q.right.map((t, j) => `<span class="mpiece" data-j="${j}" style="animation-delay:${0.2 + j * 0.08}s">${esc(t)}</span>`).join('')}</div>`;
+    // Antworten als eigene Spalte rechts (immer gemischt, nie in Lösungsreihenfolge – das sorgt der Server)
+    body = `<div class="mbody"><div class="mlist n${q.left.length} ${sizeCls(q.left)}">${q.left.map((t, i) => mrow(i, t, '<span class="qm">?</span>')).join('')}</div>
+      <div class="mpool">${q.right.map((t, j) => `<span class="mpiece ${t.length > 22 ? 'xl' : t.length > 14 ? 'l' : ''}" data-j="${j}" style="animation-delay:${0.2 + j * 0.08}s">${esc(t)}</span>`).join('')}</div></div>`;
   }
   app.innerHTML = qTop() + `<div class="qwrap ${S.phase === 'question' ? 'fade' : ''}">${head}${mid}${body}</div>`;
   updateMain();
@@ -779,7 +795,7 @@ function updateMain() {
       const j = q.solution[i], ans = q.right[j], slot = document.getElementById('mr' + i);
       const fill = () => {
         slot.classList.add('filled'); row.classList.add('locked');
-        slot.innerHTML = `<span class="mans ${ans.length > 36 ? 'xl' : ans.length > 22 ? 'l' : ''}">${esc(ans)}</span>
+        slot.innerHTML = `<span class="mans ${ans.length > 22 ? 'xl' : ans.length > 14 ? 'l' : ''}">${esc(ans)}</span>
           <span class="voters">${right.length ? right.map((p, k) => avatarHtml(p, 0.15 + k * 0.1)).join('') : '<span class="none">keiner</span>'}</span>`;
         snapSound(); shot(revealSound, 0.6, true);
       };
