@@ -601,7 +601,7 @@ function reveal() {
     state.step = 0;
     const stepOn = () => {
       state.step++;
-      if (state.step >= q.left.length) setPhase('reveal', state.pub ? 0 : REVEAL_MS, afterReveal);
+      if (state.step >= q.left.length) setPhase('reveal', state.pub ? 0 : REVEAL_MS + 1500, afterReveal);   // + Zeit für Kasten-Ausblenden und Avatare
       else setPhase('reveal', MATCH_STEP_MS, stepOn);
     };
     setPhase('reveal', 1200, stepOn);
