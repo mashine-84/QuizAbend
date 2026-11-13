@@ -1,0 +1,40 @@
+{
+  "paket": "Richtig oder falsch",
+  "fragen": [
+    {"kategorie": "Tiere", "frage": "Welche Behauptungen sind richtig, welche falsch?", "schwierigkeit": 1, "behauptungen": [
+      ["Ein Oktopus hat drei Herzen.", true],
+      ["Pinguine leben am Nordpol.", false],
+      ["Faultiere können schwimmen.", true]
+    ]},
+    {"kategorie": "Geografie", "frage": "Welche Behauptungen sind richtig, welche falsch?", "schwierigkeit": 2, "behauptungen": [
+      ["Australien ist größer als Brasilien.", false],
+      ["Der Rhein fließt durch die Schweiz.", true],
+      ["Kanada hat mehr Einwohner als Spanien.", false]
+    ]},
+    {"kategorie": "Weltall", "frage": "Welche Behauptungen sind richtig, welche falsch?", "schwierigkeit": 2, "behauptungen": [
+      ["Die Venus ist der heißeste Planet unseres Sonnensystems.", true],
+      ["Ein Tag auf dem Mars dauert ungefähr so lange wie ein Tag auf der Erde.", true],
+      ["Der Mond hat eine Atmosphäre wie die Erde.", false]
+    ]},
+    {"kategorie": "Körper", "frage": "Welche Behauptungen sind richtig, welche falsch?", "schwierigkeit": 1, "behauptungen": [
+      ["Ein erwachsener Mensch hat etwa 206 Knochen.", true],
+      ["Das größte Organ des Menschen ist die Leber.", false],
+      ["Fingernägel wachsen schneller als Fußnägel.", true]
+    ]},
+    {"kategorie": "Geschichte", "frage": "Welche Behauptungen sind richtig, welche falsch?", "schwierigkeit": 2, "behauptungen": [
+      ["Die Berliner Mauer fiel 1989.", true],
+      ["Napoleon war für seine Zeit außergewöhnlich klein.", false],
+      ["Die Wikinger trugen im Kampf Helme mit Hörnern.", false]
+    ]},
+    {"kategorie": "Essen & Trinken", "frage": "Welche Behauptungen sind richtig, welche falsch?", "schwierigkeit": 3, "behauptungen": [
+      ["Erdnüsse sind botanisch gesehen Hülsenfrüchte.", true],
+      ["Tomaten sind botanisch gesehen Beeren.", true],
+      ["Weiße Schokolade enthält Kakaobutter.", true]
+    ]},
+    {"kategorie": "Sport", "frage": "Welche Behauptungen sind richtig, welche falsch?", "schwierigkeit": 2, "behauptungen": [
+      ["Ein Marathon ist 42,195 km lang.", true],
+      ["Ein Basketballkorb hängt 3,05 m hoch.", true],
+      ["Golf war noch nie eine olympische Sportart.", false]
+    ]}
+  ]
+}
