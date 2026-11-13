@@ -26,6 +26,7 @@
   .brand span { color: var(--c); }
   .topbar { display: flex; justify-content: space-between; align-items: center; font-size: 1.4vw; color: var(--muted); min-height: 4vh; }
   .pill { background: rgba(255,255,255,.1); border-radius: 99px; padding: .4em 1.1em; font-weight: 700; color: var(--ink); }
+  .pill.ptspill { background: none; border: .15vw solid var(--c); padding: calc(.4em - .15vw) calc(1.1em - .15vw); color: var(--c); font-weight: 900; }
 
   /* Lobby */
   .lobby.drift, html.lite .lobby.drift { transition: transform 6s ease-in-out !important; }
@@ -357,8 +358,14 @@ function qNumText() {
   const b = S.block;
   return b && b.total > 1 && b.len ? `Block ${b.num}/${b.total} · Frage ${b.q} / ${b.len}` : `Frage ${S.qNum} / ${S.qTotal}`;
 }
+// Punkte nach Schwierigkeit: was die Frage bringt
+function ptsText(q) {
+  if (!q || !q.points) return '';
+  return q.perPair ? '1 Punkt je Paar' : q.points === 1 ? '1 Punkt' : q.points + ' Punkte';
+}
 function qTop() {
-  return topbar(`<span id="spb"></span>${badge(S.question)}<span class="pill">${qNumText()}</span>`);
+  const pt = ptsText(S.question);
+  return topbar(`<span id="spb"></span>${badge(S.question)}${pt ? `<span class="pill ptspill">${pt}</span>` : ''}<span class="pill">${qNumText()}</span>`);
 }
 const IN_Q = ['intro', 'media', 'preview', 'question', 'locked', 'special', 'votes', 'reveal'];
 const fmt = n => Math.abs(n) >= 10000 ? n.toLocaleString('de-DE') : String(n).replace('.', ',');

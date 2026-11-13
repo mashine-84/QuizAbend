@@ -33,6 +33,7 @@
   .ans .shape { font-size: 46px; line-height: 1; }
   .ans:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
   .c0 { background: var(--a); } .c1 { background: var(--b); } .c2 { background: var(--c); } .c3 { background: var(--d); }
+  .ptsbadge { display: inline-block; color: var(--c); border: 2px solid var(--c); border-radius: 99px; padding: 0 8px; margin-right: 8px; font-weight: 900; }
   .qline { text-align: center; color: var(--muted); font-weight: 700; margin-bottom: 12px; font-size: 15px; }
   .chosen { width: 130px; height: 130px; border-radius: 26px; display: grid; place-items: center; font-size: 70px; color: #fff; box-shadow: 0 6px 0 rgba(0,0,0,.3); }
   .res { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px; animation: pop .4s cubic-bezier(.2,1.5,.4,1) both; }
@@ -273,9 +274,14 @@ function header() {
   document.getElementById('hostBtn').style.display = S.me.isVip && S.phase !== 'lobby' ? '' : 'none';
 }
 
+// Punkte nach Schwierigkeit: was die Frage bringt
+function ptsText(q) {
+  if (!q || !q.points) return '';
+  return q.perPair ? '1 Punkt je Paar' : q.points === 1 ? '1 Punkt' : q.points + ' Punkte';
+}
 function qline(extra) {
-  const q = S.question;
-  return `<div class="qline">${q && q.label ? `<span class="badge">${q.icon} ${esc(q.label)}</span>` : ''}${S.block && S.block.total > 1 && S.block.len ? `Block ${S.block.num}/${S.block.total} · Frage ${S.block.q} / ${S.block.len}` : `Frage ${S.qNum} / ${S.qTotal}`}${extra ? ' · ' + extra : ''}</div>`;
+  const q = S.question, pt = ptsText(q);
+  return `<div class="qline">${q && q.label ? `<span class="badge">${q.icon} ${esc(q.label)}</span>` : ''}${pt ? `<span class="ptsbadge">${pt}</span>` : ''}${S.block && S.block.total > 1 && S.block.len ? `Block ${S.block.num}/${S.block.total} · Frage ${S.block.q} / ${S.block.len}` : `Frage ${S.qNum} / ${S.qTotal}`}${extra ? ' · ' + extra : ''}</div>`;
 }
 
 function render() {
@@ -568,7 +574,7 @@ function renderSettings() {
     }).join('')}
     <p class="small">Insgesamt ${sum.questions} Fragen. Leichte Fragen kommen zuerst, schwere werden mit jeder Frage wahrscheinlicher.</p>
     <h3>🏅 Punkte</h3>
-    <div class="seg">${[['speed', 'Schnelligkeit'], ['level', 'Schwierigkeit']].map(([v, l]) => `<button class="${(c.scoring || 'speed') === v ? 'on' : ''}" onclick="cfg().scoring='${v}'; saveCfg()">${l}</button>`).join('')}</div>
+    <div class="seg" style="grid-template-columns: 1fr 1fr">${[['speed', 'Schnelligkeit'], ['level', 'Schwierigkeit']].map(([v, l]) => `<button class="${(c.scoring || 'speed') === v ? 'on' : ''}" onclick="cfg().scoring='${v}'; saveCfg()">${l}</button>`).join('')}</div>
     <p class="small">${(c.scoring || 'speed') === 'level'
       ? 'Richtige Antwort = 1 bis 3 Punkte, je nach Schwierigkeit. Zuordnung: jedes richtige Paar 1 Punkt. Schätzfrage: wer am nächsten dran ist, bekommt die Punkte. Tempo zählt nicht.'
       : 'Bis zu 1000 Punkte je Frage: Wer schneller richtig antwortet, bekommt mehr, dazu Bonus für Serien. Schätz- und Zuordnungsfragen geben Teilpunkte.'}</p>
@@ -790,7 +796,7 @@ function renderInfo(icon, title, text, cls) {
 }
 
 function renderChoice() {
-  main.innerHTML = qline('Antworte schnell!') + `
+  main.innerHTML = qline(S.question.points ? '' : 'Antworte schnell!') + `
     <div class="grid">${S.question.answers.map((a, i) => `<button class="ans c${i} ${a.length > 40 ? 'xlong' : a.length > 24 ? 'long' : ''}" onclick="sendAnswer({choice:${i}}, chosenHtml(${i}))"><span class="shape">${SHAPES[i]}</span>${esc(a)}</button>`).join('')}</div>`;
 }
 
