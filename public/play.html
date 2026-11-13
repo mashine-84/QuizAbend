@@ -199,6 +199,9 @@
   .ib { border: none; background: rgba(255,255,255,.12); color: #fff; border-radius: 10px; min-width: 40px; height: 36px; font: inherit; font-size: 15px; font-weight: 800; }
   .ib.warn { background: #e5484d; padding: 0 10px; }
   .btn.danger { background: #e5484d; color: #fff; }
+  .histline { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(255,255,255,.06); border-radius: 12px; padding: 10px 12px; margin-top: 10px; font-size: 15px; }
+  .histline .mini { font: inherit; font-size: 14px; font-weight: 800; color: #fff; background: rgba(255,255,255,.12); border: 0; border-radius: 10px; padding: 8px 12px; flex: none; }
+  .histline .mini.danger { background: #e5484d; }
   .sysb { max-width: none; }
   .sysout { background: rgba(47,179,109,.25); border-radius: 12px; padding: 10px 12px; font-size: 14px; white-space: pre-wrap; }
   .sysout.bad { background: rgba(229,72,77,.25); }
@@ -463,6 +466,13 @@ async function openSettings() {
 function closeSettings() { ui.settings = false; lastKey = ''; render(); }
 const cfg = () => ui.packs.settings;
 
+// Verlauf der gespielten Fragen löschen (Bestätigung im Knopf selbst)
+async function resetHistory(btn) {
+  if (!btn.dataset.sure) { btn.dataset.sure = '1'; btn.textContent = 'Wirklich löschen?'; btn.classList.add('danger'); return; }
+  const { ok, data } = await post('/api/verlauf', { id: myId });
+  if (ok) ui.packs = data;
+  lastKey = ''; render();
+}
 async function saveCfg() {
   const { ok, data } = await post('/api/einstellungen', { id: myId, settings: cfg() });
   if (ok) ui.packs = data;
@@ -638,6 +648,8 @@ function renderSettings() {
         <span class="bgo">›</span></button>`;
     }).join('')}
     <p class="small">Insgesamt ${sum.questions} Fragen. Leichte Fragen kommen zuerst, schwere werden mit jeder Frage wahrscheinlicher.</p>
+    ${d.history ? `<div class="histline"><span>🔁 Schon gespielt: <b>${d.history.played}</b> von ${d.history.total} Fragen</span>${d.history.played ? `<button class="mini" onclick="resetHistory(this)">Zurücksetzen</button>` : ''}</div>
+    <p class="small">Neue Spiele nehmen zuerst Fragen, die noch nicht dran waren – sind alle durch, die, die am längsten her sind.</p>` : ''}
     <h3>🏅 Punkte</h3>
     <div class="seg" style="grid-template-columns: 1fr 1fr">${[['speed', 'Schnelligkeit'], ['level', 'Schwierigkeit']].map(([v, l]) => `<button class="${(c.scoring || 'speed') === v ? 'on' : ''}" onclick="cfg().scoring='${v}'; saveCfg()">${l}</button>`).join('')}</div>
     <p class="small">${(c.scoring || 'speed') === 'level'
