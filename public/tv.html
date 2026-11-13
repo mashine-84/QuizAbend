@@ -53,7 +53,7 @@
   /* Frage */
   .qwrap { flex: 1; display: flex; flex-direction: column; gap: 2vh; padding-top: 1vh; min-height: 0; }
   .qwrap > * { flex-shrink: 0; }
-  .qwrap > .answers, .qwrap > .imgq, .qwrap > .estq, .qwrap > .mlist { flex: 1 1 0; min-height: 0; }
+  .qwrap > .answers, .qwrap > .imgq, .qwrap > .estq, .qwrap > .mlist, .qwrap > .tflist { flex: 1 1 0; min-height: 0; }
   .qwrap > .mpool { flex: none; }
   .qcard { background: #fff; color: #1b1440; border-radius: 1.6vw; padding: 4vh 3vw; text-align: center; box-shadow: 0 1vh 0 rgba(0,0,0,.25); }
   .cat { display: inline-block; font-size: 1.3vw; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #6a5acd; margin-bottom: 1.2vh; }
@@ -153,6 +153,24 @@
   .mpool { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1vh 1.2vw; flex: none; min-height: calc(2.2vw + 2vh); }
   .mpool .pbar { width: 50vw; }
   .mid.ghost { visibility: hidden; }
+  /* Richtig oder falsch */
+  .tflist { display: grid; grid-auto-rows: minmax(0, calc(var(--row) * 1.15)); align-content: center; gap: 1.4vh; }
+  .tfrow { display: flex; align-items: center; gap: 1.4vw; background: #4b3aa8; border-radius: 1.2vw; padding: 0 1.4vw 0 1vw; min-height: 0;
+    font-size: calc(var(--rowfont) * .9); font-weight: 800; line-height: 1.15; animation: slide .45s both; transition: background .4s; }
+  .tflist.long .tfrow { font-size: calc(var(--rowfont) * .75); } .tflist.xlong .tfrow { font-size: calc(var(--rowfont) * .62); }
+  .tftext { flex: 1; min-width: 0; }
+  .tfright { display: flex; align-items: center; gap: 1.2vw; flex: none; }
+  .tfright .voters { flex: none; flex-wrap: nowrap; max-width: none; margin: 0; }
+  .tfright .vav { width: 3vw; height: 3vw; font-size: 1.75vw; border-width: .2vw; }
+  .tfright .vav + .vav { margin-left: -.7vw; }
+  .tfright .none { color: rgba(255,255,255,.6); font-size: 1.4vw; font-weight: 700; animation: pop .45s both; }
+  .tfv { min-width: 11vw; text-align: center; border-radius: .9vw; padding: .8vh 1vw; background: rgba(255,255,255,.1); color: rgba(255,255,255,.35); font-size: 1.9vw; font-weight: 900; }
+  .tfv.stamp { color: #fff; text-transform: uppercase; letter-spacing: .06em; animation: stamp .45s cubic-bezier(.2,1.6,.4,1) both; }
+  .tfrow.true { background: #2fb36d; } .tfrow.false { background: #a83a4b; }
+  .tfrow.true .tfv { background: #1d7a49; } .tfrow.false .tfv { background: #e5484d; }
+  @keyframes stamp { from { transform: scale(1.8) rotate(-8deg); opacity: 0; } }
+  html.lite .tfv.stamp, html.lite .tfright .vav, html.lite .tfright .none { animation-duration: .45s !important; animation-fill-mode: both !important; animation-timing-function: cubic-bezier(.2,1.6,.4,1) !important; }
+  html.lite .tfv.stamp { animation-name: stamp !important; } html.lite .tfright .vav, html.lite .tfright .none { animation-name: pop !important; }
   /* Zuordnen: Zeilen links, Antworten als Spalte rechts in einem eigenen Kasten */
   .qwrap > .mbody { flex: 1 1 0; min-height: 0; display: flex; gap: 2.4vw; align-items: stretch; }
   .mbody .mlist { flex: 1; min-width: 0; }
@@ -389,7 +407,7 @@ function qNumText() {
 // Punkte nach Schwierigkeit: was die Frage bringt
 function ptsText(q) {
   if (!q || !q.points) return '';
-  return q.perPair ? '1 Punkt je Paar' : q.points === 1 ? '1 Punkt' : q.points + ' Punkte';
+  return q.perPair ? '1 Punkt je Paar' : q.perItem ? '1 Punkt je Aussage' : q.points === 1 ? '1 Punkt' : q.points + ' Punkte';
 }
 function qTop() {
   const pt = ptsText(S.question);
@@ -406,7 +424,7 @@ function render() {
   if (S.remainingMs && (S.phase !== lastPhase || Math.abs(Date.now() + S.remainingMs - deadline) > 1200)) deadline = Date.now() + S.remainingMs;
   if (S.phase !== 'media' && window.__stopAudio) { window.__stopAudio(); window.__stopAudio = null; }
   // Treffer bei der Auflösung (Schätzfrage: erst wenn die Zahl steht; Zuordnen: bei jedem Paar, das einrastet)
-  if (S.phase === 'reveal' && lastPhase !== 'reveal' && !(S.question && ['estimate', 'match'].includes(S.question.kind))) shot(revealSound, 0.85);
+  if (S.phase === 'reveal' && lastPhase !== 'reveal' && !(S.question && ['estimate', 'match', 'tf'].includes(S.question.kind))) shot(revealSound, 0.85);
   if (S.phase === 'lobby' && lastPhase !== 'lobby') [blockMusic, scoresMusic, revealSound, winSound, specialSound, countdownMusic].forEach(t => { t.buf = null; }); // neu laden (falls Datei getauscht)
   if (soundOn()) [blockMusic, scoresMusic, revealSound, winSound, specialSound, countdownMusic].forEach(t => t.load());
   lastKey = key; lastPhase = S.phase;
@@ -541,6 +559,7 @@ let estLanded = 0;   // Frage, bei der die Slotmaschine schon gelandet ist
 function chips() {
   const q = S.question || {};
   const hideResult = (q.kind === 'match' && S.phase === 'reveal' && q.step < (q.left || []).length)
+    || (q.kind === 'tf' && S.phase === 'reveal' && q.step < (q.statements || []).length)
     || (q.kind === 'estimate' && S.phase === 'reveal' && estLanded !== S.qNum);   // Schätzfrage: erst wenn die Zahl steht
   return S.players.filter(p => p.connected || p.answered).map(p => {
     let cls = p.answered ? 'done' : '', extra = '';
@@ -749,7 +768,7 @@ function renderPreview() {
 // ---------- Frage + Auflösung ----------
 function renderMain() {
   const q = S.question;
-  const head = `<div class="qcard ${q.image || q.kind === 'match' ? 'compact' : ''}"><div class="cat">${esc(q.category)}</div><div class="qtext">${esc(q.text)}</div></div>`;
+  const head = `<div class="qcard ${q.image || q.kind === 'match' || q.kind === 'tf' ? 'compact' : ''}"><div class="cat">${esc(q.category)}</div><div class="qtext">${esc(q.text)}</div></div>`;
   const mid = `<div class="mid">
       <div class="timer"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="10"/>
         <circle id="arc" cx="50" cy="50" r="44" fill="none" stroke="#f5b014" stroke-width="10" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="0"/></svg>
@@ -764,6 +783,10 @@ function renderMain() {
   } else if (q.kind === 'estimate') {
     body = `<div class="estq ${q.image ? '' : 'noimg'}">${img}<div class="estpanel" id="est">
       <div class="esthint">${q.year ? '📅 Jahreszahl am Handy eingeben!' : '🔢 Schätzt am Handy!'}${q.unit && !q.year ? `<small>Antwort in ${esc(q.unit)}</small>` : ''}${tolText(q) ? `<small>${tolText(q)}</small>` : ''}</div></div></div>`;
+  } else if (q.kind === 'tf') {
+    // Richtig oder falsch: Aussagen untereinander, rechts das Urteil (erst „?“, bei der Auflösung RICHTIG/FALSCH)
+    body = `<div class="tflist n${q.statements.length} ${sizeCls(q.statements)}">${q.statements.map((t, i) => `<div class="tfrow" id="tf${i}" style="animation-delay:${i * 0.12}s">
+      <span class="mnum">${i + 1}</span><span class="tftext">${esc(t)}</span><span class="tfright"><span class="voters"></span><span class="tfv" id="tfv${i}">?</span></span></div>`).join('')}</div>`;
   } else if (q.kind === 'match') {
     // Antworten als eigene Spalte rechts (immer gemischt, nie in Lösungsreihenfolge – das sorgt der Server)
     body = `<div class="mbody"><div class="mlist n${q.left.length} ${sizeCls(q.left)}">${q.left.map((t, i) => mrow(i, t, '<span class="qm">?</span>')).join('')}</div>
@@ -799,6 +822,17 @@ function updateMain() {
     });
   }
   if (q.kind === 'estimate' && (S.phase === 'votes' || S.phase === 'reveal')) renderEstimate(byId);
+  if (q.kind === 'tf' && S.phase === 'reveal') {
+    for (let i = 0; i < q.step; i++) {
+      const row = document.getElementById('tf' + i), v = document.getElementById('tfv' + i);
+      if (!row || row.classList.contains('done')) continue;
+      const ok = q.truths[i];
+      row.classList.add('done', ok ? 'true' : 'false');
+      v.className = 'tfv stamp'; v.textContent = ok ? 'Richtig' : 'Falsch';
+      snapSound(); shot(revealSound, 0.6, true);
+      if (i === q.statements.length - 1) tfDone();
+    }
+  }
   if (q.kind === 'match' && S.phase === 'reveal') {
     for (let i = 0; i < q.step; i++) {
       const row = document.getElementById('mrow' + i);
@@ -837,6 +871,22 @@ function matchDone() {
       });
     }, 1350);
   }, 450);
+}
+
+// Richtig oder falsch: alle Aussagen aufgedeckt – dann die Avatare derer, die richtig lagen, Zeile für Zeile
+function tfDone() {
+  const list = document.querySelector('.tflist');
+  if (!list || list.dataset.done) return;
+  list.dataset.done = '1';
+  setTimeout(() => {
+    if (!document.body.contains(list)) return;
+    S.question.statements.forEach((_, i) => {
+      const box = document.querySelector('#tf' + i + ' .voters'); if (!box) return;
+      const right = S.players.filter(p => p.result && p.result.pairs && p.result.pairs[i]);
+      box.innerHTML = right.length ? right.map(p => avatarHtml(p, 0)).join('') : '<span class="none">keiner</span>';
+      [...box.children].forEach((el, k) => el.style.setProperty('animation-delay', (0.1 + i * 0.25 + k * 0.06) + 's', 'important'));
+    });
+  }, 900);
 }
 
 // Puzzleteil aus dem Vorrat in die Aussparung fliegen lassen (nur transform – läuft auch am Pi)

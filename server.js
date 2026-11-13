@@ -12,6 +12,7 @@ const PORT = Number(process.env.PORT) || 3000;
 const DEFAULT_PER_GAME = Number(process.env.FRAGEN) || 10;
 const QUESTION_TIME_MS = (Number(process.env.SEKUNDEN) || 20) * 1000;
 const MATCH_TIME_MS = 30000;   // Zuordnen braucht etwas länger
+const TF_TIME_MS = 30000;      // Richtig oder falsch: mehrere Aussagen lesen
 const INTRO_MS = 3000;         // Ankündigung mit Countdown 3-2-1
 const PREVIEW_MS = 6000;       // Zuordnen: Begriffe vorab zeigen
 const VOTES_MS = 3500;         // erst zeigen, wer was gewählt hat …
@@ -104,6 +105,14 @@ function normalizeQuestion(q, dir, packName, packLevel) {
       throw new Error('bei "zuordnen" darf kein Begriff doppelt vorkommen');
     return { ...base, kind: 'match', pairs: pairs.map(([a, b]) => [String(a), String(b)]) };
   }
+  if (q.behauptungen) {
+    // Richtig oder falsch: [["Aussage", true], …], [{"text": "…", "richtig": false}, …] oder {"Aussage": true, …}
+    const raw = Array.isArray(q.behauptungen) ? q.behauptungen : Object.entries(q.behauptungen);
+    const items = raw.map(b => Array.isArray(b) ? b : b && typeof b === 'object' ? [b.text ?? b.behauptung, b.richtig] : [null, null]);
+    if (items.length < 2 || items.length > 5 || items.some(([t, r]) => !t || typeof r !== 'boolean'))
+      throw new Error('"behauptungen" braucht 2 bis 5 Aussagen mit true/false, z. B. [["Der Mond ist ein Planet", false], …]');
+    return { ...base, kind: 'tf', items: items.map(([t, r]) => [String(t), r]) };
+  }
   if (q.schaetzen !== undefined) {
     const value = Number(String(q.schaetzen).replace(',', '.'));
     if (!isFinite(value)) throw new Error('"schaetzen" muss eine Zahl sein');
@@ -115,7 +124,7 @@ function normalizeQuestion(q, dir, packName, packLevel) {
   }
   if (Array.isArray(q.antworten) && q.antworten.length >= 2)
     return { ...base, kind: 'choice', answers: q.antworten.slice(0, 4).map(String) };
-  throw new Error('es fehlen "antworten", "schaetzen" oder "zuordnen"');
+  throw new Error('es fehlen "antworten", "schaetzen", "zuordnen" oder "behauptungen"');
 }
 
 function loadPacks() {
@@ -135,7 +144,7 @@ function loadPacks() {
     });
     const kinds = {
       choice: questions.some(q => q.kind === 'choice' && !q.image), image: questions.some(q => q.image),
-      estimate: questions.some(q => q.kind === 'estimate'), match: questions.some(q => q.kind === 'match'),
+      estimate: questions.some(q => q.kind === 'estimate'), match: questions.some(q => q.kind === 'match'), tf: questions.some(q => q.kind === 'tf'),
     };
     const levels = [1, 2, 3].map(l => questions.filter(q => q.level === l).length);
     found.push({ id: rel.replace(/\\/g, '/').replace(/\.json$/i, ''), group, name, questions, kinds, levels });
@@ -301,13 +310,18 @@ function prepareQuestion(q) {
       if (pairs.length < 2 || out.solution.some((r, i) => r !== i)) break;
     }
   }
-  const suffix = q.kind === 'estimate' ? ' · Schätzfrage' : q.kind === 'match' ? ' · Zuordnung' : '';
+  if (q.kind === 'tf') {
+    const items = shuffle(q.items);
+    out.statements = items.map(i => i[0]); out.truths = items.map(i => i[1]);
+  }
+  const suffix = q.kind === 'estimate' ? ' · Schätzfrage' : q.kind === 'match' ? ' · Zuordnung' : q.kind === 'tf' ? ' · Richtig oder falsch' : '';
   if (q.video) { out.label = 'Seh-Test' + suffix; out.icon = '👀'; }
   else if (q.audio) { out.label = 'Soundcheck' + suffix; out.icon = '🎧'; }
   else if (q.kind === 'match') { out.label = 'Zuordnung'; out.icon = '🔗'; }
+  else if (q.kind === 'tf') { out.label = 'Richtig oder falsch'; out.icon = '⚖️'; }
   else if (q.kind === 'estimate') { out.label = q.image ? 'Bilderrätsel · Schätzfrage' : 'Schätzfrage'; out.icon = q.image ? '🖼️' : '🔢'; }
   else if (q.image) { out.label = 'Bilderrätsel'; out.icon = '🖼️'; }
-  out.timeMs = q.timeMs || (q.kind === 'match' ? MATCH_TIME_MS : QUESTION_TIME_MS);
+  out.timeMs = q.timeMs || (q.kind === 'match' ? MATCH_TIME_MS : q.kind === 'tf' ? TF_TIME_MS : QUESTION_TIME_MS);
   return out;
 }
 
@@ -435,6 +449,7 @@ function openingInfo(questions) {
     ['image', '🖼️', 'Bilderrätsel', q => q.image && !q.video && !q.audio],
     ['estimate', '🔢', 'Schätzfragen', q => q.kind === 'estimate' && !q.image && !q.video && !q.audio],
     ['match', '🔗', 'Zuordnung', q => q.kind === 'match' && !q.video && !q.audio],
+    ['tf', '⚖️', 'Richtig oder falsch', q => q.kind === 'tf' && !q.video && !q.audio],
     ['video', '👀', 'Seh-Test', q => q.video],
     ['audio', '🎧', 'Soundcheck', q => q.audio],
   ];
@@ -499,8 +514,11 @@ function endAnswering() {
   showAnswers();
 }
 
+// Fragen, die Schritt für Schritt aufgelöst werden (Zuordnen: Paar für Paar, Richtig/falsch: Aussage für Aussage)
+const stepCount = q => q.kind === 'match' ? q.left.length : q.kind === 'tf' ? q.statements.length : 0;
+
 function showAnswers() {
-  if (currentQuestion().kind === 'match') reveal();
+  if (stepCount(currentQuestion())) reveal();
   else setPhase('votes', VOTES_MS, reveal);
 }
 
@@ -542,6 +560,15 @@ function scoreQuestion() {
       p.score += gain;
       state.results[p.id] = { gain, correct: all, answered: true, pairs, right: k };
     }
+  } else if (q.kind === 'tf') {
+    for (const p of list) {
+      const a = state.answers[p.id];
+      if (!a) { streakBonus(p, false); state.results[p.id] = { gain: 0, correct: false, answered: false, pairs: q.truths.map(() => false) }; continue; }
+      const pairs = q.truths.map((t, i) => a.marks[i] === t), k = pairs.filter(Boolean).length, all = k === pairs.length;
+      const gain = round10((k / pairs.length) * (500 + 500 * speed(a))) + streakBonus(p, all);
+      p.score += gain;
+      state.results[p.id] = { gain, correct: all, answered: true, pairs, right: k };
+    }
   } else {
     for (const p of list) {
       const a = state.answers[p.id];
@@ -577,6 +604,15 @@ function scoreByLevel(q) {
       p.score += k;
       state.results[p.id] = { gain: k, correct: k === pairs.length, answered: true, pairs, right: k };
     }
+  } else if (q.kind === 'tf') {
+    // Richtig oder falsch: jede richtig eingeschätzte Aussage 1 Punkt
+    for (const p of list) {
+      const a = state.answers[p.id];
+      if (!a) { state.results[p.id] = { gain: 0, correct: false, answered: false, pairs: q.truths.map(() => false) }; continue; }
+      const pairs = q.truths.map((t, i) => a.marks[i] === t), k = pairs.filter(Boolean).length;
+      p.score += k;
+      state.results[p.id] = { gain: k, correct: k === pairs.length, answered: true, pairs, right: k };
+    }
   } else {
     for (const p of list) {
       const a = state.answers[p.id], ok = !!a && a.choice === q.correct, gain = ok ? lv : 0;
@@ -597,11 +633,11 @@ function reveal() {
     }
   }
   const q = currentQuestion();
-  if (q.kind === 'match') {
+  if (stepCount(q)) {
     state.step = 0;
     const stepOn = () => {
       state.step++;
-      if (state.step >= q.left.length) setPhase('reveal', state.pub ? 0 : REVEAL_MS + 1500, afterReveal);   // + Zeit für Kasten-Ausblenden und Avatare
+      if (state.step >= stepCount(q)) setPhase('reveal', state.pub ? 0 : REVEAL_MS + 1500, afterReveal);   // + Zeit für Kasten-Ausblenden und Avatare
       else setPhase('reveal', MATCH_STEP_MS, stepOn);
     };
     setPhase('reveal', 1200, stepOn);
@@ -671,7 +707,7 @@ function advance() {
     case 'special': showAnswers(); break;
     case 'votes': reveal(); break;
     case 'reveal':
-      if (q.kind === 'match' && state.step < q.left.length) { state.step = q.left.length; setPhase('reveal', state.pub ? 0 : REVEAL_MS, state.pub ? null : afterReveal); }
+      if (stepCount(q) && state.step < stepCount(q)) { state.step = stepCount(q); setPhase('reveal', state.pub ? 0 : REVEAL_MS, state.pub ? null : afterReveal); }
       else afterReveal();
       break;
     case 'scores': afterScores(); break;
@@ -723,13 +759,14 @@ function baseView() {
   if (q && ['intro', 'media', 'preview', 'question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
     const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category }; // Schwierigkeit wird im Spiel nicht verraten …
     // … außer bei Punkten nach Schwierigkeit: dann steht oben, was die Frage bringt (Zuordnen: 1 Punkt je Paar)
-    if ((state.scoring || settings.scoring) === 'level') { vq.points = q.kind === 'match' ? 1 : (q.level || 1); vq.perPair = q.kind === 'match'; }
+    if ((state.scoring || settings.scoring) === 'level') { vq.points = stepCount(q) ? 1 : (q.level || 1); vq.perPair = q.kind === 'match'; vq.perItem = q.kind === 'tf'; }
     if (ph === 'media') { vq.video = q.video || null; vq.audio = q.audio || null; vq.audioOpts = q.audioOpts || null; }
     if (ph !== 'intro' && ph !== 'media' && q.kind === 'match') vq.left = q.left;
     if (['question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
       vq.text = q.text; vq.image = q.image;
       if (q.kind === 'choice') vq.answers = q.answers;
       if (q.kind === 'match') vq.right = q.right;
+      if (q.kind === 'tf') vq.statements = q.statements;
       if (q.kind === 'estimate') { vq.unit = q.unit; vq.year = q.year; vq.tolerance = q.tolerance; }
     }
     if (ph === 'votes' || ph === 'reveal') {
@@ -745,6 +782,7 @@ function baseView() {
       if (q.kind === 'choice') vq.correct = q.correct;
       if (q.kind === 'estimate') vq.value = q.value;
       if (q.kind === 'match') { vq.solution = q.solution.slice(0, state.step); vq.step = state.step; }
+      if (q.kind === 'tf') { vq.truths = q.truths.slice(0, state.step); vq.step = state.step; }
     }
   }
   return v;
@@ -770,6 +808,7 @@ function hostSolution() {
   if (q.kind === 'choice') { out.answers = q.answers; out.correct = q.correct; }
   if (q.kind === 'estimate') { out.value = q.value; out.unit = q.unit; out.year = q.year; out.tolerance = q.tolerance; }
   if (q.kind === 'match') out.pairs = q.left.map((l, i) => [l, q.right[q.solution[i]]]);
+  if (q.kind === 'tf') out.items = q.statements.map((t, i) => [t, q.truths[i]]);
   const next = state.questions[state.idx + 1];
   out.isLast = !next; out.blockEnd = !!next && next.block !== q.block;
   return out;
@@ -967,6 +1006,10 @@ function validAnswer(q, body) {
     const order = body.order, n = q.left.length;
     const ok = Array.isArray(order) && order.length === n && new Set(order).size === n && order.every(x => Number.isInteger(x) && x >= 0 && x < n);
     return ok ? { order } : null;
+  }
+  if (q.kind === 'tf') {
+    const marks = body.marks;
+    return Array.isArray(marks) && marks.length === q.statements.length && marks.every(m => typeof m === 'boolean') ? { marks } : null;
   }
   return null;
 }

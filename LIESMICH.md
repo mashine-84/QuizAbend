@@ -67,6 +67,7 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 - **Schätzfrage:** Je näher dran, desto mehr Punkte (bis 800). Wer am nächsten dran ist, bekommt +200 dazu.
 - **Jahreszahlen** („In welchem Jahr …“): Punkte gibt es nur bei höchstens ±2 Jahren Abweichung. Exakt bringt 800, ±1 Jahr 530 und ±2 Jahre 270 Punkte, dazu +200 für den Nächsten. Wer weiter danebenliegt, bekommt 0 Punkte.
 - **Zuordnung:** Erst erscheinen nur die Begriffe, dann die Frage. Am Handy ordnest du die Partner den Zahlen zu. Aufgelöst wird Paar für Paar, Punkte gibt es pro richtigem Paar.
+- **⚖️ Richtig oder falsch:** Mehrere Behauptungen (meist 3). Am Handy tippst du bei jeder auf *Richtig* oder *Falsch* und schickst ab. Auf dem Fernseher wird Aussage für Aussage aufgedeckt, danach erscheinen die Avatare derer, die richtig lagen. Punkte gibt es pro richtig eingeschätzter Aussage. Beispiele: Paket „Richtig oder falsch“ in `fragen/Allgemein`.
 - Wer mehrere Fragen in Folge richtig hat, bekommt bis zu +150 Serienbonus.
 - Ist die Zeit um, zeigt der Fernseher erst, wer was gewählt hat. Danach kommt die Auflösung.
 - **Punkte bleiben bis zum Blockende geheim.** Bei der Auflösung sieht man nur richtig (✓), knapp daneben (≈) oder falsch (✗), am Handy steht „Punkte und Platz gibt's am Ende des Blocks“.
@@ -86,7 +87,7 @@ Der 👑-Spieler tippt in der Lobby auf **⚙️ Einstellungen**. Über das Men�
 
 **Spieleinstellungen**
 - **Anzahl Blöcke** (1 bis 6). Antippen eines Blocks öffnet seine Einstellungen: wie viele Fragen er hat und welche Pakete er nutzt. Pakete lassen sich einzeln oder als ganze Hauptkategorie an- und abhaken. Neben jedem Paket steht, wie viele leichte, mittlere und schwere Fragen es enthält.
-- **🏅 Punkte:** *Schnelligkeit* (Standard): bis zu 1000 Punkte je Frage, schnellere richtige Antworten bringen mehr, dazu Serienbonus; Schätz- und Zuordnungsfragen geben Teilpunkte. *Schwierigkeit*: eine richtige Antwort bringt so viele Punkte wie die Schwierigkeit der Frage (1–3), Tempo zählt nicht. Ausnahmen: Bei Zuordnungsfragen gibt jedes richtige Paar 1 Punkt (3 von 4 richtig = 3 Punkte), bei Schätzfragen bekommt, wer am nächsten dran ist, die Punkte der Schwierigkeit (bei Jahreszahlen nur innerhalb von ±2 Jahren). Die Spezialfrage vervielfacht in beiden Fällen.
+- **🏅 Punkte:** *Schnelligkeit* (Standard): bis zu 1000 Punkte je Frage, schnellere richtige Antworten bringen mehr, dazu Serienbonus; Schätz- und Zuordnungsfragen geben Teilpunkte. *Schwierigkeit*: eine richtige Antwort bringt so viele Punkte wie die Schwierigkeit der Frage (1–3), Tempo zählt nicht. Ausnahmen: Bei Zuordnungsfragen gibt jedes richtige Paar 1 Punkt (3 von 4 richtig = 3 Punkte), bei „Richtig oder falsch“ jede richtig eingeschätzte Aussage 1 Punkt, bei Schätzfragen bekommt, wer am nächsten dran ist, die Punkte der Schwierigkeit (bei Jahreszahlen nur innerhalb von ±2 Jahren). Die Spezialfrage vervielfacht in beiden Fällen.
 - **Spezialfrage:** an/aus und der Multiplikator ×2, ×3 oder ×4.
 - **Pause nach jedem Block** an/aus mit Dauer.
 
@@ -128,7 +129,10 @@ Eine Paketdatei sieht so aus, und die Frageart ergibt sich aus den Feldern:
     {"frage": "Wie lang ist ein Fußballfeld höchstens?", "schaetzen": 120, "einheit": "m"},
 
     {"frage": "Welcher Verein spielt in welchem Stadion?",
-     "zuordnen": {"Bayern München": "Allianz Arena", "Borussia Dortmund": "Signal Iduna Park", "Schalke 04": "Veltins-Arena", "1. FC Köln": "RheinEnergieStadion"}}
+     "zuordnen": {"Bayern München": "Allianz Arena", "Borussia Dortmund": "Signal Iduna Park", "Schalke 04": "Veltins-Arena", "1. FC Köln": "RheinEnergieStadion"}},
+
+    {"frage": "Welche Behauptungen sind richtig, welche falsch?",
+     "behauptungen": [["Ein Marathon ist 42,195 km lang.", true], ["Golf war noch nie olympisch.", false], ["Ein Basketballkorb hängt 3,05 m hoch.", true]]}
   ]
 }
 ```
@@ -140,6 +144,7 @@ Eine Paketdatei sieht so aus, und die Frageart ergibt sich aus den Feldern:
 | 👀 Seh-Test | zusätzlich `"video": "clip.mp4"`. Das Video in den Ordner `videos` neben der Datei legen. Es läuft nach der Ankündigung im Vollbild auf dem Fernseher, danach kommt die Frage. Geht mit jeder Frageart. |
 | 🎧 Soundcheck | zusätzlich `"audio": "lied.mp3"`. Die Datei in den Ordner `audio` neben der Datei legen (mp3, m4a, ogg oder wav). Optional: `"start": 30` und `"dauer": 10` (Sekunden) spielen nur einen Ausschnitt, `"rueckwaerts": true` spielt ihn rückwärts. Geht mit jeder Frageart. |
 | Zuordnung | `"zuordnen": {"Begriff": "Partner", ...}` mit 2 bis 6 Paaren. Die Reihenfolge wird im Spiel gemischt. |
+| ⚖️ Richtig oder falsch | `"behauptungen": [["Aussage", true], ["Aussage", false], ...]` mit 2 bis 5 Aussagen, `true` = stimmt, `false` = stimmt nicht. Die Reihenfolge wird im Spiel gemischt. Standardzeit 30 Sekunden. |
 
 Optional bei jeder Frage:
 - `"schwierigkeit": 1`, `2` oder `3` für leicht, mittel oder schwer (ohne Angabe gilt 1). Gilt sie für ein ganzes Paket, kannst du `"schwierigkeit": 2` auch oben neben `"paket"` schreiben.
