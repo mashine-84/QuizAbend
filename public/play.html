@@ -230,7 +230,8 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 const SHAPES = ['▲', '◆', '●', '■'];
 const main = document.getElementById('main');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const pts = n => `${n} ${n === 1 ? 'Punkt' : 'Punkte'}`;
+const fmtPts = n => Number.isInteger(n) ? String(n) : String(n).replace('.', ',');   // halbe Punkte aus dem Stechen: 2,5
+const pts = n => `${fmtPts(n)} ${n === 1 ? 'Punkt' : 'Punkte'}`;
 const fmt = n => Math.abs(n) >= 10000 ? n.toLocaleString('de-DE') : String(n).replace('.', ',');
 let myId = localStorage.getItem('quizId');
 let serverVersion = null, lastQ = null, lastPh = null;
@@ -307,7 +308,7 @@ function header() {
   document.getElementById('hName').textContent = S.me.name + (S.me.isVip ? ' 👑' : '');
   const sorting = S.phase === 'scores' && Date.now() < scoresSince + SCORES_REVEAL_MS;
   if (!HIDE_PTS.includes(S.phase) && !sorting) shownScore = S.me.score;     // während eines Blocks bleibt der Stand vom letzten Blockende stehen
-  document.getElementById('hScore').textContent = S.me.isHost ? '🎤 Gamemaster' : shownScore + ' P';
+  document.getElementById('hScore').textContent = S.me.isHost ? '🎤 Gamemaster' : fmtPts(shownScore) + ' P';
   document.getElementById('hostBtn').style.display = S.me.isVip && S.phase !== 'lobby' ? '' : 'none';
 }
 

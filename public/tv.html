@@ -1206,11 +1206,11 @@ function renderScores() {
   const last = S.qNum >= S.qTotal, blockNum = S.block && S.block.total > 1 ? S.block.num : 0;
   // ohne Kopfzeile (OLED-Schonung) – die Block-Info steht in der Überschrift
   app.innerHTML = `
-    <div class="board sboard"><h2>${last ? 'Gleich kommt die Siegerehrung …' : blockNum ? `Zwischenstand nach Block ${blockNum} von ${S.block.total}` : 'Zwischenstand'}</h2>
+    <div class="board sboard"><h2>${last && rank.filter(p => p.place === 1).length > 1 ? '⚔️ Gleichstand – gleich wird gestochen!' : last ? 'Gleich kommt die Siegerehrung …' : blockNum ? `Zwischenstand nach Block ${blockNum} von ${S.block.total}` : 'Zwischenstand'}</h2>
       <div class="rows">${start.map((p, i) => {
         return `<div class="row" data-id="${p.id}" style="--pc:${p.color};animation-delay:${i * 0.07}s"><span class="pos"></span><span class="av">${p.avatar}</span>
           <span class="nm">${esc(p.name)}</span><span class="bar"><i data-w="${p.score / max}"></i></span>
-          <span class="pts" data-to="${p.score}">0</span></div>`;
+          <span class="pts" data-to="${p.score}">0</span></div>`;   // (halbe Punkte gibt es erst im Stechen, danach kommt direkt das Podest)
       }).join('')}</div></div>`;
   prevScores = Object.fromEntries(rank.map(p => [p.id, p.score]));
   const rows = [...document.querySelectorAll('.sboard .row')];
@@ -1248,6 +1248,7 @@ function countUp(els) {
   })(t0);
 }
 
+const fmtScore = n => Number.isInteger(n) ? String(n) : String(n).replace('.', ',');   // halbe Punkte aus dem Stechen
 function renderEnd() {
   shot(winSound, 0.9);
   // Plätze mit Gleichstand: gleiche Punkte = gleicher Platz und gleich hohes Treppchen
@@ -1259,9 +1260,9 @@ function renderEnd() {
       <div class="podium">${order.filter(i => P[i]).map(i => `
         <div class="step" style="--pc:${P[i].color};animation-delay:${(2 - i) * 0.35}s">
           <div class="who"><div class="big">${P[i].avatar}</div>${esc(P[i].name)}</div>
-          <div class="block" style="height:${heights[P[i].place] || '14vh'}">${P[i].place}<small>${P[i].score} ${P[i].score === 1 ? 'Punkt' : 'Punkte'}</small></div></div>`).join('')}
+          <div class="block" style="height:${heights[P[i].place] || '14vh'}">${P[i].place}<small>${fmtScore(P[i].score)} ${P[i].score === 1 ? 'Punkt' : 'Punkte'}</small></div></div>`).join('')}
       </div>
-      <div class="others">${P.slice(3).map(p => `<span>${p.place}. ${p.avatar} ${esc(p.name)} – ${p.score}</span>`).join(' · ')}</div>
+      <div class="others">${P.slice(3).map(p => `<span>${p.place}. ${p.avatar} ${esc(p.name)} – ${fmtScore(p.score)}</span>`).join(' · ')}</div>
       <div class="hint">👑 Neue Runde am Handy starten – oder <b>Leertaste</b></div>
     </div>`;
   confetti();
