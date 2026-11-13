@@ -164,13 +164,19 @@
   .mbody .mpiece { font-size: 2vw; padding: 1.4vh 1.2vw 1.4vh 3.4vh; white-space: normal; line-height: 1.15; }
   .mbody .mpiece.l { font-size: 1.6vw; } .mbody .mpiece.xl { font-size: 1.3vw; }
   /* im schmaleren Feld rücken die Avatare der Richtigen zusammen */
-  .mbody .mpool { transition: transform .5s cubic-bezier(.5,0,.75,0), opacity .45s; }
-  .mbody .mpool.out { transform: translateX(40%) scale(.92); opacity: 0; }
-  html.lite .mbody .mpool { transition: transform .5s cubic-bezier(.5,0,.75,0), opacity .45s !important; }
+  /* nach dem Auflösen: Kasten blendet aus, dann schrumpft er weg und die Balken wachsen weich nach rechts */
+  .mbody { transition: gap .8s cubic-bezier(.45,0,.2,1); }
+  .mbody .mpool { overflow: hidden; transition: opacity .45s ease, width .8s cubic-bezier(.45,0,.2,1), padding .8s cubic-bezier(.45,0,.2,1); }
+  .mbody .mpool.out { opacity: 0; }
+  html.lite .mbody { transition: gap .8s cubic-bezier(.45,0,.2,1) !important; }
+  html.lite .mbody .mpool { transition: opacity .45s ease, width .8s cubic-bezier(.45,0,.2,1), padding .8s cubic-bezier(.45,0,.2,1) !important; }
   html.lite .mbody .mright .vav, html.lite .mbody .mright .none { animation: pop .45s cubic-bezier(.2,1.6,.4,1) both !important; }
   /* nach dem Auflösen: Kasten weg, Felder breit, Avatare normal groß */
-  .mbody.wide .mpool { display: none; }
-  .mbody.wide .mrow { grid-template-columns: 1fr 1fr; }
+  .mbody.wide { gap: 0; }
+  .mbody.wide .mpool { width: 0; padding-left: 0; padding-right: 0; }
+  .mbody .mrow { transition: grid-template-columns .8s cubic-bezier(.45,0,.2,1); }
+  html.lite .mbody .mrow { transition: grid-template-columns .8s cubic-bezier(.45,0,.2,1) !important; }
+  .mbody.wide .mrow { grid-template-columns: 1fr 1fr; }   /* der rechte Balken wächst stärker – Platz für Antwort und Avatare */
   .mbody .mright .voters { flex: none; flex-wrap: nowrap; }
   .mbody .mright .vav { width: 3vw; height: 3vw; font-size: 1.75vw; border-width: .2vw; }
   .mbody .mright .vav + .vav { margin-left: -.7vw; }
@@ -818,9 +824,9 @@ function matchDone() {
   body.dataset.done = '1';
   setTimeout(() => {
     pool.classList.add('out');
+    setTimeout(() => { if (document.body.contains(body)) body.classList.add('wide'); }, 500);   // erst ausblenden, dann Platz freigeben
     setTimeout(() => {
       if (!document.body.contains(body)) return;
-      body.classList.add('wide');
       const q = S.question;
       q.left.forEach((_, i) => {
         const box = document.querySelector('#mr' + i + ' .voters'); if (!box) return;
@@ -829,8 +835,8 @@ function matchDone() {
         // Verzögerung mit !important, damit sie auch im Lite-Modus des Pi greift
         [...box.children].forEach((el, k) => el.style.setProperty('animation-delay', (0.1 + i * 0.25 + k * 0.06) + 's', 'important'));
       });
-    }, 550);
-  }, 500);
+    }, 1350);
+  }, 450);
 }
 
 // Puzzleteil aus dem Vorrat in die Aussparung fliegen lassen (nur transform – läuft auch am Pi)
