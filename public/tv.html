@@ -287,7 +287,8 @@
 
   /* Blockpause */
   .bpause { position: relative; overflow: hidden; }
-  .floaty { position: absolute; inset: 0; pointer-events: none; }
+  .floaty { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+  .bpause > :not(.floaty) { position: relative; z-index: 1; }   /* schwebende Icons hinter Text, Countdown und Kategorien */
   .floaty span { position: absolute; bottom: -10vh; font-size: 5vw; opacity: .5; animation: floatup 9s linear infinite; will-change: transform; }
   @keyframes floatup { to { transform: translateY(-120vh) rotate(var(--rot, 25deg)); } }
   .pcount { font-size: 10vw; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; margin: 1vh 0; }
