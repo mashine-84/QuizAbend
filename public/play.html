@@ -243,6 +243,17 @@ async function keepAwake() {
   if (keepVid.paused) keepVid.play().catch(() => {});
 }
 ['click', 'touchend'].forEach(ev => addEventListener(ev, keepAwake, { passive: true }));
+// Auch ohne Tippen starten: Nach „Update holen“ lädt die Seite neu – bisher blieb das Handy dann ohne
+// Wachhalten, bis jemand tippte. Stumme Videos dürfen ohne Tippen starten. Bei jeder Nachricht vom Server
+// nachprüfen (falls der Browser das Video angehalten oder die Wake-Lock freigegeben hat).
+keepAwake();
+let lastAwakeCheck = 0;
+function keepAwakeSoon() {
+  if (Date.now() - lastAwakeCheck < 5000 || document.visibilityState !== 'visible') return;
+  lastAwakeCheck = Date.now();
+  if ((wakeLock && !wakeLock.released) || (keepVid && !keepVid.paused)) return;
+  keepAwake();
+}
 // nach dem Zurückkehren in die App (Tab-Wechsel, Sperrbildschirm) wieder anfordern
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
 const SHAPES = ['▲', '◆', '●', '■'];
@@ -266,6 +277,7 @@ function connect() {
   es.onmessage = e => {
     document.getElementById('offline').style.display = 'none';
     S = JSON.parse(e.data);
+    keepAwakeSoon();
     if (S.system && S.system.power === 'off') startShutdown(); else if (shutdown && !S.system) shutdown = null; // Ausschalten fehlgeschlagen
     if (serverVersion && S.version && S.version !== serverVersion) return location.reload(); // neue Version
     serverVersion = S.version || serverVersion;
