@@ -198,6 +198,7 @@ function restore() {
 const VIOLET = '#6a3cff', DEEP = '#3b2bd6', GOLD = '#f5b014';
 const ANSWER = ['#e5484d', '#3e8ef7', '#f5b014', '#2fb36d'];   // Farben der Antwortkacheln
 async function onPhase(phase, info = {}) {
+  clearSeq();   // ein laufender Licht-Ablauf (Opener) endet mit jeder neuen Phase
   if (!cfg.enabled || !cfg.appKey || !(cfg.lights || []).length) return;
   if (phase === 'lobby') return restore();
   if (!(await ensureGroup())) return;
@@ -206,7 +207,7 @@ async function onPhase(phase, info = {}) {
   if ((phase === 'ident' || phase === 'opening') && !snapshot) await takeSnapshot();
   let mood, key = phase;
   switch (phase) {
-    case 'ident': mood = { color: VIOLET, bri: 30, ms: 800 }; break;                      // Opener: kurz abdunkeln
+    case 'ident': mood = { color: VIOLET, bri: 12, ms: 400 }; break;                      // Opener: abdunkeln, dann Ablauf (s. u.)
     case 'opening': mood = { color: VIOLET, bri: 40, ms: 2500 }; break;
     case 'block': mood = { color: VIOLET, bri: 45, ms: 1000 }; break;
     case 'tiebreak': mood = { color: GOLD, bri: 80, ms: 600 }; break;                    // Stechen um Platz 1
@@ -224,7 +225,15 @@ async function onPhase(phase, info = {}) {
   if (key === lastMood) return;
   lastMood = key;
   apply(mood);
+  // Opener „Vier Kacheln“: grob im Takt – mehr als ~1 Befehl pro Sekunde verträgt die Bridge nicht.
+  // 1,25 s: Gold-Blitz (das „?“ erscheint bei 1,41 s, Lampen reagieren etwas verzögert), 2,35 s: sanft ins ruhige Violett.
+  if (phase === 'ident') {
+    seqTimers.push(setTimeout(() => apply({ color: GOLD, bri: 100, ms: 100 }), 1250));
+    seqTimers.push(setTimeout(() => apply({ color: VIOLET, bri: 35, ms: 1500 }), 2350));
+  }
 }
+let seqTimers = [];
+function clearSeq() { seqTimers.forEach(clearTimeout); seqTimers = []; }
 
 // Test: 3 Sekunden gold pulsieren, dann zurück; jederzeit abbrechbar
 let testTimer = null, testOwnsSnapshot = false;
