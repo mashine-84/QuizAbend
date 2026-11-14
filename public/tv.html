@@ -51,14 +51,28 @@
   .hint b { color: var(--ink); }
 
   /* Frage */
-  .qwrap { flex: 1; display: flex; flex-direction: column; gap: 2vh; padding-top: 1vh; min-height: 0; }
+  .qwrap { flex: 1; display: flex; flex-direction: column; gap: 2vh; padding-top: 2vh; min-height: 0; }
   .qwrap > * { flex-shrink: 0; }
   .qwrap > .answers, .qwrap > .imgq, .qwrap > .estq, .qwrap > .mlist, .qwrap > .tflist { flex: 1 1 0; min-height: 0; }
   .qwrap > .mpool { flex: none; }
   .qcard { background: #fff; color: #1b1440; border-radius: 1.6vw; padding: 4vh 3vw; text-align: center; box-shadow: 0 1vh 0 rgba(0,0,0,.25); }
-  .cat { display: inline-block; font-size: 1.3vw; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #6a5acd; margin-bottom: 1.2vh; }
   .qtext { font-size: 3.4vw; font-weight: 900; line-height: 1.15; letter-spacing: -0.01em; }
-  .mid { display: flex; align-items: center; gap: 2vw; }
+  /* Kopf bei den Fragen: Uhr · Kategorie + Punkte / Block + Fortschritt + Fragetyp · Spieler */
+  .qhead { display: flex; align-items: center; gap: 1.8vw; flex: none; min-height: min(7vw, 12vh); }
+  .qhead .timer { width: min(7vw, 12vh); height: min(7vw, 12vh); }
+  .qhead .timer .num { font-size: 2.6vw; }
+  .qhead .timesup { font-size: 1.35vw; }
+  .qinfo { display: flex; flex-direction: column; gap: .7vh; min-width: 0; }
+  .ql1 { display: flex; align-items: center; gap: .9vw; }
+  .qcat { font-size: 2.4vw; font-weight: 900; line-height: 1; letter-spacing: -0.01em; white-space: nowrap; }
+  .qpts { color: var(--c); font-size: 1.5vw; font-weight: 900; border: .13vw solid var(--c); border-radius: 99px; padding: .15em .8em; white-space: nowrap; display: inline-block; }
+  .qpts.sp { background: var(--c); color: #1b1440; }
+  .ql2 { display: flex; align-items: center; gap: .9vw; color: var(--muted); font-weight: 700; font-size: 1.35vw; white-space: nowrap; }
+  .qdots { display: flex; gap: .45vw; }
+  .qdots i { width: 1.6vw; height: .55vh; border-radius: 99px; background: rgba(255,255,255,.16); }
+  .qdots i.done { background: rgba(255,255,255,.45); }
+  .qdots i.cur { background: var(--c); width: 3vw; }
+  .qhead .answered { margin-left: auto; }
   .timer { position: relative; width: min(9vw, 15vh); height: min(9vw, 15vh); flex: none; }
   .timer svg { width: 100%; height: 100%; transform: rotate(-90deg); }
   .timer .num { position: absolute; inset: 0; display: grid; place-items: center; font-size: 3.4vw; font-weight: 900; }
@@ -87,7 +101,6 @@
 
   /* Fragearten */
   .tright { display: flex; gap: 1vw; align-items: center; }
-  .tbadge { background: var(--c); color: #1b1440; border-radius: 99px; padding: .4em 1.1em; font-weight: 900; }
   .packs { margin-top: 2.5vh; text-align: center; font-size: 1.4vw; color: var(--muted); }
   .packs.warn, .warnc { color: #ffb4b4; font-weight: 700; }
   .intro { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5vh; text-align: center; }
@@ -160,7 +173,6 @@
   @keyframes snap { 0% { transform: translateX(1vw); } 60% { transform: translateX(-.4vw); } }
   .mpool { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1vh 1.2vw; flex: none; min-height: calc(2.2vw + 2vh); }
   .mpool .pbar { width: 50vw; }
-  .mid.ghost { visibility: hidden; }
   /* Stechen */
   .tbplayers { display: flex; align-items: center; justify-content: center; gap: 2.4vw; flex-wrap: wrap; margin: 2vh 0; }
   .tbplayers span { display: flex; flex-direction: column; align-items: center; gap: 1vh; font-size: 2.4vw; font-weight: 900; animation: pop .5s cubic-bezier(.2,1.6,.4,1) both; }
@@ -239,7 +251,6 @@
   .bnames { display: flex; flex-wrap: wrap; gap: 1vw; justify-content: center; max-width: 80vw; margin-top: 2vh; }
   .bnames span { background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.18); border-radius: 99px; padding: .8vh 1.5vw; font-size: 1.9vw; font-weight: 800; animation: pop .5s both; }
   .bpause .bnames { margin-top: 1vh; }
-  .spbadge { background: linear-gradient(90deg, #ff4d6d, #f5b014); color: #fff; border-radius: 99px; padding: .4em 1.1em; font-weight: 900; }
   .special { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(20,16,43,.82); }
   .burst { position: absolute; width: 140vmax; height: 140vmax; background: repeating-conic-gradient(rgba(245,176,20,.22) 0 10deg, transparent 10deg 20deg); animation: spin 8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -443,24 +454,54 @@ document.addEventListener('keydown', e => {
   if (e.key === 'f' || e.key === 'F') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); }
 });
 
-function badge(q) { return q && q.label ? `<span class="tbadge">${q.icon || ''} ${esc(q.label)}</span>` : ''; }
 function topbar(right) {
   return `<div class="topbar"><div class="brand" style="font-size:2vw">Quiz<span>Abend</span></div><div class="tright">${right || ''}</div></div>`;
-}
-// Bei mehreren Blöcken zählt die Frage innerhalb des Blocks: "Block 1/2 · Frage 3/8"
-function qNumText() {
-  const b = S.block;
-  return b && b.total > 1 && b.len ? `Block ${b.num}/${b.total} · Frage ${b.q} / ${b.len}` : `Frage ${S.qNum} / ${S.qTotal}`;
 }
 // Punkte nach Schwierigkeit: was die Frage bringt
 function ptsText(q) {
   if (!q || !q.points || q.tiebreak) return '';
   return q.perPair ? '1 Punkt je Paar' : q.perItem ? '1 Punkt je Aussage' : q.points === 1 ? '1 Punkt' : q.points + ' Punkte';
 }
-function qTop() {
-  if (S.question && S.question.tiebreak) return topbar(`<span class="pill ptspill">⚔️ Stechen um Platz 1</span>`);
-  const pt = ptsText(S.question);
-  return topbar(`<span id="spb"></span>${badge(S.question)}${pt ? `<span class="pill ptspill">${pt}</span>` : ''}<span class="pill">${qNumText()}</span>`);
+// Kopf bei den Fragen (eine Zeile): Uhr · Kategorie + Punkte, darunter Block, Fortschritt im Block und Fragetyp · Spieler
+// Kein Logo und keine festen hellen Flächen (OLED). withTimer=false: nur der leere Ring der Uhr, damit nichts springt.
+const TIMER_SVG = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="10"/>
+  <circle id="arc" cx="50" cy="50" r="44" fill="none" stroke="#f5b014" stroke-width="10" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="0"/></svg>`;
+const TIMER_TRACK = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="10"/></svg>`;   // vor der Frage: nur der leere Ring
+function qProgress() {
+  const b = S.block;
+  if (!b || !b.len) return `<span>Frage ${S.qNum} / ${S.qTotal}</span>`;
+  const label = b.total > 1 ? `<span>Block ${b.num}</span>` : '';
+  if (b.len > 15) return label + `<span>Frage ${b.q} / ${b.len}</span>`;   // zu viele Striche: lieber als Zahl
+  const dots = Array.from({ length: b.len }, (_, i) => `<i class="${i + 1 < b.q ? 'done' : i + 1 === b.q ? 'cur' : ''}"></i>`).join('');
+  return label + `<span class="qdots" title="Frage ${b.q} / ${b.len}">${dots}</span>`;
+}
+// Punkte-Pill: normal „2 Punkte“, nach der Enthüllung der Spezialfrage gelb gefüllt, beim Stechen „Stechen um Platz 1“
+function ptsPill() {
+  const q = S.question;
+  if (q && q.tiebreak) return `<span class="qpts">⚔️ Stechen um Platz 1</span>`;
+  if (S.special) {
+    const pts = q && q.points && !q.perPair && !q.perItem ? ` · ${q.points * S.special.mult} Punkte` : '';
+    return `<span class="qpts sp">⭐ Spezialfrage ×${S.special.mult}${pts}</span>`;
+  }
+  const pt = ptsText(q);
+  return pt ? `<span class="qpts">${pt}</span>` : '';
+}
+function qSub() {
+  const q = S.question;
+  if (q && q.tiebreak && S.tiebreak) {
+    const names = S.tiebreak.ids.map(id => (S.players.find(p => p.id === id) || {}).name).filter(Boolean);
+    const who = names.length > 1 ? names.slice(0, -1).join(', ') + ' und ' + names[names.length - 1] : names[0] || '';
+    return `<span>Nur ${esc(who)} ${names.length > 1 ? 'antworten' : 'antwortet'}${S.tiebreak.round > 1 ? ` · Runde ${S.tiebreak.round}` : ''} · Wer am nächsten dran ist, gewinnt</span>`;
+  }
+  return qProgress() + (q && q.label ? `<span>${q.icon || ''} ${esc(q.label)}</span>` : '');
+}
+function qHead(withTimer) {
+  const q = S.question || {};
+  return `<div class="qhead">
+    <div class="timer">${withTimer ? TIMER_SVG : TIMER_TRACK}<div class="num" ${withTimer ? 'id="num"' : ''}></div></div>
+    <div class="qinfo"><div class="ql1"><span class="qcat">${esc(q.category || '')}</span><span id="qpts">${ptsPill()}</span></div>
+      <div class="ql2">${qSub()}</div></div>
+    <div class="answered" id="chips">${chips()}</div></div>`;
 }
 const IN_Q = ['intro', 'media', 'preview', 'question', 'locked', 'special', 'votes', 'reveal'];
 const fmt = n => Math.abs(n) >= 10000 ? n.toLocaleString('de-DE') : String(n).replace('.', ',');
@@ -673,7 +714,7 @@ const mrow = (i, t, right, delay) => `<div class="mrow" id="mrow${i}" style="ani
 // ---------- Ankündigung (Bilderrätsel, Schätzfrage, Zuordnung) ----------
 function renderIntro() {
   const q = S.question;
-  app.innerHTML = qTop() + `<div class="intro">
+  app.innerHTML = qHead(false) + `<div class="intro">
     <div class="iicon">${q.icon || '❓'}</div><div class="ilabel">${esc(q.label)}</div>
     <div class="icat">${esc(q.category)}</div><div class="inum" id="inum"></div></div>`;
 }
@@ -877,10 +918,9 @@ async function playAudio(url, o) {
 // ---------- Zuordnen: erst nur die Begriffe ----------
 function renderPreview() {
   const q = S.question;
-  // gleicher Aufbau wie bei der Frage (unsichtbare Uhr-Zeile, Vorrat-Zeile mit Fortschrittsbalken) – so springt nichts, wenn die Frage kommt
-  app.innerHTML = qTop() + `<div class="qwrap fade">
-    <div class="qcard compact"><div class="cat">${esc(q.category)}</div><div class="qtext soft">Merkt euch diese Begriffe – gleich kommt die Frage …</div></div>
-    <div class="mid ghost"><div class="timer"><svg viewBox="0 0 100 100"></svg><div class="num"></div></div><div class="answered">${chips()}</div></div>
+  // gleicher Aufbau wie bei der Frage (Kopf mit leerem Platz für die Uhr, Vorrat-Zeile mit Fortschrittsbalken) – so springt nichts, wenn die Frage kommt
+  app.innerHTML = qHead(false) + `<div class="qwrap fade">
+    <div class="qcard compact"><div class="qtext soft">Merkt euch diese Begriffe – gleich kommt die Frage …</div></div>
     <div class="mbody"><div class="mlist n${q.left.length} ${sizeCls(q.left)}">${q.left.map((t, i) => mrow(i, t, '', i * 0.15)).join('')}</div>
     <div class="mpool"><div class="pbar"><i id="pbar"></i></div></div></div></div>`;
 }
@@ -888,12 +928,7 @@ function renderPreview() {
 // ---------- Frage + Auflösung ----------
 function renderMain() {
   const q = S.question;
-  const head = `<div class="qcard ${q.image || q.kind === 'match' || q.kind === 'tf' ? 'compact' : ''}"><div class="cat">${esc(q.category)}</div><div class="qtext">${esc(q.text)}</div></div>`;
-  const mid = `<div class="mid">
-      <div class="timer"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="10"/>
-        <circle id="arc" cx="50" cy="50" r="44" fill="none" stroke="#f5b014" stroke-width="10" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="0"/></svg>
-        <div class="num" id="num"></div></div>
-      <div class="answered" id="chips">${chips()}</div></div>`;
+  const head = `<div class="qcard ${q.image || q.kind === 'match' || q.kind === 'tf' ? 'compact' : ''}"><div class="qtext">${esc(q.text)}</div></div>`;
   const img = q.image ? `<div class="imgbox"><img src="${q.image}" alt=""></div>` : '';
   let body = '';
   if (q.kind === 'choice') {
@@ -912,7 +947,7 @@ function renderMain() {
     body = `<div class="mbody"><div class="mlist n${q.left.length} ${sizeCls(q.left)}">${q.left.map((t, i) => mrow(i, t, '<span class="qm">?</span>')).join('')}</div>
       <div class="mpool">${q.right.map((t, j) => `<span class="mpiece ${t.length > 22 ? 'xl' : t.length > 14 ? 'l' : ''}" data-j="${j}" style="animation-delay:${0.2 + j * 0.08}s">${esc(t)}</span>`).join('')}</div></div>`;
   }
-  app.innerHTML = qTop() + `<div class="qwrap ${S.phase === 'question' ? 'fade' : ''}">${head}${mid}${body}</div>`;
+  app.innerHTML = qHead(true) + `<div class="qwrap ${S.phase === 'question' ? 'fade' : ''}">${head}${body}</div>`;
   updateMain();
 }
 
@@ -1042,8 +1077,8 @@ function specialOverlay() {
     if (!LITE) confetti();
   }
   if (S.phase !== 'special' && ov) ov.remove();
-  const b = document.getElementById('spb');
-  if (b) b.innerHTML = S.special ? `<span class="spbadge">⭐ Spezialfrage ×${S.special.mult}</span>` : '';
+  const b = document.getElementById('qpts');
+  if (b) { const html = ptsPill(); if (b.innerHTML !== html) b.innerHTML = html; }
 }
 
 function tolText(q) {
