@@ -112,7 +112,7 @@ const errText = r => {
   const reason = r.data && r.data.error && (r.data.error.reason || r.data.error.message);
   if (r.status === 401) return 'Nicht angemeldet.';
   if (r.status === 403) return reason === 'PREMIUM_REQUIRED' ? 'Dafür braucht es Spotify Premium.' : 'Spotify erlaubt das nicht' + (reason ? ` (${reason})` : '') + '.';
-  if (r.status === 404) return 'Gerät nicht erreichbar – ist der Receiver an und im Netz?';
+  if (r.status === 404) return 'Gerät nicht erreichbar – ist es an und im Netz?' + (reason ? ` (Spotify: ${reason})` : '');
   return `Spotify-Fehler ${r.status}${reason ? ' (' + reason + ')' : ''}`;
 };
 
@@ -147,24 +147,38 @@ async function deviceId() {
   if (hit && hit.id !== cfg.device.id) { cfg.device.id = hit.id; save(); }
   return hit ? hit.id : null;
 }
+// Abspielen auf dem Gerät. Manche Geräte (z. B. Alexa/Echo, oder Receiver nach längerer Pause) lehnen „play“ ab,
+// solange sie nicht die aktive Spotify-Wiedergabe sind (404 „Device not found“). Dann erst die Wiedergabe auf das
+// Gerät übertragen („wecken“) und es nochmal versuchen.
+const OK = r => [200, 202, 204].includes(r.status);
+async function playOn(id, body) {
+  const q = `?device_id=${encodeURIComponent(id)}`;
+  let r = await api('PUT', '/me/player/play' + q, body);
+  for (let k = 0; k < 2 && r.status === 404; k++) {
+    if (k === 0) log('Gerät antwortet nicht – übertrage die Wiedergabe darauf …');
+    await api('PUT', '/me/player', { device_ids: [id], play: false });
+    await new Promise(res => setTimeout(res, 1500 + k * 1500));
+    r = await api('PUT', '/me/player/play' + q, body);
+  }
+  return r;
+}
 async function play(opts = {}) {
   const id = await deviceId();
   if (!id) { log(`${cfg.device ? cfg.device.name : 'Gerät'} nicht gefunden – ist es an?`); return { ok: false, text: 'Gerät nicht gefunden – ist der Receiver an?' }; }
-  const q = `?device_id=${encodeURIComponent(id)}`;
   // Nach einer Spotify-Musikfrage: die gemerkte Hintergrundmusik an derselben Stelle fortsetzen
   if (bgSaved) {
     const b = bgSaved; bgSaved = null; snippetPlayed = false;
     const body = b.context ? { context_uri: b.context, offset: { uri: b.item }, position_ms: b.pos } : { uris: [b.item], position_ms: b.pos };
-    const r = await api('PUT', '/me/player/play' + q, body);
-    if ([200, 202, 204].includes(r.status)) return { ok: true };
+    const r = await playOn(id, body);
+    if (OK(r)) return { ok: true };
     log('Hintergrundmusik nicht fortgesetzt: ' + errText(r));
   }
   // Weiterspielen; gibt es nichts zum Weiterspielen (oder ist es der Spielstart mit Playlist), die Playlist starten.
   // Lief zuletzt ein Fragen-Ausschnitt, nicht „weiter“ (das wäre der Rest des Fragen-Songs) – dann nur die Playlist.
   if (snippetPlayed && !cfg.playlist) return { ok: true, skipped: true };
-  let r = (opts.start || snippetPlayed) && cfg.playlist ? { status: 0 } : await api('PUT', '/me/player/play' + q);
+  let r = (opts.start || snippetPlayed) && cfg.playlist ? { status: 0 } : await playOn(id);
   snippetPlayed = false;
-  if (r.status !== 204 && r.status !== 202 && r.status !== 200 && cfg.playlist) r = await api('PUT', '/me/player/play' + q, { context_uri: cfg.playlist });
+  if (!OK(r) && cfg.playlist) r = await playOn(id, { context_uri: cfg.playlist });
   if ([200, 202, 204].includes(r.status)) return { ok: true };
   log('Abspielen ging nicht: ' + errText(r));
   return { ok: false, text: errText(r) };
@@ -193,14 +207,13 @@ function snippet(uri, opts, stillWanted = () => true) {
     if (!bgSaved && st.status === 200 && st.data && st.data.item && st.data.item.uri !== uri && (st.data.is_playing || pausedByUs))
       bgSaved = { context: st.data.context && st.data.context.uri || null, item: st.data.item.uri, pos: st.data.progress_ms || 0 };
     if (st.status === 200 && st.data && st.data.is_playing) await api('PUT', '/me/player/pause');
-    const q = `?device_id=${encodeURIComponent(id)}`;
     const n = opts.repeat || 1, len = (opts.dauer || 10) * 1000, gap = (opts.gap ?? 2.5) * 1000;
     snippetPlayed = true;
     log(`Musikfrage: ${uri} ab ${opts.start || 0} s, ${len / 1000} s${n > 1 ? `, ${n}×` : ''}`);
     for (let k = 0; k < n; k++) {
       if (!stillWanted()) break;
-      const r = await api('PUT', '/me/player/play' + q, { uris: [uri], position_ms: Math.round((opts.start || 0) * 1000) });
-      if (![200, 202, 204].includes(r.status)) { log('Musikfrage ging nicht: ' + errText(r)); return { ok: false }; }
+      const r = await playOn(id, { uris: [uri], position_ms: Math.round((opts.start || 0) * 1000) });
+      if (!OK(r)) { log('Musikfrage ging nicht: ' + errText(r)); return { ok: false }; }
       await wait(len);
       await api('PUT', '/me/player/pause');
       if (k < n - 1) await wait(gap);
