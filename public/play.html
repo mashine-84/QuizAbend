@@ -199,6 +199,11 @@
   .ib { border: none; background: rgba(255,255,255,.12); color: #fff; border-radius: 10px; min-width: 40px; height: 36px; font: inherit; font-size: 15px; font-weight: 800; }
   .ib.warn { background: #e5484d; padding: 0 10px; }
   .btn.danger { background: #e5484d; color: #fff; }
+  .repobox { background: rgba(255,255,255,.06); border-radius: 12px; padding: 10px 12px; margin: 8px 0 10px; word-break: break-all; }
+  .repobox small { display: block; color: var(--muted); margin-top: 2px; word-break: normal; }
+  .fieldlabel { display: block; font-weight: 800; font-size: 14px; color: var(--muted); margin: 14px 0 6px; }
+  .field { width: 100%; box-sizing: border-box; font: inherit; font-size: 16px; padding: 12px; border-radius: 12px; border: 2px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06); color: #fff; margin-bottom: 10px; }
+  .keybox { white-space: pre-wrap; word-break: break-all; font-size: 12px; background: rgba(0,0,0,.3); border-radius: 10px; padding: 10px; user-select: all; }
   .myaward { background: rgba(245,176,20,.15); border: 2px solid var(--c); border-radius: 14px; padding: 10px 14px; margin-bottom: 12px; font-size: 18px; }
   .myaward small { display: block; color: var(--muted); font-size: 14px; margin-top: 2px; }
   .histline { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(255,255,255,.06); border-radius: 12px; padding: 10px 12px; margin-top: 10px; font-size: 15px; }
@@ -554,6 +559,54 @@ async function sysAction(a) {
   lastKey = ''; render();
 }
 
+// ---------- Fragen-Repo: eigenes Git-Repo mit den Fragenpaketen ----------
+function repoSection(d) {
+  const r = d.repo || {}, busy = ui.repoBusy;
+  const when = r.updated ? new Date(r.updated).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+  const own = d.groups.flatMap(g => g.packs).filter(p => p.id.startsWith('_repo/'));
+  return `<h3>📚 Fragen-Repo</h3>
+    <p class="small">Die Fragenpakete kommen aus einem eigenen GitHub-Repo. „Update holen“ aktualisiert es mit. Wechselst du das Repo, wird die alte Kopie auf dem Pi gelöscht – im Repo selbst geht nichts verloren.</p>
+    ${r.url ? `<div class="repobox"><b>${esc(r.url.replace(/^https:\/\/github\.com\//, ''))}</b>
+      <small>${r.present ? `${own.length} ${own.length === 1 ? 'Paket' : 'Pakete'} · Stand ${esc(r.commit || when)}` : 'Noch nicht geladen'}</small></div>` : '<p class="small">Noch kein Fragen-Repo eingetragen – es gibt nur die eingebauten Testfragen.</p>'}
+    ${r.error ? `<div class="sysout bad">${esc(r.error)}</div>` : ''}
+    ${ui.repoMsg ? `<div class="sysout ${ui.repoMsg.ok ? '' : 'bad'}">${esc(ui.repoMsg.text)}</div>` : ''}
+    ${r.url ? `<button class="btn ghost sysb" onclick="repoDo('update')" ${busy ? 'disabled' : ''}><span class="${busy === 'update' ? 'spin' : ''}">${RELOAD_SVG}</span> ${busy === 'update' ? 'Lädt …' : 'Fragen aktualisieren'}</button>` : ''}
+    <label class="fieldlabel" for="repourl">${r.url ? 'Anderes Repo eintragen' : 'Repo-Adresse'}</label>
+    <input id="repourl" class="field" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://github.com/name/QuizAbend-Fragen" value="${esc(ui.repoUrl || '')}" oninput="ui.repoUrl = this.value">
+    <button class="btn" onclick="repoDo('set')" ${busy ? 'disabled' : ''}>${busy === 'set' ? 'Lädt …' : r.url ? 'Wechseln' : 'Laden'}</button>
+    ${r.url ? `<button class="btn danger sm" onclick="repoRemove(this)" ${busy ? 'disabled' : ''}>Fragen-Repo entfernen</button>` : ''}
+    <h3>🔑 Zugriff auf private Repos</h3>
+    ${r.publicKey ? `<p class="small">Diesen Schlüssel im Fragen-Repo auf GitHub unter <b>Settings › Deploy keys › Add deploy key</b> eintragen (Titel z. B. „QuizAbend-Pi“, <b>ohne</b> Schreibzugriff). Danach „Laden“ bzw. „Fragen aktualisieren“.</p>
+      <pre class="keybox" id="repokey">${esc(r.publicKey)}</pre>
+      <button class="btn ghost sm" onclick="copyKey()">📋 ${ui.keyCopied ? 'Kopiert ✓' : 'Schlüssel kopieren'}</button>`
+      : `<p class="small">Für ein privates Repo braucht der Pi einen eigenen Schlüssel. Er wird hier erzeugt und verlässt den Pi nie – du trägst nur den öffentlichen Teil auf GitHub ein.</p>
+      <button class="btn ghost" onclick="repoDo('key')" ${busy ? 'disabled' : ''}>🔑 Schlüssel erzeugen</button>`}`;
+}
+async function repoDo(action) {
+  if (action === 'set' && !(ui.repoUrl || '').trim()) { ui.repoMsg = { ok: false, text: 'Bitte zuerst eine Repo-Adresse eintragen.' }; lastKey = ''; render(); return; }
+  ui.repoBusy = action; ui.repoMsg = null; lastKey = ''; render();
+  const { data } = await post('/api/fragenrepo', { id: myId, action, url: ui.repoUrl });
+  ui.repoBusy = null;
+  if (data && data.packs) ui.packs = data.packs;
+  ui.repoMsg = !data ? { ok: false, text: 'Keine Antwort vom Pi' } : action === 'key' ? (data.ok ? null : data)
+    : data.ok ? { ok: true, text: action === 'set' ? (data.removed ? 'Fragen-Repo entfernt.' : 'Fragen geladen ✓') : data.changed ? 'Neue Fragen geladen ✓' : 'Schon auf dem neuesten Stand ✓' } : { ok: false, text: data.text || 'Hat nicht geklappt' };
+  if (action === 'set' && data && data.ok) ui.repoUrl = '';
+  lastKey = ''; render();
+}
+function repoRemove(btn) {
+  if (!btn.dataset.sure) { btn.dataset.sure = '1'; btn.textContent = 'Wirklich entfernen?'; return; }
+  ui.repoUrl = ''; ui.repoBusy = 'set';
+  post('/api/fragenrepo', { id: myId, action: 'set', url: '' }).then(({ data }) => { ui.repoBusy = null; if (data && data.packs) ui.packs = data.packs; ui.repoMsg = { ok: true, text: 'Fragen-Repo entfernt.' }; lastKey = ''; render(); });
+}
+function copyKey() {
+  const t = document.getElementById('repokey'); if (!t) return;
+  const ta = document.createElement('textarea'); ta.value = t.textContent; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, ta.value.length);
+  try { document.execCommand('copy'); } catch (_) {}
+  ta.remove();
+  ui.keyCopied = true; lastKey = ''; render(); setTimeout(() => { ui.keyCopied = false; lastKey = ''; render(); }, 2000);
+}
+
 // ---------- Philips Hue (Test) ----------
 async function hueCall(action, extra) {
   const { data } = await post('/api/hue', { id: myId, action, ...(extra || {}) });
@@ -669,6 +722,7 @@ function renderSettings() {
     ${c.pub && c.pub.on ? `<p class="small">Du bist Gamemaster: Nach jeder Frage löst du per Knopf auf und schaltest zur nächsten Frage weiter. Vor dem Start kannst du die Fragen planen.</p>
       <button class="btn ghost" onclick="openPlan()">📋 Fragen planen</button>` : ''}
     ${d.errors.length ? `<div class="errors"><b>⚠️ Fehler in Fragendateien</b>${d.errors.map(e => `<div><code>${esc(e.file)}</code><br>${esc(e.error)}</div>`).join('')}</div>` : ''}`;
+  else if (sec.id === 'fragen') body = repoSection(d);
   else if (sec.id === 'integ') body = hueSection() || '<p class="small">Keine Integrationen verfügbar.</p>';
   else body = `
     <h3>🔊 Sound</h3>
@@ -789,6 +843,7 @@ function renderModerator() {
 // Hamburger-Menü der Einstellungen
 const SECTIONS = [
   { id: 'game', icon: '🎲', title: 'Spieleinstellungen', sub: 'Frageblöcke, Spezialfrage, Pause' },
+  { id: 'fragen', icon: '📚', title: 'Fragen', sub: 'Fragen-Repo eintragen, wechseln, aktualisieren' },
   { id: 'integ', icon: '🧩', title: 'Integrationen', sub: 'Philips Hue' },
   { id: 'system', icon: '🛠️', title: 'Systemeinstellungen', sub: 'Sound, Update, Neustart, Ausschalten' },
 ];

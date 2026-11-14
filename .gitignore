@@ -16,3 +16,10 @@ hue.json
 hotspot.log
 hotspot-status.json
 hotspot-test
+
+# Fragen-Repo (Kopie, Einstellung, Schlüssel des Pi)
+fragen/_repo/
+fragen-quelle.json
+.fragen-key
+.fragen-key.pub
+.fragen-known_hosts

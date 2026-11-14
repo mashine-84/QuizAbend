@@ -5,7 +5,8 @@
 // ✗ Fehler: muss behoben werden (Exit-Code 1) · ⚠ Hinweis: bitte prüfen, darf aber bleiben, wenn es Absicht ist.
 // Kein Paket nötig – nur Node.js.
 const fs = require('fs'), path = require('path');
-const DIR = path.join(__dirname, 'fragen');
+// im QuizAbend-Repo: fragen/ (inkl. Kopie des Fragen-Repos unter fragen/_repo) – im Fragen-Repo selbst: dessen Hauptordner
+const DIR = fs.existsSync(path.join(__dirname, 'fragen')) ? path.join(__dirname, 'fragen') : __dirname;
 const filter = process.argv[2] || '';
 
 // Grenzen, damit Text auf Fernseher (720p) und Handy ohne Gedrängel passt
@@ -23,6 +24,7 @@ const files = [];
 (function walk(d) {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
     const f = path.join(d, e.name);
+    if (e.name.startsWith('.') || e.name === 'node_modules') continue;
     if (e.isDirectory()) walk(f);
     else if (e.name.toLowerCase().endsWith('.json') && f.includes(filter)) files.push(f);
   }
