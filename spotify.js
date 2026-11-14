@@ -183,12 +183,18 @@ async function play(opts = {}) {
   log('Abspielen ging nicht: ' + errText(r));
   return { ok: false, text: errText(r) };
 }
-async function pause() {
+// force: auch pausieren, wenn Spotify gerade auf einem anderen Gerät läuft (Test-Knopf)
+async function pause(opts = {}) {
   const st = await api('GET', '/me/player');
-  if (st.status === 204 || !st.data || !st.data.is_playing) return { ok: true, wasPlaying: false };   // läuft nichts: nichts zu tun
-  if (cfg.device && st.data.device && st.data.device.id !== cfg.device.id && st.data.device.name !== cfg.device.name) return { ok: true, wasPlaying: false };   // spielt woanders: nicht eingreifen
-  const r = await api('PUT', '/me/player/pause');
-  if ([200, 202, 204].includes(r.status)) return { ok: true, wasPlaying: true };
+  if (st.status === 401) return { ok: false, text: errText(st) };
+  if (st.status === 204 || !st.data || !st.data.is_playing) return { ok: true, wasPlaying: false, text: 'Es lief gerade nichts.' };   // läuft nichts: nichts zu tun
+  const on = st.data.device || {};
+  // Läuft es auf einem anderen Gerät, im Spiel nicht eingreifen. Erkannt wird das Gerät über ID oder Namen
+  // (die ID kann sich ändern, z. B. bei Alexa nach dem Übertragen).
+  const ours = !cfg.device || on.id === cfg.device.id || on.name === cfg.device.name;
+  if (!ours && !opts.force) { log(`Nicht pausiert: Spotify spielt gerade auf „${on.name || 'anderem Gerät'}“`); return { ok: true, wasPlaying: false, text: `Spotify spielt gerade auf „${on.name}“ – nicht angehalten.` }; }
+  const r = await api('PUT', '/me/player/pause' + (on.id ? `?device_id=${encodeURIComponent(on.id)}` : ''));
+  if (OK(r)) return { ok: true, wasPlaying: true };
   log('Pausieren ging nicht: ' + errText(r));
   return { ok: false, text: errText(r) };
 }
@@ -266,7 +272,7 @@ function status() {
     playlist: cfg.playlist || null, enabled: cfg.enabled !== false, blocked: !!env.hotspot(), log: logLines.slice(-30) };
 }
 function forget() { cfg = { clientId: cfg.clientId, enabled: true }; save(); want = current = null; log('Verbindung getrennt.'); return { ok: true }; }
-async function test(action) { return action === 'pause' ? pause() : play({ start: true }); }
+async function test(action) { return action === 'pause' ? pause({ force: true }) : play({ start: true }); }
 function start(e) { env = { ...env, ...e }; }
 
 module.exports = { start, status, setClientId, loginUrl, callback, devices, selectDevice, setPlaylist, enable, forget, test, onPhase, snippet, ready, trackUri };

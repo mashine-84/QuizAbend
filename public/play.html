@@ -719,7 +719,7 @@ function spotifySection() {
 async function spotifyDo(action, extra) {
   const { data } = await post('/api/spotify', { id: myId, action, ...(extra || {}) });
   if (data.status) ui.spotify.st = data.status;
-  ui.spotify.msg = data.ok ? (action === 'play' ? { ok: true, text: 'Spielt ✓' } : action === 'pause' ? { ok: true, text: 'Pausiert ✓' } : action === 'playlist' ? { ok: true, text: 'Gespeichert ✓' } : null)
+  ui.spotify.msg = data.ok ? (action === 'play' ? { ok: true, text: 'Spielt ✓' } : action === 'pause' ? { ok: true, text: data.wasPlaying ? 'Pausiert ✓' : (data.text || 'Es lief gerade nichts.') } : action === 'playlist' ? { ok: true, text: 'Gespeichert ✓' } : null)
     : { ok: false, text: data.text || 'Hat nicht geklappt.' };
   lastKey = ''; render();
   return data;
