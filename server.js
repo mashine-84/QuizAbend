@@ -36,6 +36,7 @@ const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
 
 const FRAGEN_DIR = path.join(__dirname, 'fragen');
+const fragenRepo = require('./fragenrepo');   // Fragen-Repo (eigenes Git-Repo, Kopie unter fragen/_repo)
 const SOUNDS_DIR = path.join(__dirname, 'sounds');
 const HOTSPOT_FILE = path.join(__dirname, 'hotspot.json'); // von raspberry-pi/setup.sh angelegt: {ssid, password}
 const UNDER_SYSTEMD = !!process.env.INVOCATION_ID;           // läuft als Dienst (Pi) -> Neustart nach Update automatisch
@@ -186,14 +187,20 @@ function loadPacks() {
     const levels = [1, 2, 3].map(l => questions.filter(q => q.level === l).length);
     found.push({ id: rel.replace(/\\/g, '/').replace(/\.json$/i, ''), group, name, questions, kinds, levels });
   };
-  if (fs.existsSync(FRAGEN_DIR)) {
-    for (const e of fs.readdirSync(FRAGEN_DIR, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name, 'de'))) {
+  // Gruppen = Ordner. Eingebaute Pakete liegen direkt in fragen/, die des Fragen-Repos in fragen/_repo/ (gleich aufgebaut)
+  const scan = base => {
+    const dir = path.join(FRAGEN_DIR, base);
+    if (!fs.existsSync(dir)) return;
+    for (const e of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name, 'de'))) {
+      if (e.name.startsWith('.') || e.name.startsWith('_')) continue;
       if (e.isDirectory()) {
-        for (const f of fs.readdirSync(path.join(FRAGEN_DIR, e.name)).sort((a, b) => a.localeCompare(b, 'de')))
-          if (f.toLowerCase().endsWith('.json')) addFile(e.name, path.join(e.name, f));
-      } else if (e.name.toLowerCase().endsWith('.json')) addFile('Sonstiges', e.name);
+        for (const f of fs.readdirSync(path.join(dir, e.name)).sort((a, b) => a.localeCompare(b, 'de')))
+          if (f.toLowerCase().endsWith('.json')) addFile(e.name, path.join(base, e.name, f));
+      } else if (e.name.toLowerCase().endsWith('.json')) addFile('Sonstiges', path.join(base, e.name));
     }
-  }
+  };
+  scan('');
+  scan('_repo');
   packs = found;
   packErrors = errors;
   if (errors.length) console.log('  ⚠️  Probleme in Fragendateien:\n' + errors.map(e => `     ${e.file}: ${e.error}`).join('\n'));
@@ -255,7 +262,7 @@ function packList() {
   }
   const all = packs.flatMap(p => p.questions);
   const played = all.filter(q => history[q.uid]).length;
-  return { groups, errors: packErrors, settings, summary: packSummary(), system: systemInfo(), history: { played, total: all.length } };
+  return { groups, errors: packErrors, settings, summary: packSummary(), system: systemInfo(), history: { played, total: all.length }, repo: fragenRepo.status() };
 }
 
 // Wahrscheinlichkeit der Schwierigkeitsstufen für Frage g (0-basiert) von total
@@ -1059,16 +1066,21 @@ function wifiInfo() {
 function runSystem(action) {
   return new Promise(resolve => {
     if (action === 'update') {
-      execFile('git', ['pull', '--ff-only'], { cwd: __dirname, timeout: 60000 }, (err, out, errOut) => {
+      execFile('git', ['pull', '--ff-only'], { cwd: __dirname, timeout: 60000 }, async (err, out, errOut) => {
         const text = (out + errOut).trim();
         if (err) return resolve({ ok: false, text: text || String(err) });
         const changed = !/already up to date|bereits aktuell/i.test(text);
+        // Fragen-Repo gleich mit aktualisieren (neue Fragen brauchen keinen Neustart)
+        const fr = await fragenRepo.update();
+        const frText = fr.none ? '' : fr.ok ? (fr.changed ? ' · Neue Fragen geladen ✓' : ' · Fragen aktuell ✓') : ' · Fragen: ' + fr.text;
+        if (fr.ok && fr.changed && !(changed && UNDER_SYSTEMD)) { loadPacks(); pubPlan = null; broadcast(); }
+        if (!changed) return resolve({ ok: true, changed: false, fragen: fr, text: text + frText });
         if (changed && UNDER_SYSTEMD) {
           systemMsg = { icon: 'update', text: 'Update installiert', sub: 'QuizAbend startet neu …' };
           broadcast();
           setTimeout(() => process.exit(0), 1500); // systemd startet den Dienst neu, Bildschirme laden automatisch neu
         }
-        resolve({ ok: true, changed, restart: changed && UNDER_SYSTEMD, text });
+        resolve({ ok: true, changed, restart: changed && UNDER_SYSTEMD, fragen: fr, text: text + frText });
       });
     } else if (action === 'reboot' || action === 'poweroff' || action === 'hotspottest') {
       if (!systemInfo().canPower) return resolve({ ok: false, text: 'Nur auf dem Raspberry Pi (als Dienst) möglich.' });
@@ -1295,6 +1307,17 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, packList());
   }
 
+  // Fragen-Repo: eintragen/wechseln (ersetzt die alte Kopie), aktualisieren, Schlüssel erzeugen (nur 👑)
+  if (req.method === 'POST' && p === '/api/fragenrepo') {
+    const body = await readBody(req);
+    if (body.id !== vipId()) return json(res, 403, { ok: false });
+    if (body.action === 'set' && state.phase !== 'lobby') return json(res, 409, { ok: false, text: 'Das Fragen-Repo lässt sich nur in der Lobby wechseln.' });
+    const r = body.action === 'set' ? await fragenRepo.set(body.url) : body.action === 'update' ? await fragenRepo.update()
+      : body.action === 'key' ? await fragenRepo.ensureKey() : { ok: false, text: 'Unbekannte Aktion' };
+    if (body.action !== 'key' && (r.ok || r.removed)) { loadPacks(); pubPlan = null; broadcast(); }
+    return json(res, 200, { ...r, packs: packList() });
+  }
+
   // Verlauf zurücksetzen: danach gelten alle Fragen wieder als neu (nur 👑, nur in der Lobby)
   if (req.method === 'POST' && p === '/api/verlauf') {
     const body = await readBody(req);
@@ -1389,6 +1412,9 @@ setInterval(() => { const j = JSON.stringify(joinInfo()); if (j !== lastJoin) { 
 // Optional zusätzlich auf einem zweiten Port lauschen (am Pi: 80 und weiterhin 3000)
 const EXTRA_PORT = Number(process.env.EXTRA_PORT) || 0;
 if (EXTRA_PORT && EXTRA_PORT !== PORT) http.createServer(server.listeners('request')[0]).listen(EXTRA_PORT, '0.0.0.0').on('error', () => {});
+// Fragen-Repo beim Start im Hintergrund auf den neuesten Stand bringen (fehlt die Kopie, wird sie geholt)
+if (fragenRepo.status().url) fragenRepo.update().then(r => { if (r.ok && r.changed) { loadPacks(); broadcast(); } if (!r.ok) console.log('  Fragen-Repo:', r.text); });
+
 server.listen(PORT, '0.0.0.0', () => {
   const tvUrl = `http://localhost:${PORT}/tv`;
   const s = packSummary();

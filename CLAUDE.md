@@ -22,7 +22,7 @@ Deutsches Party-Quiz: Der Fernseher (`public/tv.html`) zeigt das Spiel, die Hand
 Selbst erzeugt mit numpy/scipy (A-Dur/a-Moll, 128 BPM, gleiche Klangbausteine), Skripte in `sounds/standard/erzeugen*.py`, MP3 per ffmpeg. Eigene Dateien `sounds/<name>.*` ersetzen die Standards (gitignored). Neue Musik in die `MUSIC`-Liste in `server.js` eintragen.
 
 ## Fragen
-Format: `LIESMICH.md`. **Inhaltliche Regeln: `fragen/REGELN.md` – vor dem Schreiben von Fragen lesen.** Nach jeder Änderung an Fragen: `node pruefen.js` (0 Fehler nötig).
+Die Fragenpakete liegen in einem **eigenen Fragen-Repo** (`mashine-84/QuizAbend-Fragen`, privat), das der Pi nach `fragen/_repo/` klont (`fragenrepo.js`, Einstellung am Handy unter ⚙️ › 📚 Fragen). Hier liegen nur die Testpakete Soundcheck/Seh-Test. Neue Fragen also im Fragen-Repo anlegen – dort stehen `REGELN.md` (vor dem Schreiben lesen) und `pruefen.js` (0 Fehler nötig). Format: `LIESMICH.md`.
 
 ## Testen
 - Playwright mit `google-chrome`: Fernseher 1280×720 (`/tv?lite=1`), Handys 390×844.
