@@ -23,3 +23,6 @@ fragen-quelle.json
 .fragen-key
 .fragen-key.pub
 .fragen-known_hosts
+# Sichere Adresse (https): Zugangsdaten, acme.sh, Zertifikate
+https.json
+.https/

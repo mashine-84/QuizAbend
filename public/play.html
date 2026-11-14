@@ -219,6 +219,11 @@
   .btn.danger { background: #e5484d; color: #fff; }
   .repobox { background: rgba(255,255,255,.06); border-radius: 12px; padding: 10px 12px; margin: 8px 0 10px; word-break: break-all; }
   .repobox small { display: block; color: var(--muted); margin-top: 2px; word-break: normal; }
+  .hline { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; margin: 6px 0; color: var(--muted); }
+  .hline > span:first-child { width: 18px; flex: none; text-align: center; }
+  .hline.ok { color: #8ff0b5; } .hline.bad { color: #ffb4b6; }
+  .suffix { display: flex; align-items: center; gap: 6px; } .suffix .field { margin-bottom: 0; } .suffix span { color: var(--muted); font-weight: 700; white-space: nowrap; }
+  .steps { margin: 6px 0 4px 20px; padding: 0; font-size: 14px; color: var(--muted); line-height: 1.45; } .steps b { color: #fff; }
   .fieldlabel { display: block; font-weight: 800; font-size: 14px; color: var(--muted); margin: 14px 0 6px; }
   .field { width: 100%; box-sizing: border-box; font: inherit; font-size: 16px; padding: 12px; border-radius: 12px; border: 2px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06); color: #fff; margin-bottom: 10px; }
   .keybox { white-space: pre-wrap; word-break: break-all; font-size: 12px; background: rgba(0,0,0,.3); border-radius: 10px; padding: 10px; user-select: all; }
@@ -537,6 +542,7 @@ async function openSettings() {
   main.innerHTML = '<div class="center"><p>Lade Einstellungen …</p></div>';
   ui.packs = await fetch('/api/pakete').then(r => r.json()).catch(() => null);
   ui.hue = { st: (await hueCall('status')) || null };
+  ui.https = { st: ((await post('/api/https', { id: myId, action: 'status' })).data || {}).status || null };
   lastKey = ''; render();
 }
 function closeSettings() { ui.settings = false; lastKey = ''; render(); }
@@ -668,6 +674,65 @@ function renderShutdown() {
 }
 
 // ---------- Fragen-Repo: eigenes Git-Repo mit den Fragenpaketen ----------
+// ---------- Sichere Adresse (https) ----------
+const fmtDate = iso => new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+function httpsSection() {
+  const h = ui.https || {}, st = h.st;
+  if (!st) return '<p class="small">Konnte den Stand nicht laden.</p>';
+  const msg = h.msg ? `<div class="sysout ${h.msg.ok ? '' : 'bad'}">${esc(h.msg.text)}</div>` : '';
+  const intro = `<p class="small">Mit einer https-Adresse dürfen die Handys den Bildschirm sicher anlassen, und das Quiz läuft über eine verschlüsselte Verbindung. Kostenlos über <b>DuckDNS</b> und <b>Let's Encrypt</b> – der Pi kümmert sich um alles, auch ums Erneuern.</p>`;
+  if (st.hotspot) return intro + `<div class="sysout">📶 Der Pi hat gerade sein eigenes WLAN an (ohne Internet). Die sichere Adresse gibt es nur im Heim-WLAN – hier läuft das Quiz über <b>http://10.42.0.1</b>.</div>`;
+  const line = (ok, text) => `<div class="hline ${ok === true ? 'ok' : ok === false ? 'bad' : ''}"><span>${ok === true ? '✓' : ok === false ? '⚠️' : '…'}</span><span>${text}</span></div>`;
+  let state = '';
+  if (st.host) {
+    state = `<div class="repobox"><b>${esc(st.host)}</b><small>${st.active ? '🔒 Aktiv – die Handys nutzen jetzt diese Adresse' : st.busy ? esc(st.busy) : 'Noch nicht aktiv'}</small></div>`
+      + line(st.ip ? st.ip === st.lanIp : null, st.ip ? `Zeigt auf ${esc(st.ip)}${st.ip !== st.lanIp && st.lanIp ? ` (Pi hat jetzt ${esc(st.lanIp)} – wird gleich nachgetragen)` : ''}` : 'Adresse wird bei DuckDNS eingetragen')
+      + line(st.validTo ? true : st.error ? false : null, st.validTo ? `Zertifikat gültig bis ${fmtDate(st.validTo)} (wird automatisch erneuert)` : 'Zertifikat wird angefordert (1–3 Minuten)')
+      + (st.validTo ? line(st.dns ? st.dns.ok : null, st.dns && st.dns.ok ? 'Im Heimnetz erreichbar'
+        : st.dns ? `Der Router löst die Adresse nicht auf${st.dns.got ? ` (liefert ${esc(st.dns.got)})` : ''}. Bei einer Fritz!Box: <b>Heimnetz › Netzwerk › Netzwerkeinstellungen › DNS-Rebind-Schutz</b> → <b>${esc(st.host)}</b> eintragen, übernehmen, dann „Jetzt prüfen“.`
+        : 'Erreichbarkeit wird geprüft') : '')
+      + (st.error ? `<div class="sysout bad">${esc(st.error)}</div>` : '')
+      + `<button class="btn ghost sysb" onclick="httpsDo('check')" ${st.busy ? 'disabled' : ''}><span class="${st.busy ? 'spin' : ''}">${RELOAD_SVG}</span> ${st.busy ? 'Läuft …' : 'Jetzt prüfen'}</button>`;
+  }
+  const setup = `<h3>${st.host ? 'Ändern' : 'Einrichten'}</h3>
+    ${st.host ? '' : `<ol class="steps"><li>Am Handy <b>duckdns.org</b> öffnen und anmelden (z. B. mit Google).</li>
+      <li>Bei „sub domain“ einen Namen ausdenken, z. B. <b>meinquiz</b>, und „add domain“ tippen.</li>
+      <li>Den <b>token</b> oben auf der Seite kopieren und hier mit dem Namen eintragen.</li></ol>`}
+    <label class="fieldlabel" for="httpsname">Name bei DuckDNS</label>
+    <div class="suffix"><input id="httpsname" class="field" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="meinquiz" value="${esc(h.name ?? st.name ?? '')}" oninput="ui.https.name = this.value"><span>.duckdns.org</span></div>
+    <label class="fieldlabel" for="httpstoken">Token</label>
+    <input id="httpstoken" class="field" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${st.token ? 'gespeichert – nur zum Ändern eintragen' : 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'}" value="${esc(h.token || '')}" oninput="ui.https.token = this.value">
+    <button class="btn" onclick="httpsDo('set')" ${st.busy ? 'disabled' : ''}>${st.host ? 'Speichern' : 'Einrichten'}</button>
+    ${st.host ? `<button class="btn danger sm" onclick="httpsRemove(this)">Sichere Adresse entfernen</button>` : ''}`;
+  const logBox = st.log && st.log.length ? `<details class="wlog"><summary>Protokoll anzeigen</summary><pre>${esc(st.log.join('\n'))}</pre></details>` : '';
+  return intro + state + msg + setup + logBox
+    + `<p class="small">Wer schon mitspielt, landet nach dem Umstellen einmal neu in der Lobby (andere Adresse = neues Gerät). Im eigenen WLAN des Pi bleibt es bei http.</p>`;
+}
+let httpsPoll = null;
+async function httpsDo(action) {
+  const h = ui.https;
+  h.msg = null;
+  const { data } = await post('/api/https', { id: myId, action, name: h.name ?? h.st.name, token: h.token || '' });
+  if (data.status) h.st = data.status;
+  if (!data.ok) h.msg = { ok: false, text: data.text || 'Hat nicht geklappt.' };
+  else if (action === 'set') { h.token = ''; h.msg = { ok: true, text: 'Gespeichert – der Pi richtet die Adresse jetzt ein. Das dauert 1–3 Minuten.' }; }
+  lastKey = ''; render();
+  // während der Pi arbeitet, den Stand alle 3 Sekunden nachladen
+  clearTimeout(httpsPoll);
+  const poll = async () => {
+    if (!ui.settings || ui.section !== 'netz') return;
+    const r = await post('/api/https', { id: myId, action: 'status' });
+    if (r.data && r.data.status) { ui.https.st = r.data.status; if (!document.activeElement || !/^httpsname|httpstoken$/.test(document.activeElement.id)) { lastKey = ''; render(); } }
+    if (r.data && r.data.status && r.data.status.busy) httpsPoll = setTimeout(poll, 3000);
+    else if (ui.https.msg && ui.https.msg.ok) { ui.https.msg = null; lastKey = ''; render(); }   // fertig: Hinweis „dauert 1–3 Minuten“ weg
+  };
+  httpsPoll = setTimeout(poll, 1500);
+}
+function httpsRemove(btn) {
+  if (ui.confirm !== 'https') { ui.confirm = 'https'; btn.textContent = 'Wirklich entfernen? Nochmal tippen'; return; }
+  ui.confirm = null; ui.https.name = ''; httpsDo('remove');
+}
+
 function repoSection(d) {
   const r = d.repo || {}, busy = ui.repoBusy;
   const when = r.updated ? new Date(r.updated).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
@@ -743,6 +808,7 @@ function hueSection() {
       ${st.target ? (st.testing ? '<button class="btn danger" onclick="hueStopTest()">⏹ Test stoppen</button>' : '<button class="btn ghost" onclick="hueTest()">✨ Testen</button>') : ''}
       <button class="btn danger sm" onclick="hueForget()">${ui.confirm === 'hue' ? 'Wirklich trennen? Nochmal tippen' : 'Verbindung trennen'}</button>`;
   }
+  if (st.blocked) return `<h3>💡 Philips Hue <small>(Test)</small></h3><div class="sysout">📶 Der Pi hat gerade sein eigenes WLAN an. Philips Hue geht nur im Heim-WLAN – dort ist die Bridge erreichbar. Das Licht bleibt im Spiel unverändert.</div>`;
   return `<h3>💡 Philips Hue <small>(Test)</small></h3>${body}${msg}`;
 }
 async function hueRefresh(msg) { ui.hue.st = await hueCall('status'); ui.hue.msg = msg || null; lastKey = ''; render(); }
@@ -832,6 +898,7 @@ function renderSettings() {
     ${d.errors.length ? `<div class="errors"><b>⚠️ Fehler in Fragendateien</b>${d.errors.map(e => `<div><code>${esc(e.file)}</code><br>${esc(e.error)}</div>`).join('')}</div>` : ''}`;
   else if (sec.id === 'fragen') body = repoSection(d);
   else if (sec.id === 'integ') body = hueSection() || '<p class="small">Keine Integrationen verfügbar.</p>';
+  else if (sec.id === 'netz') body = httpsSection();
   else body = `
     <h3>🔊 Sound</h3>
     <label class="switch"><input type="checkbox" ${c.sound.on ? 'checked' : ''} onchange="cfg().sound.on = this.checked; saveCfg()"><span>Musik und Sounds am Fernseher</span></label>
@@ -953,6 +1020,7 @@ const SECTIONS = [
   { id: 'game', icon: '🎲', title: 'Spieleinstellungen', sub: 'Frageblöcke, Spezialfrage, Pause' },
   { id: 'fragen', icon: '📚', title: 'Fragen', sub: 'Fragen-Repo eintragen, wechseln, aktualisieren' },
   { id: 'integ', icon: '🧩', title: 'Integrationen', sub: 'Philips Hue' },
+  { id: 'netz', icon: '🔒', title: 'Sichere Adresse', sub: 'https im Heim-WLAN – Bildschirm bleibt an' },
   { id: 'system', icon: '🛠️', title: 'Systemeinstellungen', sub: 'Sound, Update, Neustart, Ausschalten' },
 ];
 function toggleMenu() { ui.menu = !ui.menu; lastKey = ''; render(); }

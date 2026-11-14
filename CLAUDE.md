@@ -1,6 +1,6 @@
 # QuizAbend – Hinweise für Claude
 
-Deutsches Party-Quiz: Der Fernseher (`public/tv.html`) zeigt das Spiel, die Handys (`public/play.html`) sind die Controller, für 2–8 Spieler. Server: `server.js` (Node.js ohne Abhängigkeiten, SSE). Philips Hue: `hue.js`. Läuft auf einem **Raspberry Pi 3B im Kiosk-Modus mit 720p**. Bedienungsanleitung für Menschen: `LIESMICH.md`.
+Deutsches Party-Quiz: Der Fernseher (`public/tv.html`) zeigt das Spiel, die Handys (`public/play.html`) sind die Controller, für 2–8 Spieler. Server: `server.js` (Node.js ohne Abhängigkeiten, SSE). Philips Hue: `hue.js`. Sichere Adresse (https über DuckDNS + Let's Encrypt): `zertifikat.js`. Läuft auf einem **Raspberry Pi 3B im Kiosk-Modus mit 720p**. Bedienungsanleitung für Menschen: `LIESMICH.md`.
 
 ## Zusammenarbeit
 - **Alles auf Deutsch**: Oberfläche, Kommentare, Commits, PR-Texte.
@@ -14,6 +14,7 @@ Deutsches Party-Quiz: Der Fernseher (`public/tv.html`) zeigt das Spiel, die Hand
 - **Ein AudioContext** für alles (HDMI am Pi kann nur einen Stream). Musik über `makeTrack(name)`, Einzeltöne über `shot(track, gain)`. Sich überlagernde Jingles übersteuern → vorher ausblenden.
 - **Hue-Bridge**: höchstens ~1 Befehl pro Sekunde für die Gruppe (`groupSend`-Warteschlange).
 - OLED-Fernseher: feste, helle Elemente vermeiden, wo es geht.
+- **Eigenes WLAN (Hotspot) = kein Internet:** Hue, https (und alles, was Internet oder das Heimnetz braucht) sind dort abgeschaltet; `hotspot()` im Server.
 
 ## Spielablauf (Phasen in `server.js`)
 `lobby → ident (Opener) → opening (Intro) → block → intro → [media | preview] → question → [special] → votes → reveal → … → scores → pause → ident → block … → scores → [tiebreak] → end`. Pub-Quiz-Modus: Host steuert „Frage auflösen“/„Nächste Frage“ (`locked`). `setPhase(phase, ms, next)`, `advance()` = überspringen.
@@ -29,5 +30,6 @@ Die Fragenpakete liegen in einem **eigenen Fragen-Repo** (`mashine-84/QuizAbend-
 - Server auf eigenem Port starten (`PORT=3456 node server.js`), danach beenden. Kurze Fragezeit zum Testen: `SEKUNDEN=8`.
 - Zustände lassen sich am TV nachstellen: `S` setzen, `lastKey = ''; render();` (vorher `EventSource` abklemmen, sonst überschreibt der Server).
 - Spiele lassen sich auch ohne Browser per API + SSE (`/api/join`, `/events?id=…`, `/api/answer`, `/api/advance`) durchspielen.
-- `einstellungen.json` vor Tests sichern und danach zurückspielen; `einstellungen.json`, `verlauf.json`, `hue.json`, `hotspot*` nie committen.
+- `einstellungen.json` vor Tests sichern und danach zurückspielen; `einstellungen.json`, `verlauf.json`, `hue.json`, `https.json`, `.https/`, `hotspot*` nie committen.
+- Eigenes WLAN simulieren: `HOTSPOT=1`. https testen: `HOST_IP`, `DUCKDNS_URL`, `ACME_REPO` (Fake-acme.sh) und `HTTPS_PORT` setzen – Let's Encrypt ist im Test nicht erreichbar.
 - Ehrlich berichten, was getestet wurde – was nur am Pi/Fernseher/Handy prüfbar ist, so benennen.
