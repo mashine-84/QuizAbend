@@ -16,9 +16,23 @@ let fehler = 0;
 const ok = (bed, text) => { console.log((bed ? '  ✓ ' : '  ✗ ') + text); if (!bed) fehler++; };
 
 // Kopie ohne persönliche Dateien (Einstellungen, Verlauf, Hue, Fragen-Repo-Zugang)
-const OHNE = new Set(['.git', 'node_modules', 'einstellungen.json', 'verlauf.json', 'hue.json', 'fragen-quelle.json', '.fragen-key', '.fragen-key.pub', '.fragen-known_hosts']);
+const OHNE = new Set(['.git', 'node_modules', 'einstellungen.json', 'verlauf.json', 'hue.json', 'fragen-quelle.json', '.fragen-key', '.fragen-key.pub', '.fragen-known_hosts', '_repo']);
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'quizabend-'));
 fs.cpSync(ROOT, TMP, { recursive: true, filter: src => !OHNE.has(path.basename(src)) && !src.startsWith(path.join(ROOT, 'test')) });
+
+// Eigenes kleines Testpaket: Die echten Fragen liegen im Fragen-Repo, im App-Repo gibt es nur Medien-Testpakete.
+// Der Test braucht aber alle Fragearten – und Schätzfragen fürs Stechen.
+const testpaket = {
+  paket: 'Rauchtest',
+  fragen: [
+    ...[1, 2, 3, 4].map(i => ({ kategorie: 'Test', frage: `Testfrage ${i}?`, antworten: ['Richtig', 'Falsch A', 'Falsch B', 'Falsch C'], schwierigkeit: 1 + i % 3 })),
+    ...[1, 2, 3, 4, 5, 6].map(i => ({ kategorie: 'Test', frage: `Schätzfrage ${i}?`, schaetzen: i * 100, schwierigkeit: 1 + i % 3 })),
+    ...[1, 2].map(i => ({ kategorie: 'Test', frage: `Zuordnung ${i}?`, zuordnen: { A: '1', B: '2', C: '3' }, schwierigkeit: 2 })),
+    ...[1, 2].map(i => ({ kategorie: 'Test', frage: 'Welche Behauptungen sind richtig, welche falsch?', behauptungen: [[`Aussage ${i}a`, true], [`Aussage ${i}b`, false], [`Aussage ${i}c`, true]], schwierigkeit: 2 })),
+  ],
+};
+fs.mkdirSync(path.join(TMP, 'fragen', 'Rauchtest'), { recursive: true });
+fs.writeFileSync(path.join(TMP, 'fragen', 'Rauchtest', 'Rauchtest.json'), JSON.stringify(testpaket, null, 2));
 
 let log = '';
 const srv = spawn(process.execPath, ['server.js'], { cwd: TMP, env: { ...process.env, PORT: String(PORT), NO_BROWSER: '1', SEKUNDEN: '5' } });
