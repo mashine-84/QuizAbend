@@ -243,7 +243,7 @@ Der Pi trägt dann seine Heimnetz-IP bei DuckDNS ein, holt das Zertifikat (dafü
 - Name, Token und Zertifikat liegen in `https.json` und `.https/` (nicht im Git).
 
 ## 🎵 Spotify
-Während des Spiels läuft deine Spotify-Musik auf einem Spotify-Connect-Gerät im Heimnetz (z. B. dem Receiver). Das Quiz pausiert Spotify bei Opener, Intro, Blockpause und Siegerehrung sowie solange bei Musik- und Filmfragen Ton oder Video läuft – danach geht es weiter. Der Quiz-Ton bleibt am Fernseher.
+Während des Spiels läuft deine Spotify-Musik auf einem Spotify-Connect-Gerät im Heimnetz (z. B. dem Receiver). Das Quiz pausiert Spotify bei Opener, Intro, Blockseite, Blockpause und Siegerehrung sowie solange bei Musik- und Filmfragen Ton oder Video läuft – danach geht es weiter. Der Quiz-Ton bleibt am Fernseher.
 
 Braucht **Spotify Premium**, eine kostenlose eigene Spotify-App (developer.spotify.com) und die **sichere Adresse** (https). Nur im Heim-WLAN. Einrichten am Handy des 👑 unter ⚙️ › 🧩 Integrationen › 🎵 Spotify.
 

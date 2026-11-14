@@ -682,7 +682,7 @@ function spotifySection() {
   if (!st) return '';
   const msg = sp.msg ? `<div class="sysout ${sp.msg.ok ? '' : 'bad'}">${esc(sp.msg.text)}</div>` : '';
   const head = `<h3>🎵 Spotify</h3>`;
-  const intro = `<p class="small">Musik von Spotify läuft während des Spiels auf deinem Gerät (z. B. dem Receiver). Bei Opener, Intro, Blockpause und Siegerehrung spielt die Quiz-Musik – dann pausiert Spotify, ebenso solange bei Musik- und Filmfragen Ton oder Video läuft. Danach geht es weiter.</p>`;
+  const intro = `<p class="small">Musik von Spotify läuft während des Spiels auf deinem Gerät (z. B. dem Receiver). Bei Opener, Intro, Blockseite, Blockpause und Siegerehrung spielt die Quiz-Musik – dann pausiert Spotify, ebenso solange bei Musik- und Filmfragen Ton oder Video läuft. Danach geht es weiter.</p>`;
   if (st.blocked) return head + `<div class="sysout">📶 Der Pi hat gerade sein eigenes WLAN an (ohne Internet). Spotify geht nur im Heim-WLAN.</div>`;
   if (!st.https) return head + intro + `<div class="sysout">🔒 Für die Anmeldung bei Spotify braucht es die sichere Adresse (https). Richte sie zuerst ein – Spotify leitet nach dem Login nur an https-Adressen zurück.</div>
     <button class="btn ghost" onclick="showSection('netz')">🔒 Zur sicheren Adresse</button>`;
