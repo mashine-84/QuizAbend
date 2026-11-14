@@ -286,6 +286,10 @@
 
   /* Soundcheck */
   .iicon.sc { animation: pulse 1.2s ease-in-out infinite; }
+  /* Spotify-Musikfrage: Spotify-Grün als Erkennungsfarbe */
+  .spot { color: #1ed760 !important; }
+  .eq.spot i { background: #1ed760 !important; }
+  .pbar.spot i { background: #1ed760 !important; }
   .eq { display: flex; gap: .8vw; align-items: flex-end; height: 10vh; margin-top: 2vh; }
   .eq i { width: 1.6vw; height: 100%; background: var(--c); border-radius: .4vw; transform-origin: bottom; animation: eq .9s ease-in-out infinite alternate; }
   @keyframes eq { from { transform: scaleY(.15); } to { transform: scaleY(1); } }
@@ -493,6 +497,7 @@ function ptsPill() {
 function qType(q) {
   const t = (icon, text) => `<span class="qico">${icon}</span>${text}`;
   if (q.tiebreak) return t('⚔️', 'Stechen um Platz 1');
+  if (q.brand === 'spotify') return t(q.icon || '🎵', `<span class="spot">${esc(q.label)}</span>`);
   return q.label ? t(q.icon || '', esc(q.label)) : t('❓', 'Quizfrage');
 }
 function qSub() {
@@ -537,7 +542,7 @@ function render() {
   if (S.phase === 'tiebreak') return fresh ? renderTiebreak() : null;
   if (S.phase === 'pause') return fresh ? renderBlockPause() : null;
   if (stage === 'intro') return fresh ? renderIntro() : null;
-  if (stage === 'media') return fresh ? (S.question.flash ? renderFlash() : S.question.audio ? renderAudio() : renderVideo()) : null;
+  if (stage === 'media') return fresh ? (S.question.flash ? renderFlash() : S.question.audio ? renderAudio() : S.question.spotify ? renderSpotify() : renderVideo()) : null;
   if (stage === 'preview') return fresh ? renderPreview() : null;
   if (inQ) return fresh ? renderMain() : updateMain();
   { const ov = document.getElementById('special'); if (ov && S.phase !== 'special') ov.remove(); }
@@ -724,7 +729,7 @@ const mrow = (i, t, right, delay) => `<div class="mrow" id="mrow${i}" style="ani
 function renderIntro() {
   const q = S.question;
   app.innerHTML = qHead(false) + `<div class="intro">
-    <div class="iicon">${q.icon || '❓'}</div><div class="ilabel">${esc(q.label)}</div>
+    <div class="iicon">${q.icon || '❓'}</div><div class="ilabel ${q.brand === 'spotify' ? 'spot' : ''}">${esc(q.label)}</div>
     <div class="icat">${esc(q.category)}</div><div class="inum" id="inum"></div></div>`;
 }
 
@@ -920,6 +925,28 @@ async function playAudio(url, o) {
     b.style.width = Math.min(100, el / total * 100) + '%';
     const r = document.getElementById('arep');
     if (r) { const k = Math.min(n - 1, Math.floor(Math.max(0, el) / (len + GAP))), inGap = el - k * (len + GAP) > len && k < n - 1;
+      r.textContent = inGap ? `Pause … gleich das ${k + 2}. Mal` : `${k + 1}. Mal von ${n}`; }
+  }, 200);
+}
+
+// ---------- Spotify-Musikfrage: der Ausschnitt läuft auf dem Spotify-Gerät (Receiver), hier nur die Anzeige ----------
+function renderSpotify() {
+  const q = S.question, o = q.audioOpts || {}, key = S.qNum;
+  const n = o.repeat || 1, len = o.dauer || 10, GAP = o.gap || 2.5, total = n * len + (n - 1) * GAP;
+  app.innerHTML = `<div class="intro">
+    <div class="iicon sc">🎵</div><div class="ilabel spot">Hör genau hin!</div>
+    <div class="icat">Läuft über Spotify</div>
+    <div class="eq spot">${Array.from({ length: 9 }, (_, i) => `<i style="animation-delay:${i * 0.11}s"></i>`).join('')}</div>
+    <div class="pbar wide spot"><i id="apbar" style="width:0%"></i></div>
+    ${n > 1 ? `<div class="icat" id="arep">1. Mal von ${n}</div>` : ''}</div>`;
+  const t0 = Date.now() + 700;   // Spotify braucht einen Moment, bis der Ton kommt
+  const tick = setInterval(() => {
+    const b = document.getElementById('apbar');
+    if (!b || S.phase !== 'media' || S.qNum !== key) { clearInterval(tick); return; }
+    const el = Math.max(0, (Date.now() - t0) / 1000);
+    b.style.width = Math.min(100, el / total * 100) + '%';
+    const r = document.getElementById('arep');
+    if (r) { const k = Math.min(n - 1, Math.floor(el / (len + GAP))), inGap = el - k * (len + GAP) > len && k < n - 1;
       r.textContent = inGap ? `Pause … gleich das ${k + 2}. Mal` : `${k + 1}. Mal von ${n}`; }
   }, 200);
 }

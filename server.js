@@ -36,10 +36,10 @@ const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
 
 const FRAGEN_DIR = path.join(__dirname, 'fragen');
-const fragenRepo = require('./fragenrepo');
-const zertifikat = require('./zertifikat');
-const spotify = require('./spotify');         // Spotify Connect: Musik auf einem Gerät im Heimnetz, Pause/Weiter passend zum Spiel   // sichere Adresse (https) im Heim-WLAN: DuckDNS + Let's Encrypt
-const HTTPS_PORT = Number(process.env.HTTPS_PORT) || 443;   // Fragen-Repo (eigenes Git-Repo, Kopie unter fragen/_repo)
+const fragenRepo = require('./fragenrepo');   // Fragen-Repo (eigenes Git-Repo, Kopie unter fragen/_repo)
+const zertifikat = require('./zertifikat');   // sichere Adresse (https) im Heim-WLAN: DuckDNS + Let's Encrypt
+const spotify = require('./spotify');         // Spotify Connect: Hintergrundmusik passend zum Spiel, Spotify-Musikfragen
+const HTTPS_PORT = Number(process.env.HTTPS_PORT) || 443;
 const SOUNDS_DIR = path.join(__dirname, 'sounds');
 const HOTSPOT_FILE = path.join(__dirname, 'hotspot.json'); // von raspberry-pi/setup.sh angelegt: {ssid, password}
 const UNDER_SYSTEMD = !!process.env.INVOCATION_ID;           // läuft als Dienst (Pi) -> Neustart nach Update automatisch
@@ -124,10 +124,18 @@ function normalizeQuestion(q, dir, packName, packLevel) {
     base.video = resolveImage(dir, String(q.video), 'videos', VIDEO_TYPES);
     if (!base.video) throw new Error(`Video "${q.video}" nicht gefunden (mp4/webm in den Ordner "videos" neben der Datei legen)`);
   }
-  if (q.audio) {
-    base.audio = resolveImage(dir, String(q.audio), 'audio', AUDIO_TYPES);
-    if (!base.audio) throw new Error(`Audio "${q.audio}" nicht gefunden (mp3/m4a/ogg/wav in den Ordner "audio" neben der Datei legen)`);
-    const start = Number(q.start ?? 0), dauer = q.dauer === undefined ? null : Number(q.dauer);
+  if (q.spotify && (q.audio || q.video)) throw new Error('"spotify" geht nicht zusammen mit "audio" oder "video"');
+  if (q.spotify) {
+    // Spotify-Musikfrage: Ausschnitt eines Songs läuft auf dem Spotify-Gerät (z. B. Receiver), nicht am Fernseher
+    base.spotify = spotify.trackUri(q.spotify);
+    if (!base.spotify) throw new Error('"spotify" muss ein Link zu einem Song sein (in Spotify: Song › Teilen › Link kopieren)');
+    if (q.rueckwaerts) throw new Error('"rueckwaerts" geht bei Spotify-Fragen nicht');
+  }
+  if (q.audio || q.spotify) {
+    if (q.audio) base.audio = resolveImage(dir, String(q.audio), 'audio', AUDIO_TYPES);
+    if (q.audio && !base.audio) throw new Error(`Audio "${q.audio}" nicht gefunden (mp3/m4a/ogg/wav in den Ordner "audio" neben der Datei legen)`);
+    const start = Number(q.start ?? 0), dauer = q.dauer === undefined ? (q.spotify ? 10 : null) : Number(q.dauer);   // Spotify: Standard 10 s
+    if (q.spotify && !(dauer <= 30)) throw new Error('"dauer" darf bei Spotify-Fragen höchstens 30 Sekunden sein');
     if (!(start >= 0) || (dauer !== null && !(dauer > 0))) throw new Error('"start" und "dauer" müssen Sekunden (Zahlen) sein');
     // "wiederholen": so oft ist der Ausschnitt zu hören (1–5), z. B. 3 bei einer Sekunde aus einem Song
     const repeat = q.wiederholen === undefined ? 1 : Number(q.wiederholen);
@@ -239,7 +247,9 @@ function cleanSettings(input) {
 }
 
 const blockPacks = b => packs.filter(p => !b.disabled.includes(p.id));
-const blockPool = b => blockPacks(b).flatMap(p => p.questions);
+// Spotify-Musikfragen nur, wenn Spotify verbunden ist und das Gerät gewählt (nicht im eigenen WLAN)
+const usable = q => !q.spotify || (spotify.ready() && !hotspot());
+const blockPool = b => blockPacks(b).flatMap(p => p.questions).filter(usable);
 
 function blockSummary(b) {
   const ps = blockPacks(b), groups = [...new Set(ps.map(p => p.group))];
@@ -350,7 +360,7 @@ function hueUpdate() {
 function spotifyUpdate() {
   if (hotspot()) return;
   const q = currentQuestion();
-  spotify.onPhase(state.phase, { sound: !!(q && (q.audio || q.video)) });
+  spotify.onPhase(state.phase, { sound: !!(q && (q.audio || q.video || q.spotify)) });
 }
 
 function prepareQuestion(q) {
@@ -377,6 +387,7 @@ function prepareQuestion(q) {
   if (q.flash) { out.label = 'Merkbild' + suffix; out.icon = '📸'; }
   else if (q.video) { out.label = 'Seh-Test' + suffix; out.icon = '👀'; }
   else if (q.audio) { out.label = 'Soundcheck' + suffix; out.icon = '🎧'; }
+  else if (q.spotify) { out.label = 'Spotify' + suffix; out.icon = '🎵'; out.brand = 'spotify'; }
   else if (q.kind === 'match') { out.label = 'Zuordnung'; out.icon = '🔗'; }
   else if (q.kind === 'tf') { out.label = 'Richtig oder falsch'; out.icon = '⚖️'; }
   else if (q.kind === 'estimate') { out.label = q.image ? 'Bilderrätsel · Schätzfrage' : 'Schätzfrage'; out.icon = q.image ? '🖼️' : '🔢'; }
@@ -511,14 +522,15 @@ function openingInfo(questions) {
   questions.forEach(q => { blocks[q.block] = (blocks[q.block] || 0) + 1; });
   const cats = shuffle([...new Set(questions.map(q => q.category).filter(Boolean))]);
   const T = [
-    ['choice', '❓', 'Quizfragen', q => q.kind === 'choice' && !q.image && !q.video && !q.audio],
+    ['choice', '❓', 'Quizfragen', q => q.kind === 'choice' && !q.image && !q.video && !q.audio && !q.spotify],
     ['image', '🖼️', 'Bilderrätsel', q => q.image && !q.flash && !q.video && !q.audio],
     ['flash', '📸', 'Merkbild', q => q.flash],
-    ['estimate', '🔢', 'Schätzfragen', q => q.kind === 'estimate' && !q.image && !q.video && !q.audio],
-    ['match', '🔗', 'Zuordnung', q => q.kind === 'match' && !q.video && !q.audio],
-    ['tf', '⚖️', 'Richtig oder falsch', q => q.kind === 'tf' && !q.video && !q.audio],
+    ['estimate', '🔢', 'Schätzfragen', q => q.kind === 'estimate' && !q.image && !q.video && !q.audio && !q.spotify],
+    ['match', '🔗', 'Zuordnung', q => q.kind === 'match' && !q.video && !q.audio && !q.spotify],
+    ['tf', '⚖️', 'Richtig oder falsch', q => q.kind === 'tf' && !q.video && !q.audio && !q.spotify],
     ['video', '👀', 'Seh-Test', q => q.video],
     ['audio', '🎧', 'Soundcheck', q => q.audio],
+    ['spotify', '🎵', 'Spotify', q => q.spotify],
   ];
   const types = T.filter(([, , , f]) => questions.some(f)).map(([id, icon, label]) => ({ id, icon, label }));
   return {
@@ -552,7 +564,20 @@ function afterIntro() {
   const q = currentQuestion();
   if (q.flash) setPhase('media', q.flash * 1000, afterMedia);             // Merkbild: Bild nur kurz zeigen, dann die Frage
   else if (q.video || q.audio) setPhase('media', MEDIA_MAX_MS, afterMedia); // erst Video/Audio, dann die Frage
+  else if (q.spotify) playSpotifySnippet(q);
   else afterMedia();
+}
+
+// Spotify-Musikfrage: Ausschnitt auf dem Spotify-Gerät, danach die Frage. Sicherheitsnetz: Gesamtdauer + 10 s
+function playSpotifySnippet(q) {
+  const o = q.audioOpts, n = o.repeat || 1, total = (n * o.dauer + (n - 1) * o.gap) * 1000;
+  const key = state.idx;
+  setPhase('media', total + 10000, afterMedia);
+  spotify.snippet(q.spotify, o, () => state.idx === key && state.phase === 'media' && !state.frozen).then(r => {
+    if (state.idx !== key || state.phase !== 'media' || state.frozen) return;
+    if (!r.ok) console.log('  Spotify-Musikfrage ging nicht – weiter mit der Frage');
+    afterMedia();
+  });
 }
 
 function afterMedia() {
@@ -869,7 +894,7 @@ function topTied() {
 // Schätzfrage aus allen geladenen Paketen: möglichst die schwierigste, die in diesem Spiel noch nicht dran war
 function pickTiebreakQuestion() {
   const used = new Set(state.questions.map(q => q.uid));
-  const all = packs.flatMap(p => p.questions).filter(q => q.kind === 'estimate' && !q.video && !q.audio && !q.flash && !used.has(q.uid));
+  const all = packs.flatMap(p => p.questions).filter(q => q.kind === 'estimate' && !q.video && !q.audio && !q.spotify && !q.flash && !used.has(q.uid));
   for (const lv of [3, 2, 1]) {
     const c = fresher(all.filter(q => (q.level || 1) === lv));
     if (c.length) return c[Math.floor(Math.random() * c.length)];
@@ -937,7 +962,8 @@ function baseView() {
     const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category, tiebreak: !!q.tiebreak }; // Schwierigkeit wird im Spiel nicht verraten …
     // … außer bei Punkten nach Schwierigkeit: dann steht oben, was die Frage bringt (Zuordnen: 1 Punkt je Paar)
     if ((state.scoring || settings.scoring) === 'level') { vq.points = stepCount(q) ? 1 : (q.level || 1); vq.perPair = q.kind === 'match'; vq.perItem = q.kind === 'tf'; }
-    if (ph === 'media') { vq.video = q.video || null; vq.audio = q.audio || null; vq.audioOpts = q.audioOpts || null; vq.flash = q.flash ? q.image : null; }
+    if (ph === 'media') { vq.video = q.video || null; vq.audio = q.audio || null; vq.spotify = !!q.spotify; vq.audioOpts = q.audioOpts || null; vq.flash = q.flash ? q.image : null; }
+    if (q.brand) vq.brand = q.brand;
     if (ph !== 'intro' && ph !== 'media' && q.kind === 'match') vq.left = q.left;
     if (['question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
       vq.text = q.text; vq.image = q.flash ? null : q.image;   // Merkbild: in der Frage kein Bild mehr
