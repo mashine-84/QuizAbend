@@ -28,6 +28,7 @@
   .btn.ghost { background: rgba(255,255,255,.12); color: #fff; }
   .err { color: #ff8787; font-weight: 700; min-height: 1.4em; }
   .big { font-size: 72px; line-height: 1; }
+  .sdnum { font-weight: 800; font-variant-numeric: tabular-nums; }
   .grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 12px; }
   .ans { border: none; border-radius: 18px; color: #fff; font: inherit; font-weight: 800; font-size: 21px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 10px; box-shadow: 0 6px 0 rgba(0,0,0,.3); cursor: pointer; text-shadow: 0 1px 2px rgba(0,0,0,.25); }
   .ans .shape { font-size: 46px; line-height: 1; }
@@ -253,6 +254,7 @@ const fmt = n => Math.abs(n) >= 10000 ? n.toLocaleString('de-DE') : String(n).re
 let myId = localStorage.getItem('quizId');
 let serverVersion = null, lastQ = null, lastPh = null;
 let S = null, es = null, lastKey = '', joining = false, sending = false;
+let shutdown = null;                             // Ausschalten läuft: { since, goneAt, misses, timer }
 let ui = { settings: false, packs: null, edit: null, avatar: null, host: false, renaming: null, sys: null, confirm: null }; // Einstellungen (nur 👑), Emoji-Wahl
 let est = '';                                  // Schätzfrage: Eingabe
 let match = { sel: [], active: 0 };
@@ -264,11 +266,12 @@ function connect() {
   es.onmessage = e => {
     document.getElementById('offline').style.display = 'none';
     S = JSON.parse(e.data);
+    if (S.system && S.system.power === 'off') startShutdown(); else if (shutdown && !S.system) shutdown = null; // Ausschalten fehlgeschlagen
     if (serverVersion && S.version && S.version !== serverVersion) return location.reload(); // neue Version
     serverVersion = S.version || serverVersion;
     render();
   };
-  es.onerror = () => { document.getElementById('offline').style.display = 'block'; };
+  es.onerror = () => { if (!shutdown) document.getElementById('offline').style.display = 'block'; };
 }
 connect();
 
@@ -348,6 +351,7 @@ function qline(extra) {
 }
 
 function render() {
+  if (shutdown) return renderShutdown();
   if (S.phase === 'scores' && lastPh !== 'scores') scoresSince = Date.now();
   header();
   const me = S.me;
@@ -557,6 +561,45 @@ async function sysAction(a) {
     ? { ok: data.ok, text: data.ok ? (data.changed ? (data.restart ? 'Update installiert – QuizAbend startet neu.' : 'Update geladen – bitte Server neu starten.') : 'Schon auf dem neuesten Stand ✓') : 'Update fehlgeschlagen: ' + (data.text || '') }
     : { ok: data.ok, text: data.ok ? 'OK' : (data.text || 'Hat nicht geklappt (fehlen sudo-Rechte?)') };
   lastKey = ''; render();
+}
+
+// ---------- Ausschalten: Bescheid geben, wann der Stecker raus kann ----------
+// Der Server verschwindet früh beim Herunterfahren; danach schreibt der Pi noch auf die SD-Karte.
+// Darum: erst warten, bis er nicht mehr antwortet, dann noch SHUTDOWN_REST_S Sekunden Sicherheitszeit.
+const SHUTDOWN_REST_S = 20;
+function startShutdown() {
+  if (shutdown) return;
+  shutdown = { since: Date.now(), goneAt: 0, misses: 0 };
+  lastKey = '';
+  const ping = async () => {
+    if (!shutdown) return;
+    if (!shutdown.goneAt) {
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 2500);
+      let alive = false;
+      try { await fetch('/?ping=' + Date.now(), { cache: 'no-store', signal: ctl.signal }); alive = true; } catch (_) {}
+      clearTimeout(t);
+      if (!shutdown) return;
+      shutdown.misses = alive ? 0 : shutdown.misses + 1;
+      if (shutdown.misses >= 2) { shutdown.goneAt = Date.now(); if (es) es.close(); }   // zweimal keine Antwort: Server ist weg
+    }
+    renderShutdown();
+    if (!shutdown.goneAt || Date.now() - shutdown.goneAt < SHUTDOWN_REST_S * 1000) shutdown.timer = setTimeout(ping, 1000);
+    else if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
+  };
+  ping();
+}
+function renderShutdown() {
+  const sd = shutdown;
+  document.getElementById('offline').style.display = 'none';
+  if (!sd.goneAt) {
+    const slow = Date.now() - sd.since > 90000;
+    return renderInfo('🔌', 'Pi fährt herunter …', slow
+      ? 'Der Pi antwortet immer noch. Warte noch etwas – wenn sich nach ein paar Minuten nichts tut, über ⚙️ erneut ausschalten.'
+      : 'Stecker noch drin lassen. Ich sage Bescheid, wann er raus kann.');
+  }
+  const left = Math.max(0, SHUTDOWN_REST_S - Math.floor((Date.now() - sd.goneAt) / 1000));
+  if (left > 0) return renderInfo(`<span class="sdnum">${left}</span>`, 'Gleich geschafft …', 'Der Pi speichert noch die letzten Daten. Stecker noch drin lassen.');
+  renderInfo('✅', 'Jetzt Stecker ziehen', 'Der Pi ist aus. Das grüne Lämpchen am Pi bleibt jetzt dunkel.<br><br>Zum Einschalten einfach den Stecker wieder rein – das Quiz startet von selbst.');
 }
 
 // ---------- Fragen-Repo: eigenes Git-Repo mit den Fragenpaketen ----------
