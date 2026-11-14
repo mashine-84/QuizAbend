@@ -69,7 +69,7 @@ Ein Paket sollte alle drei Stufen enthalten, grob **40 % / 40 % / 20 %**. Leicht
 - **Merkbild** (`"merken"`): 5–10 Sekunden reichen. Die Frage muss sich auf etwas beziehen, das man **sehen** konnte.
 - **Audio**: Ausschnitte mit `"start"`/`"dauer"`; sehr kurze Ausschnitte (1–2 s) mit `"wiederholen": 2` oder `3`.
 
-## 4. Interne Pakete (z. B. „blau direkt“)
+## 4. Pakete über Firmen, Vereine oder Personen
 - Nur Wissen, das **öffentlich** ist (Website, Impressum, Pressemitteilungen) – keine internen Zahlen, Kundendaten oder vertraulichen Infos.
 - Zahlen (Umsatz, Mitarbeitende, Verträge) **immer mit Jahr** in der Frage und mit Quelle prüfen.
 - Werbesprache vermeiden – die Frage soll Spaß machen, nicht wie eine Broschüre klingen.
