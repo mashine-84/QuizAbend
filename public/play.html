@@ -32,6 +32,7 @@
   .grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 12px; }
   .ans { border: none; border-radius: 18px; color: #fff; font: inherit; font-weight: 800; font-size: 21px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 10px; box-shadow: 0 6px 0 rgba(0,0,0,.3); cursor: pointer; text-shadow: 0 1px 2px rgba(0,0,0,.25); }
   .ans .shape { font-size: 46px; line-height: 1; }
+  .ans .shape svg { width: 42px; height: 42px; display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
   .ans:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
   .c0 { background: var(--a); } .c1 { background: var(--b); } .c2 { background: var(--c); } .c3 { background: var(--d); }
   .ptsbadge { display: inline-block; color: var(--c); border: 2px solid var(--c); border-radius: 99px; padding: 0 8px; margin-right: 8px; font-weight: 900; }
@@ -44,6 +45,7 @@
   .qbar i { display: block; height: 100%; background: var(--c); border-radius: 3px; }
   .qhint { text-align: center; color: var(--muted); font-weight: 700; font-size: 14px; margin-top: 8px; }
   .chosen { width: 130px; height: 130px; border-radius: 26px; display: grid; place-items: center; font-size: 70px; color: #fff; box-shadow: 0 6px 0 rgba(0,0,0,.3); }
+  .chosen svg { width: 66px; height: 66px; display: block; }
   .res { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px; animation: pop .4s cubic-bezier(.2,1.5,.4,1) both; }
   .res.ok { background: #2fb36d; } .res.bad { background: #e5484d; } .res.none { background: #3b3363; }
   .res h1 { font-size: 40px; } .res p { color: rgba(255,255,255,.9); font-size: 20px; font-weight: 700; }
@@ -316,7 +318,16 @@ function sendAnswer(payload, waitingHtml) {
   renderWaiting(waitingHtml);
   post('/api/answer', { id: myId, ...payload }).finally(() => { sending = false; });
 }
-const chosenHtml = i => `<div class="chosen c${i}">${SHAPES[i]}</div>`;
+// Formen als SVG statt Schriftzeichen: ▲◆●■ sitzen je nach Schrift unterschiedlich hoch (meist zu tief).
+// Im SVG liegt jede Form exakt in der Mitte (Dreieck optisch: Schwerpunkt mittig).
+const SHAPE_SVG = [
+  '<polygon points="50,10 94,84 6,84"/>',
+  '<polygon points="50,6 94,50 50,94 6,50"/>',
+  '<circle cx="50" cy="50" r="42"/>',
+  '<rect x="12" y="12" width="76" height="76" rx="4"/>',
+];
+const shapeSvg = (i, cls) => `<svg class="${cls || ''}" viewBox="0 0 100 100" fill="currentColor" aria-label="${SHAPES[i]}">${SHAPE_SVG[i]}</svg>`;
+const chosenHtml = i => `<div class="chosen c${i}">${shapeSvg(i)}</div>`;
 
 function advance() { post('/api/advance', { id: myId }); }
 function leave() {
@@ -990,7 +1001,7 @@ function renderInfo(icon, title, text, cls) {
 
 function renderChoice() {
   main.innerHTML = qline(S.question.points ? '' : 'Antworte schnell!') + `
-    <div class="grid">${S.question.answers.map((a, i) => `<button class="ans c${i} ${a.length > 40 ? 'xlong' : a.length > 24 ? 'long' : ''}" onclick="sendAnswer({choice:${i}}, chosenHtml(${i}))"><span class="shape">${SHAPES[i]}</span>${esc(a)}</button>`).join('')}</div>`;
+    <div class="grid">${S.question.answers.map((a, i) => `<button class="ans c${i} ${a.length > 40 ? 'xlong' : a.length > 24 ? 'long' : ''}" onclick="sendAnswer({choice:${i}}, chosenHtml(${i}))"><span class="shape">${shapeSvg(i)}</span>${esc(a)}</button>`).join('')}</div>`;
 }
 
 function renderEstimate() {
