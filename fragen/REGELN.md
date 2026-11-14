@@ -69,10 +69,26 @@ Ein Paket sollte alle drei Stufen enthalten, grob **40 % / 40 % / 20 %**. Leicht
 - **Merkbild** (`"merken"`): 5–10 Sekunden reichen. Die Frage muss sich auf etwas beziehen, das man **sehen** konnte.
 - **Audio**: Ausschnitte mit `"start"`/`"dauer"`; sehr kurze Ausschnitte (1–2 s) mit `"wiederholen": 2` oder `3`.
 
-## 4. Pakete über Firmen, Vereine oder Personen
+## 4. Firmen, Marken, Vereine und Personen
 - Nur Wissen, das **öffentlich** ist (Website, Impressum, Pressemitteilungen) – keine internen Zahlen, Kundendaten oder vertraulichen Infos.
 - Zahlen (Umsatz, Mitarbeitende, Verträge) **immer mit Jahr** in der Frage und mit Quelle prüfen.
 - Werbesprache vermeiden – die Frage soll Spaß machen, nicht wie eine Broschüre klingen.
+- Keine Fragen, die sich über Personen lustig machen oder Privates verraten.
+
+### Logo-Rätsel (Marken)
+Drei bewährte Varianten – alle als Bilderrätsel (`"bild"`), auf Wunsch als Merkbild (`"merken": 6`):
+
+| Variante | Bild | Frage | Antworten |
+|---|---|---|---|
+| **Ausschnitt** | stark hineingezoomter Teil des Logos | „Zu welcher Marke gehört dieser Ausschnitt?“ | 4 Marken aus **derselben Branche** |
+| **Verfremdet** | Logo mit weggelassenem Teil, ohne Schriftzug oder in falschen Farben | „Welche Marke ist das?“ | 4 Marken aus derselben Branche |
+| **Echt oder falsch** | zwei (oder vier) Versionen nebeneinander, deutlich mit **A, B (C, D)** beschriftet – eine ist das Original, die anderen leicht verändert (Farbe, Form, Schrift, Spiegelung) | „Welches Logo ist das echte?“ | `["A", "B"]` bzw. `["A", "B", "C", "D"]` – die richtige zuerst, gemischt wird im Spiel |
+
+- **Gleiche Branche bei den falschen Antworten** (nur Automarken, nur Fast Food …) – sonst errät man es am Thema statt am Logo.
+- **Schwierigkeit über den Ausschnitt steuern:** Bekanntes Detail groß = 1, kleines oder untypisches Detail = 3.
+- Bei „Echt oder falsch“ die Änderungen **sichtbar, aber nicht offensichtlich** halten – die Buchstaben gehören ins Bild, nicht nur in die Antworten. Bei nur zwei Versionen meldet `pruefen.js` den Hinweis „nur 2 Antworten“ – das ist hier in Ordnung.
+- Bild und Antworten dürfen den **Markennamen nicht verraten** (Schriftzug abdecken, Dateiname neutral wie `logo-07.png`).
+- **Nur für den privaten Spieleabend:** Marken und Logos gehören ihren Inhabern. Fürs gemeinsame Rätseln zu Hause ist das üblich unproblematisch – Fragepakete mit fremden Logos aber nicht öffentlich weitergeben, verkaufen oder ins Netz stellen. Logos am besten aus offiziellen Quellen (Presse-Bereich der Marke) oder Wikimedia Commons nehmen und den Ausschnitt/die Verfremdung selbst erstellen.
 
 ## 5. Checkliste vor dem Commit
 - [ ] `node pruefen.js` zeigt **0 Fehler**, Hinweise sind geprüft
