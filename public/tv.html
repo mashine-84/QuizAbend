@@ -66,8 +66,11 @@
   .qinfo { display: flex; flex-direction: column; gap: .7vh; min-width: 0; }
   .ql1 { display: flex; align-items: center; gap: .9vw; }
   #qpts { display: flex; gap: .7vw; }
-  .qcat { font-size: 2.4vw; font-weight: 900; line-height: 1; letter-spacing: -0.01em; white-space: nowrap; }
-  .qpts { color: var(--c); font-size: 1.5vw; font-weight: 900; border: .13vw solid var(--c); border-radius: 99px; padding: .15em .8em; white-space: nowrap; display: inline-block; }
+  /* Frageart und Pills: gleiche Schrift, gleiche Höhe (Frageart = Pill ohne Rand), Icon nicht höher als die Schrift */
+  .qcat, .qpts { font-size: 1.7vw; font-weight: 900; line-height: 1.15; border: .13vw solid transparent; border-radius: 99px; padding: .2em 0; white-space: nowrap; display: inline-flex; align-items: center; }
+  .qcat { gap: .4em; }
+  .qico { font-size: .9em; line-height: 1; }
+  .qpts { color: var(--c); border-color: var(--c); padding: .2em .8em; }
   .qpts.sp { background: var(--c); color: #1b1440; }
   .ql2 { display: flex; align-items: center; gap: .9vw; color: var(--muted); font-weight: 700; font-size: 1.35vw; white-space: nowrap; }
   .qdots { display: flex; gap: .45vw; }
@@ -488,8 +491,9 @@ function ptsPill() {
 }
 // Großer Titel im Kopf: die Frageart (die Kategorie steht wieder in der Fragekarte)
 function qType(q) {
-  if (q.tiebreak) return '⚔️ Stechen um Platz 1';
-  return q.label ? `${q.icon || ''} ${esc(q.label)}` : '❓ Quizfrage';
+  const t = (icon, text) => `<span class="qico">${icon}</span>${text}`;
+  if (q.tiebreak) return t('⚔️', 'Stechen um Platz 1');
+  return q.label ? t(q.icon || '', esc(q.label)) : t('❓', 'Quizfrage');
 }
 function qSub() {
   const q = S.question;

@@ -38,8 +38,13 @@
   .ptsbadge { display: inline-block; color: var(--c); border: 2px solid var(--c); border-radius: 99px; padding: 0 8px; margin-right: 8px; font-weight: 900; }
   .qhead { margin-bottom: 12px; }
   .ql1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .qcat { font-size: 22px; font-weight: 900; line-height: 1.1; letter-spacing: -0.01em; }
-  .qpts { color: var(--c); border: 2px solid var(--c); border-radius: 99px; padding: 1px 10px; font-size: 14px; font-weight: 900; white-space: nowrap; }
+  /* Frageart und Pills: gleiche Schrift, gleiche Höhe (Frageart = Pill ohne Rand), Icon nicht höher als die Schrift */
+  .qcat, .qpts { font-size: 16px; font-weight: 900; line-height: 1.15; border: 2px solid transparent; border-radius: 99px; padding: 3px 0; white-space: nowrap; display: inline-flex; align-items: center; }
+  .qcat { gap: 6px; }
+  .qico { font-size: .9em; line-height: 1; }
+  .qpts { color: var(--c); border-color: var(--c); padding: 3px 11px; }
+  .ql1.three .qcat, .ql1.three .qpts { font-size: 14px; }   /* drei Teile (Spezialfrage): etwas kleiner, damit alles in eine Zeile passt */
+  .ql1.three .qpts { padding: 3px 9px; }
   .qpts.sp { background: var(--c); color: #1b1440; }
   .ql2 { display: flex; align-items: center; gap: 10px; margin-top: 7px; color: var(--muted); font-weight: 800; font-size: 14px; white-space: nowrap; min-height: 18px; }
   .ql2 .qwho { white-space: normal; }
@@ -395,7 +400,7 @@ function qline(extra) {
     sub = `<span class="qwho">Nur ${esc(who)} ${names.length > 1 ? 'antworten' : 'antwortet'}${S.tiebreak.round > 1 ? ` · Runde ${S.tiebreak.round}` : ''}</span>`;
   } else sub = qProgress();
   return `<div class="qhead">
-    <div class="ql1"><span class="qcat">${q.tiebreak ? '⚔️ Stechen um Platz 1' : q.label ? `${q.icon || ''} ${esc(q.label)}` : '❓ Quizfrage'}</span>${ptsPill(q)}</div>
+    <div class="ql1 ${S.special && !q.tiebreak ? 'three' : ''}"><span class="qcat"><span class="qico">${q.tiebreak ? '⚔️' : q.label ? q.icon || '' : '❓'}</span>${q.tiebreak ? 'Stechen um Platz 1' : q.label ? esc(q.label) : 'Quizfrage'}</span>${ptsPill(q)}</div>
     <div class="ql2">${sub}</div>
     ${hint}</div>`;
 }
