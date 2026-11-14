@@ -51,6 +51,7 @@
   .hint b { color: var(--ink); }
 
   /* Frage */
+  .cat { display: inline-block; font-size: 1.3vw; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #6a5acd; margin-bottom: 1.2vh; }
   .qwrap { flex: 1; display: flex; flex-direction: column; gap: 2vh; padding-top: 2vh; min-height: 0; }
   .qwrap > * { flex-shrink: 0; }
   .qwrap > .answers, .qwrap > .imgq, .qwrap > .estq, .qwrap > .mlist, .qwrap > .tflist { flex: 1 1 0; min-height: 0; }
@@ -64,6 +65,7 @@
   .qhead .timesup { font-size: 1.35vw; }
   .qinfo { display: flex; flex-direction: column; gap: .7vh; min-width: 0; }
   .ql1 { display: flex; align-items: center; gap: .9vw; }
+  #qpts { display: flex; gap: .7vw; }
   .qcat { font-size: 2.4vw; font-weight: 900; line-height: 1; letter-spacing: -0.01em; white-space: nowrap; }
   .qpts { color: var(--c); font-size: 1.5vw; font-weight: 900; border: .13vw solid var(--c); border-radius: 99px; padding: .15em .8em; white-space: nowrap; display: inline-block; }
   .qpts.sp { background: var(--c); color: #1b1440; }
@@ -462,7 +464,7 @@ function ptsText(q) {
   if (!q || !q.points || q.tiebreak) return '';
   return q.perPair ? '1 Punkt je Paar' : q.perItem ? '1 Punkt je Aussage' : q.points === 1 ? '1 Punkt' : q.points + ' Punkte';
 }
-// Kopf bei den Fragen (eine Zeile): Uhr · Kategorie + Punkte, darunter Block, Fortschritt im Block und Fragetyp · Spieler
+// Kopf bei den Fragen (eine Zeile): Uhr · Frageart + Punkte, darunter Block und Fortschritt im Block · Spieler
 // Kein Logo und keine festen hellen Flächen (OLED). withTimer=false: nur der leere Ring der Uhr, damit nichts springt.
 const TIMER_SVG = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="10"/>
   <circle id="arc" cx="50" cy="50" r="44" fill="none" stroke="#f5b014" stroke-width="10" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="0"/></svg>`;
@@ -475,16 +477,19 @@ function qProgress() {
   const dots = Array.from({ length: b.len }, (_, i) => `<i class="${i + 1 < b.q ? 'done' : i + 1 === b.q ? 'cur' : ''}"></i>`).join('');
   return label + `<span class="qdots" title="Frage ${b.q} / ${b.len}">${dots}</span>`;
 }
-// Punkte-Pill: normal „2 Punkte“, nach der Enthüllung der Spezialfrage gelb gefüllt, beim Stechen „Stechen um Platz 1“
+// Pills neben dem Fragetyp: Punkte („2 Punkte“). Nach der Enthüllung der Spezialfrage zusätzlich ein eigener
+// gelber Pill „⭐ Spezialfrage“, und der Faktor steht am Ende des Punkte-Pills („2 Punkte ×2“, bei Tempo-Punkten „Punkte ×2“).
 function ptsPill() {
   const q = S.question;
-  if (q && q.tiebreak) return `<span class="qpts">⚔️ Stechen um Platz 1</span>`;
-  if (S.special) {
-    const pts = q && q.points && !q.perPair && !q.perItem ? ` · ${q.points * S.special.mult} Punkte` : '';
-    return `<span class="qpts sp">⭐ Spezialfrage ×${S.special.mult}${pts}</span>`;
-  }
+  if (!q || q.tiebreak) return '';
   const pt = ptsText(q);
+  if (S.special) return `<span class="qpts sp">⭐ Spezialfrage</span><span class="qpts">${pt || 'Punkte'} ×${S.special.mult}</span>`;
   return pt ? `<span class="qpts">${pt}</span>` : '';
+}
+// Großer Titel im Kopf: die Frageart (die Kategorie steht wieder in der Fragekarte)
+function qType(q) {
+  if (q.tiebreak) return '⚔️ Stechen um Platz 1';
+  return q.label ? `${q.icon || ''} ${esc(q.label)}` : '❓ Quizfrage';
 }
 function qSub() {
   const q = S.question;
@@ -493,13 +498,13 @@ function qSub() {
     const who = names.length > 1 ? names.slice(0, -1).join(', ') + ' und ' + names[names.length - 1] : names[0] || '';
     return `<span>Nur ${esc(who)} ${names.length > 1 ? 'antworten' : 'antwortet'}${S.tiebreak.round > 1 ? ` · Runde ${S.tiebreak.round}` : ''} · Wer am nächsten dran ist, gewinnt</span>`;
   }
-  return qProgress() + (q && q.label ? `<span>${q.icon || ''} ${esc(q.label)}</span>` : '');
+  return qProgress();
 }
 function qHead(withTimer) {
   const q = S.question || {};
   return `<div class="qhead">
     <div class="timer">${withTimer ? TIMER_SVG : TIMER_TRACK}<div class="num" ${withTimer ? 'id="num"' : ''}></div></div>
-    <div class="qinfo"><div class="ql1"><span class="qcat">${esc(q.category || '')}</span><span id="qpts">${ptsPill()}</span></div>
+    <div class="qinfo"><div class="ql1"><span class="qcat">${qType(q)}</span><span id="qpts">${ptsPill()}</span></div>
       <div class="ql2">${qSub()}</div></div>
     <div class="answered" id="chips">${chips()}</div></div>`;
 }
@@ -920,7 +925,7 @@ function renderPreview() {
   const q = S.question;
   // gleicher Aufbau wie bei der Frage (Kopf mit leerem Platz für die Uhr, Vorrat-Zeile mit Fortschrittsbalken) – so springt nichts, wenn die Frage kommt
   app.innerHTML = qHead(false) + `<div class="qwrap fade">
-    <div class="qcard compact"><div class="qtext soft">Merkt euch diese Begriffe – gleich kommt die Frage …</div></div>
+    <div class="qcard compact"><div class="cat">${esc(q.category)}</div><div class="qtext soft">Merkt euch diese Begriffe – gleich kommt die Frage …</div></div>
     <div class="mbody"><div class="mlist n${q.left.length} ${sizeCls(q.left)}">${q.left.map((t, i) => mrow(i, t, '', i * 0.15)).join('')}</div>
     <div class="mpool"><div class="pbar"><i id="pbar"></i></div></div></div></div>`;
 }
@@ -928,7 +933,7 @@ function renderPreview() {
 // ---------- Frage + Auflösung ----------
 function renderMain() {
   const q = S.question;
-  const head = `<div class="qcard ${q.image || q.kind === 'match' || q.kind === 'tf' ? 'compact' : ''}"><div class="qtext">${esc(q.text)}</div></div>`;
+  const head = `<div class="qcard ${q.image || q.kind === 'match' || q.kind === 'tf' ? 'compact' : ''}"><div class="cat">${esc(q.category)}</div><div class="qtext">${esc(q.text)}</div></div>`;
   const img = q.image ? `<div class="imgbox"><img src="${q.image}" alt=""></div>` : '';
   let body = '';
   if (q.kind === 'choice') {

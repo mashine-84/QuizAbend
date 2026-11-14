@@ -369,8 +369,8 @@ function ptsText(q) {
   return q.perPair ? '1 Punkt je Paar' : q.perItem ? '1 Punkt je Aussage' : q.points === 1 ? '1 Punkt' : q.points + ' Punkte';
 }
 // Kopf über der Frage: oben Frageart (links) und Punkte (rechts), darunter Block/Frage mit Fortschrittsbalken
-// Kopf bei den Fragen – gleich aufgebaut wie am Fernseher: Kategorie groß + Punkte-Pill,
-// darunter Block-Nummer, Fortschritt im Block als Striche und Fragetyp
+// Kopf bei den Fragen – gleich aufgebaut wie am Fernseher: Frageart groß + Punkte-Pill,
+// darunter Block-Nummer und Fortschritt im Block als Striche
 function qProgress() {
   const b = S.block;
   if (!b || !b.len) return `<span>Frage ${S.qNum} / ${S.qTotal}</span>`;
@@ -380,12 +380,9 @@ function qProgress() {
   return label + `<span class="qdots" style="--dw:${dw}px">${Array.from({ length: b.len }, (_, i) => `<i class="${i + 1 < b.q ? 'done' : i + 1 === b.q ? 'cur' : ''}"></i>`).join('')}</span>`;
 }
 function ptsPill(q) {
-  if (q && q.tiebreak) return `<span class="qpts">⚔️ Stechen um Platz 1</span>`;
-  if (S.special) {
-    const pts = q && q.points && !q.perPair && !q.perItem ? ` · ${q.points * S.special.mult} Punkte` : '';
-    return `<span class="qpts sp">⭐ Spezialfrage ×${S.special.mult}${pts}</span>`;
-  }
+  if (!q || q.tiebreak) return '';
   const pt = ptsText(q);
+  if (S.special) return `<span class="qpts sp">⭐ Spezialfrage</span><span class="qpts">${pt || 'Punkte'} ×${S.special.mult}</span>`;
   return pt ? `<span class="qpts">${pt}</span>` : '';
 }
 function qline(extra) {
@@ -396,9 +393,9 @@ function qline(extra) {
     const names = S.tiebreak.ids.map(id => (S.players.find(p => p.id === id) || {}).name).filter(Boolean);
     const who = names.length > 1 ? names.slice(0, -1).join(', ') + ' und ' + names[names.length - 1] : names[0] || '';
     sub = `<span class="qwho">Nur ${esc(who)} ${names.length > 1 ? 'antworten' : 'antwortet'}${S.tiebreak.round > 1 ? ` · Runde ${S.tiebreak.round}` : ''}</span>`;
-  } else sub = qProgress() + (q.label ? `<span>${q.icon || ''} ${esc(q.label)}</span>` : '');
+  } else sub = qProgress();
   return `<div class="qhead">
-    <div class="ql1"><span class="qcat">${esc(q.category || '')}</span>${ptsPill(q)}</div>
+    <div class="ql1"><span class="qcat">${q.tiebreak ? '⚔️ Stechen um Platz 1' : q.label ? `${q.icon || ''} ${esc(q.label)}` : '❓ Quizfrage'}</span>${ptsPill(q)}</div>
     <div class="ql2">${sub}</div>
     ${hint}</div>`;
 }
