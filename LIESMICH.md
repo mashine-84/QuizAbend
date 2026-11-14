@@ -225,8 +225,25 @@ Einschalten unter ⚙️ Einstellungen › Spieleinstellungen › **Pub-Quiz-Mod
 - Nach der Auflösung wartet das Spiel wieder: „➡ Nächste Frage“, am Blockende „📊 Zur Rangliste“, nach der letzten Frage „🏆 Zur Siegerehrung“.
 - Intro, Block-Ansage, Rangliste und Pause laufen weiter automatisch, lassen sich aber überspringen.
 
+## 🔒 Sichere Adresse (https)
+Im Heim-WLAN kann das Quiz über eine echte https-Adresse laufen, z. B. `https://meinquiz.duckdns.org`. Vorteil: Die Handys dürfen den Bildschirm zuverlässig anlassen (Chrome erlaubt das nur bei https), und die Verbindung ist verschlüsselt. Kostenlos über DuckDNS und Let's Encrypt.
+
+**Einrichten (einmalig, am Handy des 👑 unter ⚙️ Einstellungen › 🔒 Sichere Adresse):**
+1. Am Handy duckdns.org öffnen und anmelden (z. B. mit Google).
+2. Einen Namen ausdenken (z. B. `meinquiz`) und „add domain“ tippen.
+3. Den **token** oben auf der Seite kopieren, Name und Token in den Einstellungen eintragen, „Einrichten“ tippen.
+
+Der Pi trägt dann seine Heimnetz-IP bei DuckDNS ein, holt das Zertifikat (dafür lädt er beim ersten Mal das Programm acme.sh von GitHub) und erneuert es alle 60 Tage selbst. Das dauert beim ersten Mal 1–3 Minuten. Danach zeigt der Fernseher die https-Adresse im QR-Code, und Handys, die die alte Adresse öffnen, werden umgeleitet. Der Fernseher am Pi selbst bleibt bei `http://localhost`.
+
+- **Fritz!Box & Co.:** Viele Router blockieren Namen, die auf ein Gerät im Heimnetz zeigen („DNS-Rebind-Schutz“). Dann steht in den Einstellungen ein Hinweis. Lösung bei der Fritz!Box: Heimnetz › Netzwerk › Netzwerkeinstellungen › DNS-Rebind-Schutz → den Namen (z. B. `meinquiz.duckdns.org`) eintragen.
+- **Eigenes WLAN des Pi:** Dort gibt es kein Internet – die sichere Adresse ruht, das Quiz läuft wie gewohnt über `http://10.42.0.1`.
+- Wer beim Umstellen schon mitspielt, muss einmal neu beitreten (neue Adresse = neues Gerät für den Browser).
+- Name, Token und Zertifikat liegen in `https.json` und `.https/` (nicht im Git).
+
 ## 💡 Philips Hue (Test)
 Das Quiz kann das Licht im Raum mitsteuern. Es braucht dafür nur die Hue Bridge im selben Netz, keine Zusatzsoftware.
+
+**Nur im Heim-WLAN:** Hat der Pi sein eigenes WLAN an, ist die Bridge nicht erreichbar – dann bleibt das Licht unverändert, und die Einstellungen zeigen einen Hinweis.
 
 **Einrichten (einmalig, am Handy des 👑 unter ⚙️ Einstellungen › Philips Hue):**
 1. „Bridge suchen“ tippen. Das braucht Internet; ohne Internet die IP der Bridge eintippen (Hue-App › Einstellungen › Bridges › ⓘ).

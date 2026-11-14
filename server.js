@@ -36,7 +36,9 @@ const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
 
 const FRAGEN_DIR = path.join(__dirname, 'fragen');
-const fragenRepo = require('./fragenrepo');   // Fragen-Repo (eigenes Git-Repo, Kopie unter fragen/_repo)
+const fragenRepo = require('./fragenrepo');
+const zertifikat = require('./zertifikat');   // sichere Adresse (https) im Heim-WLAN: DuckDNS + Let's Encrypt
+const HTTPS_PORT = Number(process.env.HTTPS_PORT) || 443;   // Fragen-Repo (eigenes Git-Repo, Kopie unter fragen/_repo)
 const SOUNDS_DIR = path.join(__dirname, 'sounds');
 const HOTSPOT_FILE = path.join(__dirname, 'hotspot.json'); // von raspberry-pi/setup.sh angelegt: {ssid, password}
 const UNDER_SYSTEMD = !!process.env.INVOCATION_ID;           // läuft als Dienst (Pi) -> Neustart nach Update automatisch
@@ -326,13 +328,15 @@ function setPhase(phase, ms, next) {
   // Pause: in der letzten Minute das Licht langsam herunterdimmen (bei kurzer Pause nach dem Hellwerden)
   clearTimeout(hueDimTimer);
   if (phase === 'pause' && ms) hueDimTimer = setTimeout(() => {
-    if (state.phase === 'pause' && !state.frozen) hue.onPhase('pausedim', { ms: Math.max(0, state.phaseEnds - Date.now() - PAUSE_GRACE_MS) }).catch(() => {});
+    if (state.phase === 'pause' && !state.frozen && !hotspot()) hue.onPhase('pausedim', { ms: Math.max(0, state.phaseEnds - Date.now() - PAUSE_GRACE_MS) }).catch(() => {});
   }, Math.max(3500, ms - 60000 - PAUSE_GRACE_MS));
 }
 let hueDimTimer = null;
 
-// Licht passend zur Phase (macht nichts, solange Hue nicht eingerichtet ist)
+// Licht passend zur Phase (macht nichts, solange Hue nicht eingerichtet ist – und nicht im eigenen WLAN des Pi,
+// dort ist die Bridge nicht erreichbar)
 function hueUpdate() {
+  if (hotspot()) return;
   const q = currentQuestion(), ph = state.frozen ? 'frozen' : state.phase;
   const info = {};
   if (ph === 'reveal' && q) { info.q = state.idx; info.correct = q.kind === 'choice' ? q.correct : null; }
@@ -999,7 +1003,8 @@ function captiveRedirect(req) {
 }
 
 function hotspot() {
-  // Eigenes WLAN des Pi aktiv? (NetworkManager-Hotspot hat immer 10.42.0.1)
+  // Eigenes WLAN des Pi aktiv? (NetworkManager-Hotspot hat immer 10.42.0.1; HOTSPOT=1 simuliert es für Tests)
+  if (process.env.HOTSPOT === '1') return { ssid: 'QuizAbend', password: '' };
   const active = Object.values(os.networkInterfaces()).flat().some(i => i && i.address === '10.42.0.1');
   if (!active) return null;
   try { const h = JSON.parse(fs.readFileSync(HOTSPOT_FILE, 'utf8')); return { ssid: h.ssid, password: h.password }; } catch (_) { return { ssid: 'QuizAbend', password: '' }; }
@@ -1024,11 +1029,22 @@ function lanIp() {
   return candidates[0] ? candidates[0].address : 'localhost';
 }
 
+// Sichere Adresse nutzen? Nur im Heim-WLAN, mit gültigem Zertifikat und wenn der Name im Heimnetz auflöst
+let httpsServer = null;
+function httpsReady() {
+  if (!httpsServer || !httpsServer.listening || hotspot()) return null;
+  const st = zertifikat.status();
+  if (!st.ready) return null;
+  return `https://${st.host}${HTTPS_PORT === 443 ? '' : ':' + HTTPS_PORT}/`;
+}
+
 function joinInfo() {
   const port = PORT === 80 ? '' : `:${PORT}`;
   const host = os.hostname();
   // Feste Adresse über mDNS (z. B. quizabend.local), nur wenn der Rechner einen sinnvollen Namen hat
   const local = UNDER_SYSTEMD && host && !/^localhost$/i.test(host) && !host.includes('.') ? `http://${host.toLowerCase()}.local${port}` : null;
+  const sec = httpsReady();
+  if (sec) return { url: sec, local: null, secure: true, wifi: null };
   return { url: `http://${lanIp()}${port}/`, local, wifi: hotspot() };
 }
 
@@ -1205,6 +1221,16 @@ const server = http.createServer(async (req, res) => {
     return res.end('<!doctype html><meta charset="utf-8"><title>QuizAbend</title><a href="http://10.42.0.1/">Zum QuizAbend</a>');
   }
 
+  // Heim-WLAN mit sicherer Adresse: Handys, die über http kommen, auf https umleiten (nur Seitenaufrufe,
+  // nicht der Fernseher am Pi selbst und keine API-Aufrufe)
+  if (!req.socket.encrypted && req.method === 'GET' && (p === '/' || p === '/play' || p === '/play.html')) {
+    const sec = httpsReady(), hostName = String(req.headers.host || '').replace(/:\d+$/, '');
+    if (sec && !['localhost', '127.0.0.1', '::1'].includes(hostName)) {
+      res.writeHead(302, { Location: sec.replace(/\/$/, '') + req.url, 'Cache-Control': 'no-store' });
+      return res.end();
+    }
+  }
+
   if (req.method === 'GET' && (p === '/' || p === '/play')) return serveFile(res, 'play.html');
   if (req.method === 'GET' && p === '/tv') return serveFile(res, 'tv.html');
   if (req.method === 'GET' && p === '/qr.js') return serveFile(res, 'qr.js');
@@ -1377,7 +1403,8 @@ const server = http.createServer(async (req, res) => {
     if (body.id !== vipId()) return json(res, 403, { ok: false });
     const a = body.action;
     let r;
-    if (a === 'status') r = { ok: true, ...hue.status() };
+    if (hotspot() && !['status', 'forget'].includes(a)) r = { ok: false, text: 'Philips Hue geht nur im Heim-WLAN – im eigenen WLAN des Pi ist die Bridge nicht erreichbar.' };
+    else if (a === 'status') r = { ok: true, ...hue.status(), blocked: !!hotspot() };
     else if (a === 'discover') r = { ok: true, ips: await hue.discover() };
     else if (a === 'pair') r = await hue.pair(String(body.ip || '').trim());
     else if (a === 'targets') r = await hue.targets();
@@ -1388,6 +1415,19 @@ const server = http.createServer(async (req, res) => {
     else if (a === 'forget') r = hue.forget();
     else r = { ok: false, text: 'Unbekannte Aktion' };
     return json(res, 200, r);
+  }
+
+  // Sichere Adresse (https): Status, einrichten, prüfen, entfernen (nur 👑)
+  if (req.method === 'POST' && p === '/api/https') {
+    const body = await readBody(req);
+    if (body.id !== vipId()) return json(res, 403, { ok: false });
+    let r;
+    if (body.action === 'status') r = { ok: true };
+    else if (body.action === 'set') r = await zertifikat.set(body.name, body.token);
+    else if (body.action === 'check') { zertifikat.tick({ force: true }).catch(() => {}); r = { ok: true, started: true }; }
+    else if (body.action === 'remove') r = zertifikat.remove();
+    else r = { ok: false, text: 'Unbekannte Aktion' };
+    return json(res, 200, { ...r, status: { ...zertifikat.status(), active: !!httpsReady() } });
   }
 
   if (req.method === 'POST' && p === '/api/leave') {
@@ -1414,6 +1454,19 @@ const EXTRA_PORT = Number(process.env.EXTRA_PORT) || 0;
 if (EXTRA_PORT && EXTRA_PORT !== PORT) http.createServer(server.listeners('request')[0]).listen(EXTRA_PORT, '0.0.0.0').on('error', () => {});
 // Fragen-Repo beim Start im Hintergrund auf den neuesten Stand bringen (fehlt die Kopie, wird sie geholt)
 if (fragenRepo.status().url) fragenRepo.update().then(r => { if (r.ok && r.changed) { loadPacks(); broadcast(); } if (!r.ok) console.log('  Fragen-Repo:', r.text); });
+
+// https-Server: startet, sobald es ein Zertifikat gibt; bei Erneuerung wird es ohne Neustart getauscht
+zertifikat.start({
+  lanIp: () => { const ip = lanIp(); return ip === '10.42.0.1' ? null : ip; },
+  hotspot: () => !!hotspot(),
+  onCert: c => {
+    if (!c) { if (httpsServer) { httpsServer.close(); httpsServer = null; broadcast(); } return; }
+    if (httpsServer) { try { httpsServer.setSecureContext({ key: c.key, cert: c.cert }); } catch (e) { console.log('  https: Zertifikat nicht übernommen:', e.message); } broadcast(); return; }
+    httpsServer = require('https').createServer({ key: c.key, cert: c.cert }, server.listeners('request')[0]);
+    httpsServer.on('error', e => { console.log(`  https: Port ${HTTPS_PORT} nicht nutzbar:`, e.message); httpsServer = null; });
+    httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => { console.log(`  🔒 https läuft auf Port ${HTTPS_PORT}`); broadcast(); });
+  },
+});
 
 server.listen(PORT, '0.0.0.0', () => {
   const tvUrl = `http://localhost:${PORT}/tv`;
