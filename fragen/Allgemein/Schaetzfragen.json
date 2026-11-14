@@ -3,7 +3,7 @@
   "fragen": [
     {"kategorie": "Bauwerke", "frage": "Wie hoch ist der Eiffelturm (mit Antennen)?", "schaetzen": 330, "einheit": "m", "schwierigkeit": 2},
     {"kategorie": "Technik", "frage": "In welchem Jahr wurde das erste iPhone vorgestellt?", "schaetzen": 2007, "schwierigkeit": 2},
-    {"kategorie": "Geografie", "frage": "Wie viele Länder gehören zur Europäischen Union?", "schaetzen": 27, "schwierigkeit": 1},
+    {"kategorie": "Geografie", "frage": "Wie viele Länder gehören zur Europäischen Union (Stand 2025)?", "schaetzen": 27, "schwierigkeit": 1},
     {"kategorie": "Allgemeinwissen", "frage": "Wie viele Sekunden hat eine Stunde?", "schaetzen": 3600, "einheit": "s", "schwierigkeit": 1}
   ]
 }

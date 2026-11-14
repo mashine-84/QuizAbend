@@ -152,6 +152,8 @@ Eine Paketdatei sieht so aus, und die Frageart ergibt sich aus den Feldern:
 | Zuordnung | `"zuordnen": {"Begriff": "Partner", ...}` mit 2 bis 6 Paaren. Die Reihenfolge wird im Spiel gemischt. |
 | ⚖️ Richtig oder falsch | `"behauptungen": [["Aussage", true], ["Aussage", false], ...]` mit 2 bis 5 Aussagen, `true` = stimmt, `false` = stimmt nicht. Die Reihenfolge wird im Spiel gemischt. Standardzeit 30 Sekunden. |
 
+**Gute Fragen schreiben:** Regeln (Schwierigkeit, Länge, falsche Antworten, Stichtage …) stehen in `fragen/REGELN.md`. Mit `node pruefen.js` prüfst du alle Fragendateien auf Fehler und Hinweise.
+
 Optional bei jeder Frage:
 - `"schwierigkeit": 1`, `2` oder `3` für leicht, mittel oder schwer (ohne Angabe gilt 1). Gilt sie für ein ganzes Paket, kannst du `"schwierigkeit": 2` auch oben neben `"paket"` schreiben.
 - `"kategorie": "Flaggen"`, sonst gilt der Paketname.
