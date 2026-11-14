@@ -21,6 +21,8 @@ let pending = null;          // laufende Anmeldung: { state, verifier, redirect,
 let want = null;             // was das Spiel gerade möchte: 'play' | 'pause' | null (nicht eingreifen)
 let current = null;          // was wir zuletzt geschickt haben
 let pausedByUs = false;      // nur fortsetzen, was wir selbst angehalten haben (oder zu Spielbeginn starten)
+let bgSaved = null;          // Hintergrundmusik vor einer Spotify-Musikfrage: { context, item, pos }
+let snippetPlayed = false;   // seit der letzten Hintergrundmusik lief ein Fragen-Ausschnitt (nicht einfach „weiter“ spielen)
 let queue = Promise.resolve();
 const logLines = [];
 
@@ -121,6 +123,11 @@ async function devices() {
   return { ok: true, devices: (r.data.devices || []).map(d => ({ id: d.id, name: d.name, type: d.type, active: d.is_active, volume: d.supports_volume })) };
 }
 function selectDevice(id, name) { cfg.device = { id: String(id || ''), name: String(name || '') }; save(); log(`Gerät: ${cfg.device.name}`); return { ok: true }; }
+// Spotify-Link zu einem Song → spotify:track:ID (oder null)
+function trackUri(link) {
+  const m = String(link || '').trim().match(/(?:open\.spotify\.com\/(?:intl-\w+\/)?track\/|spotify:track:)([A-Za-z0-9]{22})/);
+  return m ? `spotify:track:${m[1]}` : null;
+}
 function setPlaylist(link) {
   link = String(link || '').trim();
   if (!link) { cfg.playlist = null; save(); return { ok: true }; }
@@ -144,8 +151,19 @@ async function play(opts = {}) {
   const id = await deviceId();
   if (!id) { log(`${cfg.device ? cfg.device.name : 'Gerät'} nicht gefunden – ist es an?`); return { ok: false, text: 'Gerät nicht gefunden – ist der Receiver an?' }; }
   const q = `?device_id=${encodeURIComponent(id)}`;
-  // Weiterspielen; gibt es nichts zum Weiterspielen (oder ist es der Spielstart mit Playlist), die Playlist starten
-  let r = opts.start && cfg.playlist ? { status: 0 } : await api('PUT', '/me/player/play' + q);
+  // Nach einer Spotify-Musikfrage: die gemerkte Hintergrundmusik an derselben Stelle fortsetzen
+  if (bgSaved) {
+    const b = bgSaved; bgSaved = null; snippetPlayed = false;
+    const body = b.context ? { context_uri: b.context, offset: { uri: b.item }, position_ms: b.pos } : { uris: [b.item], position_ms: b.pos };
+    const r = await api('PUT', '/me/player/play' + q, body);
+    if ([200, 202, 204].includes(r.status)) return { ok: true };
+    log('Hintergrundmusik nicht fortgesetzt: ' + errText(r));
+  }
+  // Weiterspielen; gibt es nichts zum Weiterspielen (oder ist es der Spielstart mit Playlist), die Playlist starten.
+  // Lief zuletzt ein Fragen-Ausschnitt, nicht „weiter“ (das wäre der Rest des Fragen-Songs) – dann nur die Playlist.
+  if (snippetPlayed && !cfg.playlist) return { ok: true, skipped: true };
+  let r = (opts.start || snippetPlayed) && cfg.playlist ? { status: 0 } : await api('PUT', '/me/player/play' + q);
+  snippetPlayed = false;
   if (r.status !== 204 && r.status !== 202 && r.status !== 200 && cfg.playlist) r = await api('PUT', '/me/player/play' + q, { context_uri: cfg.playlist });
   if ([200, 202, 204].includes(r.status)) return { ok: true };
   log('Abspielen ging nicht: ' + errText(r));
@@ -162,6 +180,38 @@ async function pause() {
 }
 
 const ready = () => !!(cfg.refresh && cfg.device && cfg.enabled !== false && !env.hotspot());
+
+// ---------- Spotify-Musikfrage: Ausschnitt eines Songs auf dem Gerät abspielen ----------
+// opts: { start, dauer, repeat, gap } in Sekunden. Läuft in derselben Warteschlange wie Pause/Weiter.
+// Vorher wird die Hintergrundmusik (Playlist + Stelle) gemerkt, danach geht sie dort weiter.
+const wait = ms => new Promise(r => setTimeout(r, ms));
+function snippet(uri, opts, stillWanted = () => true) {
+  const job = queue.then(async () => {
+    const id = await deviceId();
+    if (!id) { log('Musikfrage: Gerät nicht gefunden'); return { ok: false }; }
+    const st = await api('GET', '/me/player');
+    if (!bgSaved && st.status === 200 && st.data && st.data.item && st.data.item.uri !== uri && (st.data.is_playing || pausedByUs))
+      bgSaved = { context: st.data.context && st.data.context.uri || null, item: st.data.item.uri, pos: st.data.progress_ms || 0 };
+    if (st.status === 200 && st.data && st.data.is_playing) await api('PUT', '/me/player/pause');
+    const q = `?device_id=${encodeURIComponent(id)}`;
+    const n = opts.repeat || 1, len = (opts.dauer || 10) * 1000, gap = (opts.gap ?? 2.5) * 1000;
+    snippetPlayed = true;
+    log(`Musikfrage: ${uri} ab ${opts.start || 0} s, ${len / 1000} s${n > 1 ? `, ${n}×` : ''}`);
+    for (let k = 0; k < n; k++) {
+      if (!stillWanted()) break;
+      const r = await api('PUT', '/me/player/play' + q, { uris: [uri], position_ms: Math.round((opts.start || 0) * 1000) });
+      if (![200, 202, 204].includes(r.status)) { log('Musikfrage ging nicht: ' + errText(r)); return { ok: false }; }
+      await wait(len);
+      await api('PUT', '/me/player/pause');
+      if (k < n - 1) await wait(gap);
+    }
+    current = 'pause';
+    if (bgSaved) pausedByUs = true;
+    return { ok: true };
+  }).catch(e => { log('Musikfrage: ' + e.message); return { ok: false }; });
+  queue = job.then(() => {});
+  return job;
+}
 
 // ---------- Spielphasen ----------
 // Quiz hat eigene Musik/Ton: Spotify pausieren. Sonst (während des Spiels) spielen. Lobby: nicht eingreifen.
@@ -206,4 +256,4 @@ function forget() { cfg = { clientId: cfg.clientId, enabled: true }; save(); wan
 async function test(action) { return action === 'pause' ? pause() : play({ start: true }); }
 function start(e) { env = { ...env, ...e }; }
 
-module.exports = { start, status, setClientId, loginUrl, callback, devices, selectDevice, setPlaylist, enable, forget, test, onPhase };
+module.exports = { start, status, setClientId, loginUrl, callback, devices, selectDevice, setPlaylist, enable, forget, test, onPhase, snippet, ready, trackUri };

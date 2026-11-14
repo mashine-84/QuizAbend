@@ -61,7 +61,7 @@ for (const file of files.sort()) {
     if (fl > LIMIT.frage[1]) err(where, `Frage zu lang (${fl} Zeichen, max. ${LIMIT.frage[1]})`);
     else if (fl > LIMIT.frage[0]) warn(where, `Frage lang (${fl} Zeichen) – kürzer liest sich am Fernseher besser`);
     if (ZEITWORT.test(q.frage) && !/\b(19|20)\d\d\b/.test(q.frage)) warn(where, `„${q.frage.match(ZEITWORT)[0]}“ – veraltet die Antwort? Dann Stichtag in die Frage („Stand 2025“)`);
-    const key = norm(q.frage) + '|' + norm(JSON.stringify(q.antworten || q.schaetzen || q.zuordnen || q.behauptungen));
+    const key = norm(q.frage) + '|' + norm(JSON.stringify(q.antworten || q.schaetzen || q.zuordnen || q.behauptungen)) + '|' + (q.spotify || q.audio || q.video || q.bild || '');
     if (seen.has(key)) err(where, `doppelt – gleiche Frage steht schon in ${seen.get(key)}`); else seen.set(key, `${rel} #${i + 1}`);
     for (const [field, [sub, ext]] of Object.entries(MEDIA)) {
       if (!q[field]) continue;
@@ -70,6 +70,15 @@ for (const file of files.sort()) {
       else if (![path.join(d, name), path.join(d, sub, name)].some(f => fs.existsSync(f))) err(where, `"${field}": „${name}“ nicht gefunden (in den Ordner „${sub}“ neben der Datei legen)`);
     }
     if (q.merken !== undefined && !q.bild) err(where, '"merken" braucht ein "bild"');
+    // Spotify-Musikfrage: Song-Link, Ausschnitt läuft auf dem Spotify-Gerät
+    if (q.spotify !== undefined) {
+      if (!/(?:open\.spotify\.com\/(?:intl-\w+\/)?track\/|spotify:track:)[A-Za-z0-9]{22}/.test(String(q.spotify))) err(where, '"spotify" muss ein Link zu einem Song sein (Spotify: Song › Teilen › Link kopieren)');
+      if (q.audio || q.video) err(where, '"spotify" geht nicht zusammen mit "audio" oder "video"');
+      if (q.rueckwaerts) err(where, '"rueckwaerts" geht bei Spotify-Fragen nicht');
+      if (q.dauer !== undefined && !(Number(q.dauer) > 0 && Number(q.dauer) <= 30)) err(where, '"dauer" muss bei Spotify-Fragen 1 bis 30 Sekunden sein');
+      if (q.start !== undefined && !(Number(q.start) >= 0)) err(where, '"start" muss eine Sekundenzahl sein');
+      if (!/(^|[\\/])Musik[\\/]Spotify\.json$/.test(rel)) warn(where, 'Spotify-Fragen gehören nach Musik/Spotify.json (Paket „Spotify“)');
+    }
 
     // je Frageart
     if (q.antworten !== undefined) {

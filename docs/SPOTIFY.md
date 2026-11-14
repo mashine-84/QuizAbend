@@ -1,6 +1,6 @@
 # 🎵 Spotify
 
-QuizAbend kann **deine Spotify-Musik** während des Spiels laufen lassen – auf einem Spotify-Connect-Gerät im Heimnetz, z. B. dem **Yamaha-Receiver**. Das Quiz spielt dabei selbst keine Spotify-Musik ab, es sagt Spotify nur, wann **Pause** und wann **Weiter** ist.
+QuizAbend kann **deine Spotify-Musik** während des Spiels laufen lassen und **Musikfragen mit Spotify-Songs** spielen – auf einem Spotify-Connect-Gerät im Heimnetz, z. B. dem **Yamaha-Receiver**. Das Quiz spielt dabei selbst keine Spotify-Musik ab, es sagt Spotify nur, wann **Pause** und wann **Weiter** ist.
 
 Code: [`spotify.js`](../spotify.js) (Anmeldung, Geräte, Pause/Weiter), Server-Teil in [`server.js`](../server.js) (`spotifyUpdate`, `/api/spotify`, `/spotify/login`, `/spotify/callback`), Einstellungen in [`public/play.html`](../public/play.html) (`spotifySection`).
 
@@ -57,6 +57,40 @@ Voraussetzung: Die sichere Adresse ist eingerichtet und aktiv (⚙️ › 🔒 S
 5. **Gerät wählen** → den Yamaha antippen. Findet der Pi ihn nicht: Receiver einschalten oder kurz etwas aus der Spotify-App darauf abspielen, dann erneut suchen.
 6. Optional eine **Playlist** für den Spielstart: In Spotify bei der Playlist *Teilen › Link kopieren* und einfügen.
 7. Mit **Test: Abspielen / Test: Pause** prüfen. Der Schalter **Spotify im Spiel steuern** schaltet alles an/aus.
+
+## 🎵 Spotify-Musikfragen
+
+Neben der Hintergrundmusik kann Spotify auch **Musikfragen** spielen: Ein Ausschnitt aus einem Song läuft auf dem Receiver, danach kommt die Frage.
+
+**Im Fragen-Repo** ins Paket `Musik/Spotify.json` (Paket „Spotify“ unter „Musik“):
+
+```json
+{
+  "paket": "Spotify",
+  "fragen": [
+    {"frage": "Wie heißt dieser Song?", "spotify": "https://open.spotify.com/track/…", "start": 42, "dauer": 8,
+     "antworten": ["Richtiger Titel", "Falsch 1", "Falsch 2", "Falsch 3"], "schwierigkeit": 2},
+    {"frage": "In welchem Jahr erschien dieser Song?", "spotify": "https://open.spotify.com/track/…", "dauer": 3, "wiederholen": 2,
+     "schaetzen": 1984, "schwierigkeit": 3}
+  ]
+}
+```
+
+- `"spotify"`: Link zum Song (Spotify › Song › Teilen › Link kopieren)
+- `"start"` (Sekunden, Standard 0), `"dauer"` (Standard 10, höchstens 30), `"wiederholen"` (1–5), `"pause"` (Sekunden zwischen den Wiederholungen) – wie beim Soundcheck. Rückwärts geht bei Spotify nicht.
+- Geht mit jeder Frageart (Auswahl, Schätzen, Zuordnen, Richtig oder falsch).
+
+**Im Spiel:**
+1. Ankündigung **„Spotify“** in Spotify-Grün (am Fernseher und am Handy), auch im Intro bei „Heute dabei“.
+2. Die Hintergrundmusik pausiert; der Pi merkt sich Playlist, Song und Stelle.
+3. Der Ausschnitt läuft auf dem Receiver (Fernseher: „Hör genau hin! – läuft über Spotify“ mit Fortschritt), ggf. mehrmals.
+4. Dann die Frage. Danach läuft die Hintergrundmusik dort weiter, wo sie war.
+
+**Gut zu wissen:**
+- **Spoiler-Gefahr:** Das Display des Receivers und die Spotify-App auf Handys mit deinem Konto zeigen Titel und Interpret. Display dimmen oder abdecken.
+- Zwischen Befehl und Ton liegt etwa eine halbe bis eine Sekunde – der Start sitzt nicht auf die Hundertstel genau.
+- **Ohne Spotify** (nicht verbunden, kein Gerät gewählt, eigenes WLAN) werden diese Fragen beim Zusammenstellen des Spiels übersprungen – es gibt keine kaputten Fragen.
+- `pruefen.js` prüft Link, Dauer und Ablageort.
 
 ## Datenschutz & Sicherheit
 
