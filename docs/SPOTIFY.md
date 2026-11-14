@@ -115,6 +115,7 @@ Das Protokoll (letzte Befehle, Fehler) steht in den Einstellungen unter „Proto
 | „Die Anmeldung ist abgelaufen“ | Zwischen „Verbinden“ und Rückkehr mehr als 15 Minuten oder Pi neu gestartet – erneut verbinden |
 | „Dafür braucht es Spotify Premium“ | Konto ohne Premium |
 | „Gerät nicht gefunden“ | Receiver aus/schläft ohne Netzwerk-Standby – einschalten, in der Spotify-App einmal auswählen |
+| „Gerät antwortet nicht – übertrage die Wiedergabe darauf …“ im Protokoll | Normal bei Alexa/Echo oder einem Gerät, das gerade nicht die aktive Spotify-Wiedergabe ist: Das Quiz überträgt die Wiedergabe erst auf das Gerät und versucht es dann erneut (dauert 1–3 Sekunden). Klappt es dreimal nicht, steht „Gerät nicht erreichbar“ mit dem Grund von Spotify da. |
 | „Anmeldung abgelaufen – bitte neu verbinden“ | Zugriff wurde bei Spotify entzogen oder Passwort geändert |
 
 ## Für Entwickler: testen
