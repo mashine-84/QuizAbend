@@ -228,6 +228,8 @@ Einschalten unter ⚙️ Einstellungen › Spieleinstellungen › **Pub-Quiz-Mod
 ## 🔒 Sichere Adresse (https)
 Im Heim-WLAN kann das Quiz über eine echte https-Adresse laufen, z. B. `https://meinquiz.duckdns.org`. Vorteil: Die Handys dürfen den Bildschirm zuverlässig anlassen (Chrome erlaubt das nur bei https), und die Verbindung ist verschlüsselt. Kostenlos über DuckDNS und Let's Encrypt.
 
+**Ausführlich – was das ist, Vorteile, Abhängigkeiten, Datenschutz, Fehlersuche:** [docs/SICHERE-ADRESSE.md](docs/SICHERE-ADRESSE.md)
+
 **Einrichten (einmalig, am Handy des 👑 unter ⚙️ Einstellungen › 🔒 Sichere Adresse):**
 1. Am Handy duckdns.org öffnen und anmelden (z. B. mit Google).
 2. Einen Namen ausdenken (z. B. `meinquiz`) und „add domain“ tippen.
