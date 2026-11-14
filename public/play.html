@@ -37,12 +37,17 @@
   .c0 { background: var(--a); } .c1 { background: var(--b); } .c2 { background: var(--c); } .c3 { background: var(--d); }
   .ptsbadge { display: inline-block; color: var(--c); border: 2px solid var(--c); border-radius: 99px; padding: 0 8px; margin-right: 8px; font-weight: 900; }
   .qhead { margin-bottom: 12px; }
-  .qrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-  .qrow .badge { margin: 0; padding: 5px 12px; font-size: 15px; }
-  .qrow .ptsbadge { margin: 0; padding: 2px 10px; font-size: 13px; }
-  .qprog { display: flex; align-items: center; gap: 10px; margin-top: 10px; color: var(--muted); font-weight: 800; font-size: 13px; white-space: nowrap; }
-  .qbar { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
-  .qbar i { display: block; height: 100%; background: var(--c); border-radius: 3px; }
+  .ql1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .qcat { font-size: 22px; font-weight: 900; line-height: 1.1; letter-spacing: -0.01em; }
+  .qpts { color: var(--c); border: 2px solid var(--c); border-radius: 99px; padding: 1px 10px; font-size: 14px; font-weight: 900; white-space: nowrap; }
+  .qpts.sp { background: var(--c); color: #1b1440; }
+  .ql2 { display: flex; align-items: center; gap: 10px; margin-top: 7px; color: var(--muted); font-weight: 800; font-size: 14px; white-space: nowrap; min-height: 18px; }
+  .ql2 .qwho { white-space: normal; }
+  .qdots { display: flex; gap: 5px; flex: none; }
+  .qdots i { flex: none; width: var(--dw, 14px); height: 5px; border-radius: 99px; background: rgba(255,255,255,.16); }
+  .qdots i.done { background: rgba(255,255,255,.45); }
+  .qdots i.cur { background: var(--c); width: calc(var(--dw, 14px) * 1.75); }
+  .ql2 > span:last-child:not(.qdots) { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .qhint { text-align: center; color: var(--muted); font-weight: 700; font-size: 14px; margin-top: 8px; }
   .chosen { width: 130px; height: 130px; border-radius: 26px; display: grid; place-items: center; font-size: 70px; color: #fff; box-shadow: 0 6px 0 rgba(0,0,0,.3); }
   .chosen svg { width: 66px; height: 66px; display: block; }
@@ -364,15 +369,37 @@ function ptsText(q) {
   return q.perPair ? '1 Punkt je Paar' : q.perItem ? '1 Punkt je Aussage' : q.points === 1 ? '1 Punkt' : q.points + ' Punkte';
 }
 // Kopf über der Frage: oben Frageart (links) und Punkte (rechts), darunter Block/Frage mit Fortschrittsbalken
+// Kopf bei den Fragen – gleich aufgebaut wie am Fernseher: Kategorie groß + Punkte-Pill,
+// darunter Block-Nummer, Fortschritt im Block als Striche und Fragetyp
+function qProgress() {
+  const b = S.block;
+  if (!b || !b.len) return `<span>Frage ${S.qNum} / ${S.qTotal}</span>`;
+  const label = b.total > 1 ? `<span>Block ${b.num}</span>` : '';
+  if (b.len > 15) return label + `<span>Frage ${b.q} / ${b.len}</span>`;   // zu viele Striche: lieber als Zahl
+  const dw = Math.max(6, Math.min(16, Math.floor((140 - (b.len - 1) * 5) / (b.len + 0.75))));   // Striche passen sich der Anzahl an (Platz ~140 px)
+  return label + `<span class="qdots" style="--dw:${dw}px">${Array.from({ length: b.len }, (_, i) => `<i class="${i + 1 < b.q ? 'done' : i + 1 === b.q ? 'cur' : ''}"></i>`).join('')}</span>`;
+}
+function ptsPill(q) {
+  if (q && q.tiebreak) return `<span class="qpts">⚔️ Stechen um Platz 1</span>`;
+  if (S.special) {
+    const pts = q && q.points && !q.perPair && !q.perItem ? ` · ${q.points * S.special.mult} Punkte` : '';
+    return `<span class="qpts sp">⭐ Spezialfrage ×${S.special.mult}${pts}</span>`;
+  }
+  const pt = ptsText(q);
+  return pt ? `<span class="qpts">${pt}</span>` : '';
+}
 function qline(extra) {
-  const q = S.question, pt = ptsText(q);
+  const q = S.question || {};
   const hint = extra ? `<div class="qhint">${extra}</div>` : '';
-  if (q && q.tiebreak) return `<div class="qhead"><div class="qrow"><span class="badge">⚔️ Stechen um Platz 1</span></div>${hint}</div>`;
-  const b = S.block, multi = b && b.total > 1 && b.len;
-  const cur = multi ? b.q : S.qNum, len = multi ? b.len : S.qTotal;
+  let sub;
+  if (q.tiebreak && S.tiebreak) {
+    const names = S.tiebreak.ids.map(id => (S.players.find(p => p.id === id) || {}).name).filter(Boolean);
+    const who = names.length > 1 ? names.slice(0, -1).join(', ') + ' und ' + names[names.length - 1] : names[0] || '';
+    sub = `<span class="qwho">Nur ${esc(who)} ${names.length > 1 ? 'antworten' : 'antwortet'}${S.tiebreak.round > 1 ? ` · Runde ${S.tiebreak.round}` : ''}</span>`;
+  } else sub = qProgress() + (q.label ? `<span>${q.icon || ''} ${esc(q.label)}</span>` : '');
   return `<div class="qhead">
-    <div class="qrow"><span class="badge">${q && q.label ? `${q.icon} ${esc(q.label)}` : '❓ Quizfrage'}</span>${pt ? `<span class="ptsbadge">${pt}</span>` : ''}</div>
-    <div class="qprog">${multi ? `<span>Block ${b.num}/${b.total}</span>` : ''}<span class="qbar"><i style="width:${len ? Math.round(cur / len * 100) : 0}%"></i></span><span>Frage ${cur}/${len}</span></div>
+    <div class="ql1"><span class="qcat">${esc(q.category || '')}</span>${ptsPill(q)}</div>
+    <div class="ql2">${sub}</div>
     ${hint}</div>`;
 }
 
