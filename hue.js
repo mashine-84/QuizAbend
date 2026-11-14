@@ -201,7 +201,9 @@ async function onPhase(phase, info = {}) {
   if (!cfg.enabled || !cfg.appKey || !(cfg.lights || []).length) return;
   if (phase === 'lobby') return restore();
   if (!(await ensureGroup())) return;
-  if (phase === 'opening' && !snapshot) await takeSnapshot();
+  // Lichtzustand vor dem Spiel merken, damit er am Ende wiederhergestellt wird – vor dem ersten Spiel-Licht,
+  // also schon beim Opener (der läuft seit dem Opener vor dem Intro)
+  if ((phase === 'ident' || phase === 'opening') && !snapshot) await takeSnapshot();
   let mood, key = phase;
   switch (phase) {
     case 'ident': mood = { color: VIOLET, bri: 30, ms: 800 }; break;                      // Opener: kurz abdunkeln
