@@ -46,7 +46,7 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
   - Das eigene WLAN läuft über `hostapd` (sauberes WPA2, funktioniert mit dem WLAN-Chip des Pi 3). Fehlt `hostapd`, installiert der Pi es beim nächsten Start zu Hause selbst (steht im Protokoll). Bis dahin dient der Hotspot des NetworkManagers als Notlösung. Verbundene Handys stehen ebenfalls im Protokoll. Nach jedem WLAN-Wechsel startet der Pi avahi neu, damit `quizabend.local` erreichbar bleibt (avahi weicht sonst gern auf `quizabend-2.local` aus).
   - Das Startskript legt die Hotspot-Verbindung selbst an, falls sie fehlt. Nur der Startdienst selbst braucht einmalig `setup.sh` (steht sonst als Hinweis am Handy).
 - **Update, Neustart, Ausschalten:** Unter ⚙️ Einstellungen am Handy des 👑-Spielers. Bitte den Pi so ausschalten statt einfach den Stecker zu ziehen, das schont die SD-Karte. Das Handy zeigt an, wann der Pi aus ist („✅ Jetzt Stecker ziehen“).
-- **Fragen ändern:** Dateien im Ordner `fragen/` bearbeiten oder neue dazulegen. Ein Neustart ist nicht nötig, neue Pakete erscheinen beim nächsten Öffnen der Paketauswahl.
+- **Fragen ändern:** Die Fragen kommen aus dem **Fragen-Repo** (siehe „Eigene Fragen und Pakete“). Neue Fragen dort hochladen, dann am Handy „Update holen“ oder unter ⚙️ › 📚 Fragen „Fragen aktualisieren“ – ohne Neustart.
 - **Updates holen:** `cd QuizAbend && git pull && sudo systemctl restart quizabend`
 - **Autostart abschalten:** `sudo systemctl disable quizabend` und `rm ~/.config/autostart/quizabend-kiosk.desktop`
 
@@ -68,7 +68,7 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 - **Schätzfrage:** Je näher dran, desto mehr Punkte (bis 800). Wer am nächsten dran ist, bekommt +200 dazu.
 - **Jahreszahlen** („In welchem Jahr …“): Punkte gibt es nur bei höchstens ±2 Jahren Abweichung. Exakt bringt 800, ±1 Jahr 530 und ±2 Jahre 270 Punkte, dazu +200 für den Nächsten. Wer weiter danebenliegt, bekommt 0 Punkte.
 - **Zuordnung:** Erst erscheinen nur die Begriffe, dann die Frage. Am Handy ordnest du die Partner den Zahlen zu. Aufgelöst wird Paar für Paar, Punkte gibt es pro richtigem Paar.
-- **⚖️ Richtig oder falsch:** Mehrere Behauptungen (meist 3). Am Handy tippst du bei jeder auf *Richtig* oder *Falsch* und schickst ab. Auf dem Fernseher wird Aussage für Aussage aufgedeckt, danach erscheinen die Avatare derer, die richtig lagen. Punkte gibt es pro richtig eingeschätzter Aussage. Beispiele: Paket „Richtig oder falsch“ in `fragen/Allgemein`.
+- **⚖️ Richtig oder falsch:** Mehrere Behauptungen (meist 3). Am Handy tippst du bei jeder auf *Richtig* oder *Falsch* und schickst ab. Auf dem Fernseher wird Aussage für Aussage aufgedeckt, danach erscheinen die Avatare derer, die richtig lagen. Punkte gibt es pro richtig eingeschätzter Aussage. Beispiele: Paket „Richtig oder falsch“ im Fragen-Repo.
 - Wer mehrere Fragen in Folge richtig hat, bekommt bis zu +150 Serienbonus.
 - Ist die Zeit um, zeigt der Fernseher erst, wer was gewählt hat. Danach kommt die Auflösung.
 - **Punkte bleiben bis zum Blockende geheim.** Bei der Auflösung sieht man nur richtig (✓), knapp daneben (≈) oder falsch (✗), am Handy steht „Punkte und Platz gibt's am Ende des Blocks“.
@@ -84,7 +84,7 @@ Oben rechts am Handy des 👑-Spielers öffnet **🎛️** das Host-Menü:
 - **Spieler umbenennen (✏️) oder entfernen (✖)**
 
 ## Einstellungen am Handy (👑)
-Der 👑-Spieler tippt in der Lobby auf **⚙️ Einstellungen**. Über das Menü (☰ oben links) wechselt er zwischen drei Bereichen, geöffnet wird immer **Spieleinstellungen**:
+Der 👑-Spieler tippt in der Lobby auf **⚙️ Einstellungen**. Über das Menü (☰ oben links) wechselt er zwischen den Bereichen (Spieleinstellungen, 📚 Fragen, Integrationen, Systemeinstellungen), geöffnet wird immer **Spieleinstellungen**:
 
 **Spieleinstellungen**
 - **Anzahl Blöcke** (1 bis 6). Antippen eines Blocks öffnet seine Einstellungen: wie viele Fragen er hat und welche Pakete er nutzt. Pakete lassen sich einzeln oder als ganze Hauptkategorie an- und abhaken. Neben jedem Paket steht, wie viele leichte, mittlere und schwere Fragen es enthält.
@@ -110,9 +110,21 @@ Der 👑-Spieler tippt in der Lobby auf **⚙️ Einstellungen**. Über das Men�
 Die Einstellungen bleiben gespeichert (`einstellungen.json`).
 
 ## Eigene Fragen und Pakete
+### Fragen-Repo
+Die Fragenpakete liegen **nicht** in diesem Repo, sondern in einem eigenen (gern privaten) Git-Repo, z. B. `QuizAbend-Fragen`. So lässt sich das Quiz aktualisieren, ohne die Fragen anzufassen – und Fragen mit fremden Logos o. Ä. bleiben privat. In diesem Repo liegen nur zwei kleine Testpakete (Soundcheck, Seh-Test), damit das Quiz auch ohne Fragen-Repo startet.
+
+Einrichten am 👑-Handy unter ⚙️ Einstellungen › ☰ › **📚 Fragen**:
+1. **Privates Repo?** Erst **🔑 Schlüssel erzeugen**, den angezeigten Schlüssel kopieren und im Fragen-Repo auf GitHub unter *Settings › Deploy keys › Add deploy key* eintragen (**ohne** Schreibzugriff). Öffentliche Repos brauchen das nicht.
+2. Repo-Adresse eintragen (z. B. `https://github.com/name/QuizAbend-Fragen`) und **Laden**.
+3. Danach aktualisiert **Update holen** das Fragen-Repo mit; neue Fragen brauchen keinen Neustart. Einzeln geht es mit **Fragen aktualisieren**.
+- **Wechseln:** Neue Adresse eintragen → die alte Kopie auf dem Pi wird gelöscht und das neue Repo geladen. Im alten Repo selbst geht nichts verloren, zurückwechseln geht jederzeit. **Fragen-Repo entfernen** löscht nur die Kopie auf dem Pi.
+- Auf dem Pi liegt die Kopie unter `fragen/_repo/`, die Einstellung in `fragen-quelle.json`, der Schlüssel in `.fragen-key` (alles nicht im Git).
+- Der Verlauf „schon gespielt“ gilt je Repo – nach einem Wechsel sind die Fragen des neuen Repos alle neu.
+
+### Aufbau eines Fragen-Repos
 Jede Datei ist ein **Paket**, jeder Ordner darüber eine **Hauptkategorie**:
 ```
-fragen/
+QuizAbend-Fragen/
   Allgemein/
     Grundwissen.json
     Bilderraetsel.json
@@ -120,6 +132,8 @@ fragen/
       fische.webp
   Sport/               ← neuer Ordner = neue Hauptkategorie
     Fussball.json
+  REGELN.md            ← Regeln für gute Fragen
+  pruefen.js           ← node pruefen.js prüft alle Pakete
 ```
 Eine Paketdatei sieht so aus, und die Frageart ergibt sich aus den Feldern:
 ```json
@@ -151,6 +165,8 @@ Eine Paketdatei sieht so aus, und die Frageart ergibt sich aus den Feldern:
 | 🎧 Soundcheck | zusätzlich `"audio": "lied.mp3"`. Die Datei in den Ordner `audio` neben der Datei legen (mp3, m4a, ogg oder wav). Optional: `"start": 30` und `"dauer": 10` (Sekunden) spielen nur einen Ausschnitt, `"rueckwaerts": true` spielt ihn rückwärts, `"wiederholen": 3` lässt ihn 3-mal hören (1 bis 5 – praktisch bei sehr kurzen Ausschnitten). Dazwischen sind 2,5 Sekunden Pause, mit `"pause": 4` stellst du sie selbst ein (0,5 bis 10 Sekunden). Geht mit jeder Frageart. |
 | Zuordnung | `"zuordnen": {"Begriff": "Partner", ...}` mit 2 bis 6 Paaren. Die Reihenfolge wird im Spiel gemischt. |
 | ⚖️ Richtig oder falsch | `"behauptungen": [["Aussage", true], ["Aussage", false], ...]` mit 2 bis 5 Aussagen, `true` = stimmt, `false` = stimmt nicht. Die Reihenfolge wird im Spiel gemischt. Standardzeit 30 Sekunden. |
+
+**Gute Fragen schreiben:** Regeln (Schwierigkeit, Länge, falsche Antworten, Stichtage …) stehen in `REGELN.md` im Fragen-Repo. Mit `node pruefen.js` (im Fragen-Repo oder hier) prüfst du alle Fragendateien auf Fehler und Hinweise.
 
 Optional bei jeder Frage:
 - `"schwierigkeit": 1`, `2` oder `3` für leicht, mittel oder schwer (ohne Angabe gilt 1). Gilt sie für ein ganzes Paket, kannst du `"schwierigkeit": 2` auch oben neben `"paket"` schreiben.
@@ -258,5 +274,5 @@ Beispiel (Windows, Eingabeaufforderung): `set FRAGEN=15 && node server.js`
 - `public/qr.js`: QR-Code-Generator (funktioniert offline)
 - `hue.js`: Philips-Hue-Steuerung (Kopplung, Bereich, Licht je Spielphase)
 - `sounds/`: Pausenmusik (`standard/` mit Erzeuger-Skript, eigene Datei daneben)
-- `fragen/`: Fragenpakete (ein Ordner pro Hauptkategorie, eine Datei pro Paket)
+- `fragen/`: eingebaute Testpakete; `fragen/_repo/`: Kopie des Fragen-Repos (`fragenrepo.js`)
 - `einstellungen.json`: gewählte Pakete (legt das Spiel selbst an)

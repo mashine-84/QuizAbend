@@ -1,9 +1,0 @@
-{
-  "paket": "Zuordnen",
-  "fragen": [
-    {"kategorie": "Berühmte Paare", "frage": "Wie heißen die Ehefrauen dieser Männer?", "zuordnen": {"Barack Obama": "Michelle", "Bill Clinton": "Hillary", "John F. Kennedy": "Jacqueline", "Prinz William": "Kate"}, "schwierigkeit": 2},
-    {"kategorie": "Geografie", "frage": "Welche Hauptstadt gehört zu welchem Land?", "zuordnen": {"Kanada": "Ottawa", "Brasilien": "Brasília", "Türkei": "Ankara", "Schweiz": "Bern"}, "schwierigkeit": 3},
-    {"kategorie": "Tiere", "frage": "Wie heißen die Jungtiere?", "zuordnen": {"Pferd": "Fohlen", "Kuh": "Kalb", "Schaf": "Lamm", "Schwein": "Ferkel"}, "schwierigkeit": 1},
-    {"kategorie": "Bücher", "frage": "Wer hat diese Bücher geschrieben?", "zuordnen": {"Harry Potter": "J. K. Rowling", "Der Herr der Ringe": "J. R. R. Tolkien", "Die Verwandlung": "Franz Kafka", "Momo": "Michael Ende"}, "schwierigkeit": 2}
-  ]
-}
