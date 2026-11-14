@@ -26,3 +26,5 @@ fragen-quelle.json
 # Sichere Adresse (https): Zugangsdaten, acme.sh, Zertifikate
 https.json
 .https/
+# Spotify: Anmeldung (Token), Gerät
+spotify.json

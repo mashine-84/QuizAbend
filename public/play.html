@@ -219,6 +219,7 @@
   .btn.danger { background: #e5484d; color: #fff; }
   .repobox { background: rgba(255,255,255,.06); border-radius: 12px; padding: 10px 12px; margin: 8px 0 10px; word-break: break-all; }
   .repobox small { display: block; color: var(--muted); margin-top: 2px; word-break: normal; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .hline { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; margin: 6px 0; color: var(--muted); }
   .hline > span:first-child { width: 18px; flex: none; text-align: center; }
   .hline.ok { color: #8ff0b5; } .hline.bad { color: #ffb4b6; }
@@ -543,6 +544,7 @@ async function openSettings() {
   ui.packs = await fetch('/api/pakete').then(r => r.json()).catch(() => null);
   ui.hue = { st: (await hueCall('status')) || null };
   ui.https = { st: ((await post('/api/https', { id: myId, action: 'status' })).data || {}).status || null };
+  ui.spotify = { st: ((await post('/api/spotify', { id: myId, action: 'status' })).data || {}).status || null };
   lastKey = ''; render();
 }
 function closeSettings() { ui.settings = false; lastKey = ''; render(); }
@@ -674,6 +676,77 @@ function renderShutdown() {
 }
 
 // ---------- Fragen-Repo: eigenes Git-Repo mit den Fragenpaketen ----------
+// ---------- Spotify Connect ----------
+function spotifySection() {
+  const sp = ui.spotify || {}, st = sp.st;
+  if (!st) return '';
+  const msg = sp.msg ? `<div class="sysout ${sp.msg.ok ? '' : 'bad'}">${esc(sp.msg.text)}</div>` : '';
+  const head = `<h3>🎵 Spotify</h3>`;
+  const intro = `<p class="small">Musik von Spotify läuft während des Spiels auf deinem Gerät (z. B. dem Receiver). Bei Opener, Intro, Blockpause und Siegerehrung spielt die Quiz-Musik – dann pausiert Spotify, ebenso solange bei Musik- und Filmfragen Ton oder Video läuft. Danach geht es weiter.</p>`;
+  if (st.blocked) return head + `<div class="sysout">📶 Der Pi hat gerade sein eigenes WLAN an (ohne Internet). Spotify geht nur im Heim-WLAN.</div>`;
+  if (!st.https) return head + intro + `<div class="sysout">🔒 Für die Anmeldung bei Spotify braucht es die sichere Adresse (https). Richte sie zuerst ein – Spotify leitet nach dem Login nur an https-Adressen zurück.</div>
+    <button class="btn ghost" onclick="showSection('netz')">🔒 Zur sicheren Adresse</button>`;
+  let body;
+  if (!st.connected) {
+    body = `<p class="small">Einmalig einrichten (Spotify Premium nötig):</p>
+      <ol class="steps"><li><b>developer.spotify.com/dashboard</b> öffnen, mit deinem Spotify-Konto anmelden, <b>Create app</b>.</li>
+        <li>Name z. B. „QuizAbend“, Beschreibung beliebig. Bei <b>Redirect URIs</b> genau diese Adresse eintragen:<pre class="keybox" id="spredir">${esc(st.redirect)}</pre>
+          <button class="btn ghost sm" onclick="copyText('spredir')">📋 ${sp.copied ? 'Kopiert ✓' : 'Adresse kopieren'}</button></li>
+        <li>Bei der Frage nach der Schnittstelle <b>Web API</b> ankreuzen, speichern.</li>
+        <li>In der App unter <b>Settings</b> die <b>Client ID</b> kopieren und hier eintragen.</li></ol>
+      <label class="fieldlabel" for="spclient">Client ID</label>
+      <input id="spclient" class="field" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="32 Zeichen, z. B. 1a2b3c…" value="${esc(sp.clientId ?? st.clientId ?? '')}" oninput="ui.spotify.clientId = this.value">
+      <button class="btn" onclick="spotifyConnect()">🎵 Mit Spotify verbinden</button>
+      <p class="small">Melde dich mit demselben Spotify-Konto an, mit dem du die App angelegt hast.</p>`;
+  } else {
+    body = `<p class="small">Verbunden als <b>${esc(st.user || 'Spotify-Nutzer')}</b>${st.product && st.product !== 'premium' ? ' – <span class="warnc">kein Premium: Steuern geht nicht</span>' : ''}${st.device ? ` · Gerät: <b>${esc(st.device.name)}</b>` : ''}</p>
+      ${st.device ? `<label class="switch"><input type="checkbox" ${st.enabled ? 'checked' : ''} onchange="spotifyDo('enable', { on: this.checked })"><span>Spotify im Spiel steuern</span></label>` : ''}
+      ${sp.devices ? (sp.devices.length ? `<div class="huelist">${sp.devices.map((d, i) => `<button class="btn sm ${st.device && st.device.id === d.id ? '' : 'ghost'}" onclick="spotifySelect(${i})">${esc(d.name)}</button>`).join('')}</div>`
+        : '<p class="small warnc">Kein Gerät gefunden. Schalte den Receiver ein (oder spiele kurz etwas über die Spotify-App darauf ab) und suche erneut.</p>') : ''}
+      <button class="btn ghost" onclick="spotifyDevices()">🔊 ${st.device ? 'Anderes Gerät wählen' : 'Gerät wählen'}</button>
+      ${st.device ? `<label class="fieldlabel" for="spplaylist">Playlist zum Spielstart <small>(optional)</small></label>
+        <input id="spplaylist" class="field" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Spotify-Link: Teilen › Link kopieren" value="${esc(sp.playlist ?? (st.playlist ? 'https://open.spotify.com/' + st.playlist.split(':').slice(1).join('/') : ''))}" oninput="ui.spotify.playlist = this.value">
+        <button class="btn ghost sm" onclick="spotifyDo('playlist', { link: ui.spotify.playlist ?? '' })">Playlist speichern</button>
+        <p class="small">Ohne Playlist spielt Spotify zum Spielstart weiter, was zuletzt lief.</p>
+        <div class="row2"><button class="btn ghost sm" onclick="spotifyDo('play')">▶️ Test: Abspielen</button><button class="btn ghost sm" onclick="spotifyDo('pause')">⏸ Test: Pause</button></div>` : ''}
+      <button class="btn danger sm" onclick="spotifyForget(this)">Spotify trennen</button>`;
+  }
+  const logBox = st.log && st.log.length ? `<details class="wlog"><summary>Protokoll anzeigen</summary><pre>${esc(st.log.join('\n'))}</pre></details>` : '';
+  return head + intro + body + msg + logBox;
+}
+async function spotifyDo(action, extra) {
+  const { data } = await post('/api/spotify', { id: myId, action, ...(extra || {}) });
+  if (data.status) ui.spotify.st = data.status;
+  ui.spotify.msg = data.ok ? (action === 'play' ? { ok: true, text: 'Spielt ✓' } : action === 'pause' ? { ok: true, text: 'Pausiert ✓' } : action === 'playlist' ? { ok: true, text: 'Gespeichert ✓' } : null)
+    : { ok: false, text: data.text || 'Hat nicht geklappt.' };
+  lastKey = ''; render();
+  return data;
+}
+async function spotifyConnect() {
+  const d = await spotifyDo('client', { clientId: ui.spotify.clientId ?? ui.spotify.st.clientId });
+  if (d.ok) location.href = (ui.spotify.st.https || '/') + 'spotify/login?id=' + encodeURIComponent(myId);
+}
+async function spotifyDevices() {
+  ui.spotify.msg = { ok: true, text: 'Suche Geräte …' }; lastKey = ''; render();
+  const d = await spotifyDo('devices');
+  if (d.ok) ui.spotify.devices = d.devices;
+  lastKey = ''; render();
+}
+function spotifySelect(i) { const d = ui.spotify.devices[i]; ui.spotify.devices = null; spotifyDo('select', { device: d.id, name: d.name }); }
+function spotifyForget(btn) {
+  if (ui.confirm !== 'spotify') { ui.confirm = 'spotify'; btn.textContent = 'Wirklich trennen? Nochmal tippen'; return; }
+  ui.confirm = null; spotifyDo('forget');
+}
+function copyText(id) {
+  const t = document.getElementById(id); if (!t) return;
+  const ta = document.createElement('textarea'); ta.value = t.textContent; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, ta.value.length);
+  let ok = false; try { ok = document.execCommand('copy'); } catch (_) {}
+  ta.remove();
+  if (!ok && navigator.clipboard) navigator.clipboard.writeText(t.textContent).catch(() => {});
+  ui.spotify.copied = true; lastKey = ''; render();
+}
+
 // ---------- Sichere Adresse (https) ----------
 const fmtDate = iso => new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 function httpsSection() {
@@ -897,7 +970,7 @@ function renderSettings() {
       <button class="btn ghost" onclick="openPlan()">📋 Fragen planen</button>` : ''}
     ${d.errors.length ? `<div class="errors"><b>⚠️ Fehler in Fragendateien</b>${d.errors.map(e => `<div><code>${esc(e.file)}</code><br>${esc(e.error)}</div>`).join('')}</div>` : ''}`;
   else if (sec.id === 'fragen') body = repoSection(d);
-  else if (sec.id === 'integ') body = hueSection() || '<p class="small">Keine Integrationen verfügbar.</p>';
+  else if (sec.id === 'integ') body = (hueSection() + spotifySection()) || '<p class="small">Keine Integrationen verfügbar.</p>';
   else if (sec.id === 'netz') body = httpsSection();
   else body = `
     <h3>🔊 Sound</h3>
@@ -1019,7 +1092,7 @@ function renderModerator() {
 const SECTIONS = [
   { id: 'game', icon: '🎲', title: 'Spieleinstellungen', sub: 'Frageblöcke, Spezialfrage, Pause' },
   { id: 'fragen', icon: '📚', title: 'Fragen', sub: 'Fragen-Repo eintragen, wechseln, aktualisieren' },
-  { id: 'integ', icon: '🧩', title: 'Integrationen', sub: 'Philips Hue' },
+  { id: 'integ', icon: '🧩', title: 'Integrationen', sub: 'Philips Hue, Spotify' },
   { id: 'netz', icon: '🔒', title: 'Sichere Adresse', sub: 'https im Heim-WLAN – Bildschirm bleibt an' },
   { id: 'system', icon: '🛠️', title: 'Systemeinstellungen', sub: 'Sound, Update, Neustart, Ausschalten' },
 ];

@@ -242,6 +242,13 @@ Der Pi trägt dann seine Heimnetz-IP bei DuckDNS ein, holt das Zertifikat (dafü
 - Wer beim Umstellen schon mitspielt, muss einmal neu beitreten (neue Adresse = neues Gerät für den Browser).
 - Name, Token und Zertifikat liegen in `https.json` und `.https/` (nicht im Git).
 
+## 🎵 Spotify
+Während des Spiels läuft deine Spotify-Musik auf einem Spotify-Connect-Gerät im Heimnetz (z. B. dem Receiver). Das Quiz pausiert Spotify bei Opener, Intro, Blockpause und Siegerehrung sowie solange bei Musik- und Filmfragen Ton oder Video läuft – danach geht es weiter. Der Quiz-Ton bleibt am Fernseher.
+
+Braucht **Spotify Premium**, eine kostenlose eigene Spotify-App (developer.spotify.com) und die **sichere Adresse** (https). Nur im Heim-WLAN. Einrichten am Handy des 👑 unter ⚙️ › 🧩 Integrationen › 🎵 Spotify.
+
+**Ausführlich – Ablauf, Vorteile, Abhängigkeiten, Einrichten, Datenschutz, Fehlersuche:** [docs/SPOTIFY.md](docs/SPOTIFY.md)
+
 ## 💡 Philips Hue (Test)
 Das Quiz kann das Licht im Raum mitsteuern. Es braucht dafür nur die Hue Bridge im selben Netz, keine Zusatzsoftware.
 

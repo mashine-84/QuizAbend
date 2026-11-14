@@ -37,7 +37,8 @@ const MIN_PLAYERS = 2;
 
 const FRAGEN_DIR = path.join(__dirname, 'fragen');
 const fragenRepo = require('./fragenrepo');
-const zertifikat = require('./zertifikat');   // sichere Adresse (https) im Heim-WLAN: DuckDNS + Let's Encrypt
+const zertifikat = require('./zertifikat');
+const spotify = require('./spotify');         // Spotify Connect: Musik auf einem Gerät im Heimnetz, Pause/Weiter passend zum Spiel   // sichere Adresse (https) im Heim-WLAN: DuckDNS + Let's Encrypt
 const HTTPS_PORT = Number(process.env.HTTPS_PORT) || 443;   // Fragen-Repo (eigenes Git-Repo, Kopie unter fragen/_repo)
 const SOUNDS_DIR = path.join(__dirname, 'sounds');
 const HOTSPOT_FILE = path.join(__dirname, 'hotspot.json'); // von raspberry-pi/setup.sh angelegt: {ssid, password}
@@ -325,6 +326,7 @@ function setPhase(phase, ms, next) {
   if (ms && next) timer = setTimeout(next, ms);
   broadcast();
   hueUpdate();
+  spotifyUpdate();
   // Pause: in der letzten Minute das Licht langsam herunterdimmen (bei kurzer Pause nach dem Hellwerden)
   clearTimeout(hueDimTimer);
   if (phase === 'pause' && ms) hueDimTimer = setTimeout(() => {
@@ -342,6 +344,13 @@ function hueUpdate() {
   if (ph === 'reveal' && q) { info.q = state.idx; info.correct = q.kind === 'choice' ? q.correct : null; }
   if (ph === 'end') { const w = ranking()[0]; info.winnerColor = w && w.color; }
   hue.onPhase(ph, info).catch(() => {});
+}
+
+// Spotify: läuft im Spiel, pausiert bei eigener Quiz-Musik und solange bei Musik-/Filmfragen Ton/Video läuft
+function spotifyUpdate() {
+  if (hotspot()) return;
+  const q = currentQuestion();
+  spotify.onPhase(state.phase, { sound: !!(q && (q.audio || q.video)) });
 }
 
 function prepareQuestion(q) {
@@ -1029,6 +1038,16 @@ function lanIp() {
   return candidates[0] ? candidates[0].address : 'localhost';
 }
 
+// kleine Ergebnis-Seite nach der Spotify-Anmeldung
+function spotifyPage(res, ok, text, base) {
+  res.writeHead(ok ? 200 : 400, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.end(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Spotify – QuizAbend</title>
+<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#14102b;color:#fff;font-family:system-ui,sans-serif;text-align:center;padding:24px;box-sizing:border-box">
+<div><div style="font-size:64px">${ok ? '✅' : '⚠️'}</div><h1 style="font-size:24px">${ok ? 'Spotify verbunden' : 'Hat nicht geklappt'}</h1>
+<p style="color:#b9b2e6;font-size:17px;line-height:1.4">${String(text).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</p>
+<a href="${base || '/'}" style="display:inline-block;margin-top:12px;background:#f5b014;color:#1b1440;font-weight:800;padding:14px 22px;border-radius:14px;text-decoration:none">Zurück zum Quiz</a></div>`);
+}
+
 // Sichere Adresse nutzen? Nur im Heim-WLAN, mit gültigem Zertifikat und wenn der Name im Heimnetz auflöst
 let httpsServer = null;
 function httpsReady() {
@@ -1430,6 +1449,39 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ...r, status: { ...zertifikat.status(), active: !!httpsReady() } });
   }
 
+  // Spotify: Einstellungen (nur 👑)
+  if (req.method === 'POST' && p === '/api/spotify') {
+    const body = await readBody(req);
+    if (body.id !== vipId()) return json(res, 403, { ok: false });
+    const a = body.action;
+    let r;
+    if (hotspot() && !['status', 'forget'].includes(a)) r = { ok: false, text: 'Spotify geht nur im Heim-WLAN – im eigenen WLAN des Pi gibt es kein Internet.' };
+    else if (a === 'status') r = { ok: true };
+    else if (a === 'client') r = spotify.setClientId(body.clientId);
+    else if (a === 'devices') r = await spotify.devices();
+    else if (a === 'select') r = spotify.selectDevice(body.device, body.name);
+    else if (a === 'playlist') r = spotify.setPlaylist(body.link);
+    else if (a === 'enable') r = spotify.enable(body.on);
+    else if (a === 'play' || a === 'pause') r = await spotify.test(a);
+    else if (a === 'forget') r = spotify.forget();
+    else r = { ok: false, text: 'Unbekannte Aktion' };
+    const sec = httpsReady();
+    return json(res, 200, { ...r, status: { ...spotify.status(), https: sec, redirect: sec ? sec + 'spotify/callback' : null } });
+  }
+  // Anmelden: vom Handy aus zu Spotify, zurück kommt Spotify auf /spotify/callback (nur über die sichere Adresse)
+  if (req.method === 'GET' && p === '/spotify/login') {
+    const sec = httpsReady();
+    if (url.searchParams.get('id') !== vipId() || !sec) return spotifyPage(res, false, sec ? 'Nur der 👑 kann Spotify verbinden.' : 'Erst die sichere Adresse (https) einrichten – Spotify braucht sie für die Anmeldung.', sec);
+    const to = spotify.loginUrl(sec + 'spotify/callback');
+    if (!to) return spotifyPage(res, false, 'Erst die Client ID eintragen.', sec);
+    res.writeHead(302, { Location: to, 'Cache-Control': 'no-store' });
+    return res.end();
+  }
+  if (req.method === 'GET' && p === '/spotify/callback') {
+    const r = await spotify.callback(Object.fromEntries(url.searchParams));
+    return spotifyPage(res, r.ok, r.ok ? `Verbunden als ${r.user || 'Spotify-Nutzer'}. Wähle jetzt in den Einstellungen dein Gerät.` : r.text, httpsReady());
+  }
+
   if (req.method === 'POST' && p === '/api/leave') {
     const body = await readBody(req);
     if (players.has(body.id)) { players.delete(body.id); broadcast(); }
@@ -1455,6 +1507,7 @@ if (EXTRA_PORT && EXTRA_PORT !== PORT) http.createServer(server.listeners('reque
 // Fragen-Repo beim Start im Hintergrund auf den neuesten Stand bringen (fehlt die Kopie, wird sie geholt)
 if (fragenRepo.status().url) fragenRepo.update().then(r => { if (r.ok && r.changed) { loadPacks(); broadcast(); } if (!r.ok) console.log('  Fragen-Repo:', r.text); });
 
+spotify.start({ hotspot: () => !!hotspot() });
 // https-Server: startet, sobald es ein Zertifikat gibt; bei Erneuerung wird es ohne Neustart getauscht
 zertifikat.start({
   lanIp: () => { const ip = lanIp(); return ip === '10.42.0.1' ? null : ip; },
