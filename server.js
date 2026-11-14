@@ -1082,7 +1082,7 @@ function runSystem(action) {
         return resolve({ ok: true });
       }
       systemMsg = action === 'reboot' ? { icon: '🔄', text: 'Pi startet neu …', sub: 'Gleich geht es weiter.' }
-        : { icon: '🔌', text: 'Pi fährt herunter', sub: 'In 30 Sekunden kann der Stecker raus.' };
+        : { icon: '🔌', text: 'Pi fährt herunter', sub: 'Stecker noch drin lassen – das Handy sagt Bescheid, wann er raus kann.', power: 'off' };
       broadcast();
       setTimeout(() => execFile('sudo', ['-n', '/usr/bin/systemctl', action], (err, out, errOut) => {
         if (err) { systemMsg = null; broadcast(); console.error('  System-Aktion fehlgeschlagen:', errOut || err.message); }
