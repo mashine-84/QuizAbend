@@ -12,6 +12,7 @@ Code: [`spotify.js`](../spotify.js) (Anmeldung, Geräte, Pause/Weiter), Server-T
 |---|---|
 | Lobby | wird nicht angefasst – du kannst vorher hören, was du willst |
 | **Opener** und **Intro** („So wird gefragt“) | ⏸ Pause – das Quiz spielt seinen Opener-Jingle |
+| **Blockseite** (Block 1, Block 2 …) | ⏸ Pause – das Quiz spielt den Block-Jingle; danach geht es weiter |
 | Fragen, Auflösung, Rangliste | ▶️ läuft (zum ersten Mal: deine Playlist, sonst das, was zuletzt lief) |
 | **Musikfrage** (Soundcheck) / **Filmfrage** (Seh-Test), solange Ton oder Video läuft | ⏸ Pause – danach, wenn die Antworten kommen, geht es weiter |
 | Merkbild (stilles Bild) | ▶️ läuft weiter |

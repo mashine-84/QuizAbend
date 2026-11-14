@@ -1,6 +1,6 @@
 // Spotify Connect: Musik läuft auf einem Spotify-Gerät im Heimnetz (z. B. Yamaha-Receiver), das Quiz steuert nur
 // „Pause“ und „Weiter“ über die offizielle Spotify-Schnittstelle (Web API). Der Pi spielt selbst keine Spotify-Musik ab.
-//   - Läuft während des Spiels; pausiert, wenn das Quiz eigene Musik hat (Opener, Intro, Blockpause, Siegerehrung)
+//   - Läuft während des Spiels; pausiert, wenn das Quiz eigene Musik hat (Opener, Intro, Blockseite, Blockpause, Siegerehrung)
 //     und bei Musik-/Filmfragen (solange Ton/Video läuft) – danach geht es weiter.
 //   - Braucht Spotify Premium, eine eigene (kostenlose) Spotify-App des Besitzers und die sichere Adresse (https):
 //     Spotify leitet nach dem Anmelden nur an https-Adressen zurück.
@@ -165,8 +165,8 @@ const ready = () => !!(cfg.refresh && cfg.device && cfg.enabled !== false && !en
 
 // ---------- Spielphasen ----------
 // Quiz hat eigene Musik/Ton: Spotify pausieren. Sonst (während des Spiels) spielen. Lobby: nicht eingreifen.
-const PAUSE_PHASES = new Set(['ident', 'opening', 'pause', 'media', 'end']);
-const PLAY_PHASES = new Set(['block', 'intro', 'preview', 'question', 'locked', 'special', 'votes', 'reveal', 'scores', 'tiebreak']);
+const PAUSE_PHASES = new Set(['ident', 'opening', 'block', 'pause', 'media', 'end']);   // block: Blockseite mit eigenem Jingle
+const PLAY_PHASES = new Set(['intro', 'preview', 'question', 'locked', 'special', 'votes', 'reveal', 'scores', 'tiebreak']);
 let gameStarted = false;
 // info.sound: in der Medien-Phase läuft Ton oder Video (beim Merkbild nicht – dann weiterspielen)
 function onPhase(phase, info = {}) {
