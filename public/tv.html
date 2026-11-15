@@ -184,9 +184,14 @@
   @keyframes kdrop { from { transform: translateY(-500px); opacity: 0; } 40% { opacity: 1; } }
   .kline { animation: kfade .5s both; } html.lite .kline { animation: kfade .5s both !important; }
   @keyframes kfade { from { opacity: 0; } }
-  .ktarget { animation: pop .5s .1s both; } html.lite .ktarget { animation: pop .5s .1s both !important; }
-  .kring { fill: none; stroke: #fff; stroke-width: 4; }
+  .ktarget { animation: kdrop .6s .1s cubic-bezier(.35,1.5,.55,1) both; } html.lite .ktarget { animation: kdrop .6s .1s cubic-bezier(.35,1.5,.55,1) both !important; }
+  .kgold { fill: #f5b014; stroke: #fff; stroke-width: 22; }
+  .kshadow { fill: rgba(0,0,0,.45); animation: kfade .3s .55s both; } html.lite .kshadow { animation: kfade .3s .55s both !important; }
+  .kpulse { fill: none; stroke: #f5b014; stroke-width: 3; transform-box: fill-box; transform-origin: center; animation: kpulse 1.2s .6s ease-out both; }
+  html.lite .kpulse { animation: kpulse 1.2s .6s ease-out both !important; }
+  @keyframes kpulse { from { transform: scale(.3); opacity: 1; } 55% { transform: scale(1.5); opacity: .25; } to { transform: scale(1); opacity: .85; } }
   .klabel { animation: pop .4s .35s both; } html.lite .klabel { animation: pop .4s .35s both !important; }
+  .klabel.late { animation-delay: .75s; } html.lite .klabel.late { animation-delay: .75s !important; }
   .klabel rect { fill: #fff; } .klabel text { font-size: 17px; font-weight: 900; fill: #1b1440; }
   .klabel.ok rect { fill: #2fb36d; } .klabel.ok text { fill: #fff; }
   .kav { animation: pop .4s both; } html.lite .kav { animation: pop .4s both !important; }
@@ -1178,9 +1183,15 @@ function renderGeo(byId) {
       const rows = pins.map(x => ({ ...x, km: kDist(x.pos, q.target) })).sort((a, b) => a.km - b.km);
       const lines = rows.map((x, i) => { const [px, py] = kProj(m, x.pos[0], x.pos[1]);
         return `<line class="kline" x1="${px}" y1="${py}" x2="${tx}" y2="${ty}" stroke="${byId[x.id].color}" stroke-width="${3 * u}" stroke-dasharray="${8 * u} ${5 * u}" style="animation-delay:${GEO_LINES_S + i * 0.3}s !important"/>`; }).join('');
-      const label = q.name ? `<g transform="translate(${tx},${ty - 26 * u}) scale(${u})"><g class="klabel"><rect x="${-(q.name.length * 8.5 + 18) / 2}" y="-15" width="${q.name.length * 8.5 + 18}" height="28" rx="8"/><text y="6" text-anchor="middle">${esc(q.name)}</text></g></g>` : '';
-      over.innerHTML = lines + rows.map(x => { const p = byId[x.id]; return kPin(m, x.pos[0], x.pos[1], p.color, p.avatar, u, 40, p.result && p.result.correct ? '' : 'dim'); }).join('')
-        + `<g transform="translate(${tx},${ty}) scale(${u})"><g class="ktarget"><circle r="16" class="kring"/><circle r="5" fill="#fff"/></g></g>` + label;
+      const label = q.name ? `<g transform="translate(${tx},${ty - 112 * u}) scale(${u})"><g class="klabel late"><rect x="${-(q.name.length * 8.5 + 18) / 2}" y="-15" width="${q.name.length * 8.5 + 18}" height="28" rx="8"/><text y="6" text-anchor="middle">${esc(q.name)}</text></g></g>` : '';
+      // Ziel: großer goldener Pin (Font Awesome „location-dot“) fällt auf die Stadt, Schatten und Welle am Boden
+      const dot = FA_SVG['location-dot'], ps = 88 / 512;
+      const target = `<g transform="translate(${tx},${ty}) scale(${u})"><ellipse rx="20" ry="7" class="kshadow"/><circle r="28" class="kpulse"/>
+        <g class="ktarget"><g transform="translate(${-192 * ps},${-512 * ps}) scale(${ps})"><path d="${dot[1]}" class="kgold"/></g><circle cy="-58" r="12" fill="#fff"/></g></g>`;
+      const win = rows.find(x => (byId[x.id].result || {}).correct);
+      // Reihenfolge: Linien, übrige Pins, Ziel-Pin, Name – der Pin des Gewinners liegt vorn und etwas größer
+      over.innerHTML = lines + rows.filter(x => x !== win).map(x => { const p = byId[x.id]; return kPin(m, x.pos[0], x.pos[1], p.color, p.avatar, u, 40, 'dim'); }).join('')
+        + target + label + (win ? kPin(m, win.pos[0], win.pos[1], byId[win.id].color, byId[win.id].avatar, u, 46, 'kwin') : '');
       side.innerHTML = `<div class="klist">${rows.map((x, i) => { const p = byId[x.id], r = p.result || {};
         return `<div class="krow ${r.correct ? 'best' : ''}" style="--pc:${p.color};animation-delay:${GEO_LINES_S + 0.2 + i * 0.3}s !important"><span class="vav" style="--pc:${p.color}">${p.avatar}</span><b>${esc(p.name)}</b><i>${kKm(x.km)}</i><span class="eg ${r.correct ? '' : r.gain ? 'mid' : 'no'}">${r.correct ? '✓' : r.gain ? '≈' : '✗'}</span></div>`; }).join('') || '<div class="khint">Niemand hat getippt 🤷</div>'}</div>`;
       setTimeout(() => { geoLanded = S.qNum; const c = document.getElementById('chips'); if (c) c.innerHTML = chips(); }, (GEO_LINES_S + rows.length * 0.3) * 1000);
