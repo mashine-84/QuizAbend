@@ -205,9 +205,11 @@ function normalizeQuestion(q, dir, packName, packLevel) {
   if (q.schaetzen !== undefined) {
     const value = Number(String(q.schaetzen).replace(',', '.'));
     if (!isFinite(value)) throw new Error('"schaetzen" muss eine Zahl sein');
-    // Jahreszahl-Fragen ("In welchem Jahr …") zählen nur bis ±2 Jahre; mit "toleranz" frei einstellbar
+    // Toleranz (±) gibt es aktuell nur bei Jahreszahlen ("In welchem Jahr …"): Standard ±2 Jahre, mit "toleranz" einstellbar
+    // (größer für lange zurückliegende Ereignisse, kleiner/0 macht die Frage schwerer), "toleranz": false = ohne Grenze.
+    // Bei allen anderen Schätzfragen zählt nur, wer am nächsten dran ist – "toleranz" wird dort ignoriert.
     const year = q.jahr !== undefined ? !!q.jahr : /\bJahr\b/i.test(String(q.frage)) && Number.isInteger(value) && !q.einheit?.match?.(/^(m|km|g|kg|s|%)$/);
-    let tolerance = q.toleranz !== undefined ? Number(q.toleranz) : year ? 2 : null;
+    let tolerance = !year || q.toleranz === false ? null : q.toleranz !== undefined ? Number(q.toleranz) : 2;
     if (tolerance !== null && !(tolerance >= 0)) throw new Error('"toleranz" muss eine Zahl ab 0 sein');
     // Auflösung am Fernseher: "pegel" (Säulen + steigender Wasserpegel) für Höhen und Gewichte, sonst Slotmaschine.
     // Automatisch erkannt, mit "anzeige": "pegel" | "slot" fest einstellbar.
