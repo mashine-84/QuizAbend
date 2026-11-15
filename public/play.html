@@ -234,7 +234,8 @@
   .repobox { background: rgba(255,255,255,.06); border-radius: 12px; padding: 10px 12px; margin: 8px 0 10px; word-break: break-all; }
   .repobox small { display: block; color: var(--muted); margin-top: 2px; word-break: normal; }
   .spot { color: #1ed760; } .center.spot h1 { color: #1ed760; }   /* Spotify-Musikfrage */
-  .bicon { width: 1em; height: 1em; object-fit: contain; vertical-align: -0.12em; display: inline-block; }
+  .fa { width: 1em; height: 1em; display: inline-block; vertical-align: -0.125em; color: var(--fc, currentColor); flex: none; overflow: visible; }
+  .btn .fa, .seg button .fa, .pill .fa, .qpts .fa { color: currentColor; }
   .range { width: 100%; accent-color: #1ed760; margin: 6px 0 2px; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .hline { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; margin: 6px 0; color: var(--muted); }
@@ -260,6 +261,7 @@
 <div class="offline" id="offline">Verbindung weg – verbinde neu …</div>
 <header id="hdr" style="display:none"><span class="av" id="hAv"></span><span id="hName"></span><span class="score" id="hScore">0</span><button class="hostbtn" id="hostBtn" style="display:none" onclick="openSettings()">⚙️</button></header>
 <main id="main"></main>
+<script src="/icons.js"></script>
 <script>
 // ---------- Bildschirm wach halten, solange die Seite offen ist ----------
 // 1. Wake-Lock-API (nur bei https/localhost verfügbar), 2. sonst ein stummes Endlos-Video.
@@ -430,7 +432,7 @@ function qline(ask, sub) {
     const who = names.length > 1 ? names.slice(0, -1).join(', ') + ' und ' + names[names.length - 1] : names[0] || '';
     prog = `<span class="qwho">Nur ${esc(who)} ${names.length > 1 ? 'antworten' : 'antwortet'}${S.tiebreak.round > 1 ? ` · Runde ${S.tiebreak.round}` : ''}</span>`;
   } else prog = qProgress();
-  const icon = q.tiebreak ? '⚔️' : q.iconImg ? `<img class="bicon" src="${q.iconImg}" alt="">` : q.label ? q.icon || '' : '❓';
+  const icon = q.tiebreak ? '⚔️' : q.brand === 'spotify' ? ic('spotify', '#1DB954') : q.label ? q.icon || '' : '❓';
   const type = q.tiebreak ? 'Stechen um Platz 1' : q.label ? (q.brand === 'spotify' ? `<span class="spot">${esc(q.label)}</span>` : esc(q.label)) : 'Quizfrage';
   return `<div class="qhead">
     <div class="ql1 ${S.special && !q.tiebreak ? 'three' : ''}"><span class="qcat"><span class="qico">${icon}</span>${type}</span>${ptsPill(q)}</div>
@@ -479,10 +481,10 @@ function render() {
   if (S.question && S.question.tiebreak && S.tiebreak && !S.tiebreak.ids.includes(me.id) && ['question', 'votes', 'reveal'].includes(S.phase))
     return renderInfo('⚔️', 'Stechen läuft …', `${S.players.filter(p => S.tiebreak.ids.includes(p.id)).map(p => `${p.avatar} ${esc(p.name)}`).join(' · ')} schätzen um Platz 1.<br>Schau auf den Fernseher 👀`);
   if (S.phase === 'special') return renderInfo('⭐', 'Spezialfrage!', `Diese Frage zählt <b>×${S.special.mult}</b> Punkte!<br>Schau auf den Fernseher 👀`, 'special');
-  const qIcon = q => q.iconImg ? `<img class="bicon" src="${q.iconImg}" alt="">` : q.icon;
+  const qIcon = q => q.brand === 'spotify' ? ic('spotify', '#1DB954') : q.icon;
   if (S.phase === 'intro') return renderInfo(qIcon(S.question), S.question.label, `Kategorie: ${esc(S.question.category)}<br>Gleich geht's los – schau auf den Fernseher!`, S.question.brand === 'spotify' ? 'spot' : '');
   if (S.phase === 'media' && S.question.flash) return renderInfo('📸', 'Merk dir das Bild!', 'Es ist nur kurz auf dem Fernseher zu sehen – danach kommt die Frage, ohne Bild.');
-  if (S.phase === 'media' && S.question.spotify) return renderInfo(S.question.iconImg ? qIcon(S.question) : '🎵', 'Hör genau hin!', (S.question.audioOpts && S.question.audioOpts.repeat > 1 ? `🔁 Du hörst ihn ${S.question.audioOpts.repeat}-mal.<br>` : '') + 'Der Song läuft über Spotify (Receiver) – danach kommt die Frage dazu.', 'spot');
+  if (S.phase === 'media' && S.question.spotify) return renderInfo(qIcon(S.question), 'Hör genau hin!', (S.question.audioOpts && S.question.audioOpts.repeat > 1 ? `🔁 Du hörst ihn ${S.question.audioOpts.repeat}-mal.<br>` : '') + 'Der Song läuft über Spotify (Receiver) – danach kommt die Frage dazu.', 'spot');
   if (S.phase === 'media') return S.question.audio
     ? renderInfo('🎧', 'Hör genau hin!', (S.question.audioOpts && S.question.audioOpts.reverse ? '⏪ Der Ausschnitt läuft rückwärts!<br>' : '') + (S.question.audioOpts && S.question.audioOpts.repeat > 1 ? `🔁 Du hörst ihn ${S.question.audioOpts.repeat}-mal.<br>` : '') + 'Der Ton kommt vom Fernseher – danach kommt die Frage dazu.')
     : renderInfo('👀', 'Schau genau hin!', 'Das Video läuft auf dem Fernseher – danach kommt die Frage dazu.');
@@ -699,7 +701,7 @@ function spotifySection() {
   const sp = ui.spotify || {}, st = sp.st;
   if (!st) return '';
   const msg = sp.msg ? `<div class="sysout ${sp.msg.ok ? '' : 'bad'}">${esc(sp.msg.text)}</div>` : '';
-  const head = `<h3>🎵 Spotify</h3>`;
+  const head = `<h3>${ic('spotify', '#1DB954')} Spotify</h3>`;
   const intro = `<p class="small">Musik von Spotify läuft während des Spiels auf deinem Gerät (z. B. dem Receiver). Bei Opener, Intro, Blockseite, Blockpause und Siegerehrung spielt die Quiz-Musik – dann pausiert Spotify, ebenso bei Musik- und Filmfragen schon ab der Ankündigung. Vorher wird ausgeblendet, danach geht es weiter.</p>`;
   if (st.blocked) return head + `<div class="sysout">📶 Der Pi hat gerade sein eigenes WLAN an (ohne Internet). Spotify geht nur im Heim-WLAN.</div>`;
   if (!st.https) return head + intro + `<div class="sysout">🔒 Für die Anmeldung bei Spotify braucht es die sichere Adresse (https). Richte sie zuerst ein – Spotify leitet nach dem Login nur an https-Adressen zurück.</div>
@@ -1055,7 +1057,7 @@ function settingsSection(id, d) {
     return `<h3>🔊 Ton am Fernseher</h3>
       ${S.phase === 'lobby' ? `<label class="switch"><input type="checkbox" ${c.sound.on ? 'checked' : ''} onchange="cfg().sound.on = this.checked; saveCfg()"><span>Musik und Sounds am Fernseher</span></label>`
         : `<p class="small">${c.sound.on ? '🔊 An' : '🔇 Aus'} – umstellen geht in der Lobby.</p>`}
-      ${sp ? `<h3>🎵 Spotify</h3>
+      ${sp ? `<h3>${ic('spotify', '#1DB954')} Spotify</h3>
         ${sp.blocked ? '<p class="small">📶 Nur im Heim-WLAN – der Pi hat gerade sein eigenes WLAN an.</p>'
           : sp.connected ? `<div class="stline">✓ Verbunden als ${esc(sp.user || 'Spotify-Nutzer')}${sp.device ? ` · ${esc(sp.device.name)}` : ''}</div>
             ${sp.device ? `<label class="switch"><input type="checkbox" ${sp.enabled ? 'checked' : ''} onchange="spotifyDo('enable', { on: this.checked })"><span>Spotify im Spiel steuern</span></label>` : ''}`
@@ -1208,7 +1210,7 @@ const SECTIONS = [
   { id: 'netz', group: 'technik', icon: '📶', title: 'Netzwerk', game: true },
   { id: 'system', group: 'technik', icon: '🛠️', title: 'System', game: true },
 ];
-const SUBS = { spotify: ['musik', '🎵 Spotify'], hue: ['musik', '💡 Philips Hue'], https: ['netz', '🔒 Sichere Adresse'], repo: ['system', '📚 Fragen-Quelle'] };
+const SUBS = { spotify: ['musik', ic('spotify', '#1DB954') + ' Spotify'], hue: ['musik', '💡 Philips Hue'], https: ['netz', '🔒 Sichere Adresse'], repo: ['system', '📚 Fragen-Quelle'] };
 function showSection(id, sub) { ui.section = id; ui.sub = sub || null; ui.renaming = null; lastKey = ''; render(); window.scrollTo(0, 0); }
 function settingsBack() { if (ui.sub) ui.sub = null; else ui.section = null; ui.renaming = null; lastKey = ''; render(); window.scrollTo(0, 0); }
 
