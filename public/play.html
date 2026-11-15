@@ -132,6 +132,20 @@
   .hint { text-align: center; font-size: 14px; margin-bottom: 10px; }
   .center.top { justify-content: flex-start; padding-top: 10px; }
   /* Schätzen */
+  /* Host-PIN */
+  .pinbanner { display: flex; align-items: center; gap: 10px; background: rgba(245,176,20,.14); border: 1.5px solid rgba(245,176,20,.5); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px; }
+  .pinbanner span { font-size: 22px; } .pinbanner p { flex: 1; font-size: 14px; font-weight: 700; margin: 0; }
+  .pintext { text-align: center; color: var(--muted); font-size: 16px; margin: 4px 6px 6px; }
+  .pboxes { display: flex; justify-content: center; gap: 12px; margin: 8px 0; }
+  .pbox { width: 54px; height: 62px; border-radius: 12px; background: rgba(255,255,255,.08); border: 2px solid transparent; display: grid; place-items: center; font-size: 30px; font-weight: 900; }
+  .pbox.on { border-color: var(--c); background: rgba(245,176,20,.15); }
+  .pinpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .pinpad button { height: 62px; border-radius: 14px; border: none; background: rgba(255,255,255,.1); color: #fff; font: inherit; font-size: 26px; font-weight: 800; }
+  .center2 { text-align: center; } .center2 a { color: #fff; font-weight: 800; }
+  .tile.locked { opacity: .6; } .tile.locked .go { top: 10px; }
+  .devrow { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.07); border-radius: 12px; padding: 10px 12px; }
+  .devrow .pn { flex: 1; display: flex; flex-direction: column; font-weight: 800; } .devrow small { color: var(--muted); font-weight: 700; }
+  .note { background: rgba(255,255,255,.05); border-radius: 12px; padding: 10px 12px; font-size: 14px; color: var(--muted); font-weight: 600; line-height: 1.4; }
   /* Geografie */
   .kcard { background: #fff; color: #1b1440; border-radius: 14px; padding: 10px 14px; text-align: center; font-weight: 900; font-size: 19px; margin: 6px 0 10px; }
   .kmap { position: relative; flex: 1; min-height: 260px; border-radius: 14px; overflow: hidden; background: #1d2c55; border: 2px solid rgba(255,255,255,.12); }
@@ -412,7 +426,7 @@ function header() {
   const sorting = S.phase === 'scores' && Date.now() < scoresSince + SCORES_REVEAL_MS;
   if (!HIDE_PTS.includes(S.phase) && !sorting) shownScore = S.me.score;     // während eines Blocks bleibt der Stand vom letzten Blockende stehen
   document.getElementById('hScore').textContent = S.me.isHost ? '🎤 Gamemaster' : fmtPts(shownScore) + ' P';
-  document.getElementById('hostBtn').style.display = S.me.isVip && S.phase !== 'lobby' ? '' : 'none';
+  document.getElementById('hostBtn').style.display = (S.me.canLead || S.me.canTech) && S.phase !== 'lobby' ? '' : 'none';
 }
 
 // Punkte nach Schwierigkeit: was die Frage bringt
@@ -466,7 +480,7 @@ function render() {
   const joinKey = me ? '' : (S.taken || S.players.map(p => p.avatar)).join('');
   const hostKey = ui.host ? [S.players.map(p => p.id + p.name + p.connected).join(','), ui.renaming].join('|') : '';
   const key = [joinKey, hostKey, ui.host, S.frozen, JSON.stringify(S.system), S.kicked, S.phase, S.qNum, me ? me.id : '-', me && JSON.stringify(me.answer && (me.answer.choice ?? me.answer.value ?? me.answer.order ?? me.answer.pos ?? me.answer.region)),
-    me && me.isVip, lobbyKey, S.question && S.question.step,
+    me && me.isVip, me && me.canLead, me && me.canTech, me && me.authed, JSON.stringify(S.pin), lobbyKey, S.question && S.question.step,
     me && me.isHost ? S.players.map(p => (p.answered ? 1 : 0) + (p.connected ? 'c' : '')).join('') + JSON.stringify(me.hostQ) : ''].join('|');
   if (key === lastKey) return; // nichts Relevantes geändert (Eingaben nicht zerstören)
   const newQuestion = lastQ !== S.qNum || lastPh !== 'question';
@@ -474,7 +488,9 @@ function render() {
 
   if (S.system) return renderInfo(sysIcon(S.system.icon), S.system.text, esc(S.system.sub || 'Das Quiz ist gleich wieder da.'));
   if (!me) return renderJoin();
-  if (!me.isVip) ui.settings = false;
+  if (!me.isVip && !me.canLead && !me.canTech) ui.settings = false;
+  hostToken();
+  if (ui.pinOpen) return renderPin();
   if (ui.settings) return renderSettings();
   if (S.frozen) return renderFrozen();
   if (S.phase === 'lobby') return renderLobby();
@@ -484,7 +500,7 @@ function render() {
   if (S.phase === 'ident') return renderInfo('🎬', 'QuizAbend', 'Schau auf den Fernseher 👀');
   if (S.phase === 'opening') {
     renderInfo('🎬', 'Gleich geht\'s los!', 'Schau auf den Fernseher – dort siehst du, was euch heute erwartet.');
-    if (me.isVip) main.querySelector('.center').insertAdjacentHTML('beforeend', '<button class="btn ghost" style="margin-top:3vh" onclick="advance()">⏭ Intro überspringen</button>');
+    if (me.canLead) main.querySelector('.center').insertAdjacentHTML('beforeend', '<button class="btn ghost" style="margin-top:3vh" onclick="advance()">⏭ Intro überspringen</button>');
     return;
   }
   if (S.phase === 'block') return renderInfo('📦', S.block.total > 1 ? `Block ${S.block.num} von ${S.block.total}` : 'Los geht\'s!', `${esc(S.block.names.join(', '))}<br>Schau auf den Fernseher!`);
@@ -563,16 +579,19 @@ function renderLobby() {
   const canStart = n >= S.minPlayers && k.questions > 0;
   const blocks = (k.blocks || []).filter(b => b.plays > 0).length;
   const gm = S.me.isHost;
-  main.innerHTML = `<div class="center">
+  const pin = S.pin || {};
+  const banner = S.me.isVip && !pin.set ? `<div class="pinbanner"><span>🔑</span><p>Noch keine Host-PIN – jeder, der zuerst kommt, ist Host.</p><button class="btn sm" onclick="openPin('set')">Festlegen</button></div>` : '';
+  const becomeHost = pin.set && !S.me.authed ? `<button class="btn ghost" onclick="openPin('login')">👑 Host werden</button>` : '';
+  main.innerHTML = `${banner}<div class="center">
     <div class="big">${gm ? '🎤' : S.me.avatar}</div>
     <h1>${gm ? 'Du bist Gamemaster' : 'Du bist dabei!'}</h1>
     <p>${gm ? 'Pub-Quiz: Du spielst nicht mit, sondern moderierst.<br>' : 'Schau auf den Fernseher.<br>'}${n} von max. ${S.maxPlayers} Spielern da.</p>
-    ${S.me.isVip ? `
+    ${S.me.canLead ? `
       <button class="btn" onclick="advance()" ${canStart ? '' : 'disabled'}>${canStart ? 'Alle da – Spiel starten!' : k.questions ? `Warte auf Mitspieler (min. ${S.minPlayers})` : 'Erst Fragenpakete wählen'}</button>
       ${gm ? '<button class="btn ghost" onclick="openPlan()">📋 Fragen planen</button>' : ''}
       <button class="btn ghost" onclick="openSettings()">⚙️ Einstellungen${k.errors ? ' · ⚠️' : ''}</button>
       <p class="small">${blocks > 1 ? `${blocks} Blöcke · ` : ''}${k.questions} Fragen${k.special && k.special.on ? ` · ⭐ Spezialfrage ×${k.special.mult}` : ''}</p>`
-      : `<p>Warte, bis 👑 das Spiel startet …</p>`}
+      : `<p>${S.me.isVip ? 'Zum Starten brauchst du die Host-PIN.' : 'Warte, bis 👑 das Spiel startet …'}</p>${becomeHost}${S.me.canTech ? '<button class="btn ghost" onclick="openSettings()">⚙️ Raum & Technik</button>' : ''}`}
     <button class="leave" onclick="leave()">Spiel verlassen</button></div>`;
 }
 
@@ -982,6 +1001,7 @@ function renderSettings() {
   if (lobby && ui.planOpen) return ui.pick ? renderPlanPick() : renderPlan();
   let sec = SECTIONS.find(x => x.id === ui.section) || null;
   if (sec && !lobby && !sec.game) sec = null;   // Spiel/Fragen nur in der Lobby
+  if (sec && !secAllowed(sec)) sec = null;
   const sub = sec && ui.sub && SUBS[ui.sub] && SUBS[ui.sub][0] === sec.id ? ui.sub : null;
   const title = sub ? SUBS[sub][1] : sec ? `${sec.icon} ${sec.title}` : '⚙️ Einstellungen';
   const body = sub ? settingsSub(sub, d) : sec ? settingsSection(sec.id, d) : settingsStart(d);
@@ -995,10 +1015,13 @@ function renderSettings() {
 // Startseite: Kacheln mit Stand. Im Spiel oben die Spielsteuerung, Spiel/Fragen erst wieder in der Lobby.
 function settingsStart(d) {
   const lobby = S.phase === 'lobby', st = tileStatus(d);
-  const tile = x => `<button class="tile ${x.wide ? 'wide' : ''}" onclick="showSection('${x.id}')"><span class="go">›</span><span class="ti">${x.icon}</span>
-    <span class="tt"><b>${x.title}</b><span class="st">${st[x.id] || ''}</span></span></button>`;
-  const grp = (g, label) => { const l = SECTIONS.filter(x => x.group === g && (lobby || x.game)); return l.length ? `<div class="tgrp">${label}</div><div class="tiles">${l.map(tile).join('')}</div>` : ''; };
-  return (lobby ? '' : liveControls())
+  const tile = x => secAllowed(x)
+    ? `<button class="tile ${x.wide ? 'wide' : ''}" onclick="showSection('${x.id}')"><span class="go">›</span><span class="ti">${x.icon}</span>
+    <span class="tt"><b>${x.title}</b><span class="st">${st[x.id] || ''}</span></span></button>`
+    : `<button class="tile locked ${x.wide ? 'wide' : ''}" onclick="openPin('login')"><span class="go">🔒</span><span class="ti">${x.icon}</span>
+    <span class="tt"><b>${x.title}</b><span class="st">Host-PIN nötig</span></span></button>`;
+  const grp = (g, label) => { const l = SECTIONS.filter(x => x.group === g && (lobby || x.game) && (g !== 'vor' || secAllowed(x))); return l.length ? `<div class="tgrp">${label}</div><div class="tiles">${l.map(tile).join('')}</div>` : ''; };
+  return (lobby || !S.me.canLead ? '' : liveControls())
     + grp('vor', lobby ? 'Vor dem Spiel' : 'Während des Spiels')
     + grp('technik', 'Raum & Technik')
     + (lobby ? '' : '<p class="small">🎲 Spiel und 📚 Fragen lassen sich nach dem Spiel wieder ändern.</p>');
@@ -1025,7 +1048,9 @@ function tileStatus(d) {
   const sp = ui.spotify && ui.spotify.st, hue = ui.hue && ui.hue.st, hs = ui.https && ui.https.st, sys = d.system || {}, r = d.repo || {};
   const n = S.players.filter(p => p.connected).length, vip = S.players.find(p => p.id === S.vip);
   const blocks = c.blocks.length;
+  const pin = S.pin || {};
   return {
+    pin: pin.set ? `${ok('PIN festgelegt')}${S.me.authed ? ' · du bist angemeldet' : ''}` : `<span class="warn">⚠️ Keine PIN – wer zuerst kommt, darf alles</span>`,
     spiel: `${c.pub && c.pub.on ? '🍻 Pub-Quiz' : 'Normal'} · ${(c.scoring || 'speed') === 'level' ? 'Schwierigkeit' : 'Schnelligkeit'}<br>${c.special.on ? `Spezialfrage ×${c.special.mult}` : 'Keine Spezialfrage'}${c.pause.on && blocks > 1 ? ` · Pause ${c.pause.minutes ? c.pause.minutes + ' min' : '∞'}` : ''}`,
     fragen: `${blocks} ${blocks === 1 ? 'Block' : 'Blöcke'} · ${sum.questions} Fragen<br>${d.errors.length ? warn('Fehler in Fragendateien') : r.error ? warn('Fragen-Repo: Fehler') : r.url ? ok('Fragen-Repo geladen') : off('Nur Testfragen')}`,
     spieler: `${n} ${n === 1 ? 'Spieler' : 'Spieler'}${vip ? ` · 👑 ${esc(vip.name)}` : ''}`,
@@ -1071,6 +1096,7 @@ function settingsSection(id, d) {
     ${d.errors.length ? `<div class="errors"><b>⚠️ Fehler in Fragendateien</b>${d.errors.map(e => `<div><code>${esc(e.file)}</code><br>${esc(e.error)}</div>`).join('')}</div>` : ''}
     <p class="small">Woher die Fragen kommen (Fragen-Repo), steht unter 🛠️ System.</p>`;
   if (id === 'spieler') return playersSection();
+  if (id === 'pin') return pinSection();
   if (id === 'musik') {
     const sp = ui.spotify && ui.spotify.st, hue = ui.hue && ui.hue.st;
     return `<h3>🔊 Ton am Fernseher</h3>
@@ -1229,9 +1255,12 @@ const SECTIONS = [
   { id: 'musik', group: 'technik', icon: '🎵', title: 'Musik & Licht', game: true },
   { id: 'netz', group: 'technik', icon: '📶', title: 'Netzwerk', game: true },
   { id: 'system', group: 'technik', icon: '🛠️', title: 'System', game: true },
+  { id: 'pin', group: 'technik', icon: '🔑', title: 'Host-PIN', wide: true, game: true, open: true },
 ];
+// Darf ich den Bereich öffnen? Spiel/Fragen/Spieler: wer das Spiel leitet; Technik: mit PIN nur Angemeldete; PIN-Kachel: immer
+const secAllowed = x => x.open || (x.group === 'technik' ? S.me.canTech : S.me.canLead || (x.id === 'spieler' && S.me.authed));
 const SUBS = { spotify: ['musik', ic('spotify', '#1DB954') + ' Spotify'], hue: ['musik', '💡 Philips Hue'], https: ['netz', '🔒 Sichere Adresse'], repo: ['system', '📚 Fragen-Quelle'] };
-function showSection(id, sub) { ui.section = id; ui.sub = sub || null; ui.renaming = null; lastKey = ''; render(); window.scrollTo(0, 0); }
+function showSection(id, sub) { if (id === 'pin') pinCall('status').then(r => { ui.pinInfo = r.pin; lastKey = ''; render(); }); ui.section = id; ui.sub = sub || null; ui.renaming = null; lastKey = ''; render(); window.scrollTo(0, 0); }
 function settingsBack() { if (ui.sub) ui.sub = null; else ui.section = null; ui.renaming = null; lastKey = ''; render(); window.scrollTo(0, 0); }
 
 function renderBlockEditor() {
@@ -1269,15 +1298,108 @@ async function saveRename(ev, id) {
   ui.renaming = null; lastKey = ''; render();
 }
 // Spieler: umbenennen, entfernen (Lobby und Spiel)
+// ---------- Host-PIN ----------
+// Gemerktes Handy: Token aus localStorage einmal pro Verbindung schicken, dann ist man automatisch Host
+let tokenSent = false;
+function hostToken() {
+  const t = localStorage.getItem('quizHostToken');
+  if (tokenSent || !t || !S.me || S.me.authed || !S.pin || !S.pin.set) return;
+  tokenSent = true;
+  post('/api/pin', { id: myId, action: 'token', token: t }).then(({ data }) => { if (data.forget) localStorage.removeItem('quizHostToken'); });
+}
+const pinCall = (action, extra) => post('/api/pin', { id: myId, action, ...(extra || {}) }).then(r => r.data || {});
+// mode: 'login' (Host werden), 'set' (festlegen/ändern), 'reset' (Code vom Fernseher, dann neue PIN)
+function openPin(mode) { ui.pinOpen = true; ui.pin = { mode, step: mode === 'reset' ? 'code' : 'pin', digits: '', first: null, code: null, msg: null }; lastKey = ''; render(); }
+function closePin() { ui.pinOpen = false; ui.pin = null; lastKey = ''; render(); }
+function renderPin() {
+  const P = ui.pin, n = 4;
+  const titles = { login: '👑 Host werden', set: S.pin && S.pin.set ? '🔑 PIN ändern' : '🔑 Host-PIN festlegen', reset: '🔑 PIN zurücksetzen' };
+  let text;
+  if (P.mode === 'login') text = 'Gib die Host-PIN ein. Dein Handy wird gemerkt – beim nächsten Mal bist du automatisch Host.';
+  else if (P.step === 'code') text = S.pin && S.pin.resetting && P.requested ? '📺 Schau auf den Fernseher: Dort steht jetzt 60 Sekunden lang ein Code. Tipp ihn hier ein – das geht nur, wenn du im Raum bist.' : 'Der Fernseher zeigt gleich 60 Sekunden lang einen Code. Wer ihn eintippt, legt eine neue PIN fest.';
+  else text = P.first === null ? 'Wähle eine PIN mit 4 Ziffern. Wer sie kennt, ist Host und darf an Raum & Technik.' : 'Bitte zur Sicherheit noch einmal eingeben.';
+  const needReq = P.mode === 'reset' && P.step === 'code' && !P.requested;
+  const boxes = Array.from({ length: n }, (_, i) => `<span class="pbox ${i < P.digits.length ? 'on' : ''}">${i < P.digits.length ? (P.step === 'code' ? esc(P.digits[i]) : '•') : ''}</span>`).join('');
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'];
+  main.innerHTML = `<div class="settings pinpage">
+    <div class="shead"><button class="btn sm back" onclick="closePin()" aria-label="Zurück">‹</button><h2>${titles[P.mode]}</h2></div>
+    <p class="pintext">${text}</p>
+    ${needReq ? `<button class="btn" onclick="pinResetStart()">📺 Code am Fernseher zeigen</button>` : `
+    <div class="pboxes">${boxes}</div>
+    ${P.msg ? `<div class="sysout ${P.msg.ok ? '' : 'bad'}">${esc(P.msg.text)}</div>` : ''}
+    <div class="pinpad">${keys.map(k => k ? `<button onclick="pinKey('${k}')">${k}</button>` : '<span></span>').join('')}</div>`}
+    ${P.mode === 'login' ? `<p class="small center2">PIN vergessen? <a href="#" onclick="openPin('reset'); return false">Mit Code vom Fernseher zurücksetzen</a></p>` : ''}
+  </div>`;
+}
+async function pinResetStart() {
+  const r = await pinCall('resetstart');
+  ui.pin.requested = !!r.ok; ui.pin.msg = r.ok ? null : { ok: false, text: r.text }; lastKey = ''; render();
+}
+async function pinKey(k) {
+  const P = ui.pin;
+  if (k === '⌫') P.digits = P.digits.slice(0, -1);
+  else if (P.digits.length < 4) P.digits += k;
+  if (navigator.vibrate) navigator.vibrate(10);
+  P.msg = null; lastKey = ''; render();
+  if (P.digits.length < 4) return;
+  const d = P.digits; P.digits = '';
+  const done = r => {
+    if (!r.ok) { P.msg = { ok: false, text: r.text || 'Hat nicht geklappt.' }; lastKey = ''; return render(); }
+    if (r.token) localStorage.setItem('quizHostToken', r.token);
+    tokenSent = true; closePin(); if (navigator.vibrate) navigator.vibrate([30, 40, 30]);
+  };
+  if (P.mode === 'login') return done(await pinCall('login', { pin: d }));
+  if (P.mode === 'reset' && P.step === 'code') { P.code = d; P.step = 'pin'; lastKey = ''; return render(); }
+  if (P.first === null) { P.first = d; lastKey = ''; return render(); }
+  if (P.first !== d) { P.first = null; P.msg = { ok: false, text: 'Die beiden PINs waren unterschiedlich – bitte neu.' }; lastKey = ''; return render(); }
+  if (P.mode === 'reset') { const r = await pinCall('resetcode', { code: P.code, pin: d }); if (!r.ok) { P.step = 'code'; P.first = null; P.requested = true; } return done(r); }
+  done(await pinCall('set', { pin: d }));
+}
+async function giveCrown(id) {
+  if (ui.confirm !== 'crown' + id) { ui.confirm = 'crown' + id; lastKey = ''; return render(); }
+  ui.confirm = null;
+  const r = await pinCall('crown', { target: id });
+  ui.crownMsg = r.ok ? null : r.text; lastKey = ''; render();
+}
+// Bereich „Host-PIN“ in den Einstellungen
+function pinSection() {
+  const pin = S.pin || {}, info = ui.pinInfo || {};
+  if (!pin.set) return `<p class="small">Ohne PIN ist Host (👑), wer zuerst beitritt – und darf alles, auch Updates, Neustart und WLAN.</p>
+    ${S.me.isVip ? `<button class="btn" onclick="openPin('set')">🔑 Host-PIN festlegen</button>` : '<p class="small">Festlegen kann sie der 👑.</p>'}`;
+  if (!S.me.authed) return `<div class="stline">✓ PIN festgelegt</div><p class="small">Du bist nicht angemeldet.</p>
+    <button class="btn" onclick="openPin('login')">👑 Host werden</button>`;
+  const devs = info.devices || [];
+  const day = t => new Date(t).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+  return `<div class="stline">✓ PIN festgelegt</div>
+    <button class="btn ghost sysb" onclick="openPin('set')">PIN ändern</button>
+    <h3>📱 Gemerkte Handys</h3>
+    ${devs.length ? devs.map(d => `<div class="devrow"><span>📱</span><span class="pn">${esc(d.name)}<small>${d.mine ? 'dieses Handy · ' : ''}seit ${day(d.added)}</small></span>
+      ${d.mine ? '' : `<button class="btn ghost sm" onclick="pinForget('${d.id}')">Entfernen</button>`}</div>`).join('') : '<p class="small">Keine.</p>'}
+    <p class="small">Gemerkte Handys sind beim Beitreten automatisch Host.</p>
+    <h3>🛡️ Was die PIN schützt</h3>
+    <label class="switch"><input type="checkbox" ${pin.protectTech ? 'checked' : ''} onchange="pinOptions({ protectTech: this.checked })"><span>Raum & Technik (Netzwerk, System, Spotify, Hue)</span></label>
+    <label class="switch"><input type="checkbox" ${pin.protectGame ? 'checked' : ''} onchange="pinOptions({ protectGame: this.checked })"><span>Auch das Spiel leiten (Starten, Einstellungen)</span></label>
+    <p class="note">Ist „Spiel leiten“ aus, darf auch ein Mitspieler mit übergebener Krone das Spiel starten und steuern – an Technik und Updates kommt er ohne PIN nicht.</p>
+    <button class="btn danger sysb" onclick="pinRemove(this)">PIN entfernen</button>`;
+}
+async function pinOptions(o) { const r = await pinCall('options', o); if (r.pin) ui.pinInfo = r.pin; lastKey = ''; render(); }
+async function pinForget(dev) { const r = await pinCall('forget', { device: dev }); if (r.pin) ui.pinInfo = r.pin; lastKey = ''; render(); }
+async function pinRemove(btn) {
+  if (!btn.dataset.sure) { btn.dataset.sure = '1'; btn.textContent = 'Wirklich entfernen?'; return; }
+  await pinCall('remove'); localStorage.removeItem('quizHostToken'); ui.pinInfo = null; lastKey = ''; render();
+}
+
 function playersSection() {
   return S.players.map(p => ui.renaming === p.id
     ? `<form class="prow2" onsubmit="saveRename(event, '${p.id}')"><span class="pav" style="--pc:${p.color}">${p.avatar}</span>
         <input id="rn" maxlength="14" value="${esc(p.name)}"><button class="btn sm">OK</button></form><div class="err" id="rnerr"></div>`
     : `<div class="prow2 ${p.connected ? '' : 'off'}"><span class="pav" style="--pc:${p.color}">${p.avatar}</span>
         <span class="pn">${esc(p.name)}${p.id === S.vip ? ' 👑' : ''}<small>${p.id === myId ? 'du · ' : ''}${HIDE_PTS.includes(S.phase) || S.phase === 'lobby' ? '' : p.score + ' P'}${p.connected ? '' : ' · offline'}</small></span>
-        <button class="ib" onclick="startRename('${p.id}')" title="Umbenennen">✏️</button>
-        ${p.id === myId ? '' : `<button class="ib ${ui.confirm === 'kick' + p.id ? 'warn' : ''}" onclick="kick('${p.id}')" title="Entfernen">${ui.confirm === 'kick' + p.id ? 'Sicher?' : '✖'}</button>`}</div>`).join('')
-    + `<p class="small">✏️ umbenennen · ✖ aus dem Spiel nehmen. 👑 ist, wer zuerst beigetreten ist.</p>`;
+        ${p.id !== S.vip && p.connected && (S.me.canLead || S.me.authed) ? `<button class="ib ${ui.confirm === 'crown' + p.id ? 'warn' : ''}" onclick="giveCrown('${p.id}')" title="${p.id === myId ? 'Krone zurückholen' : 'Krone übergeben'}">${ui.confirm === 'crown' + p.id ? (p.id === myId ? 'Holen?' : 'Übergeben?') : '👑'}</button>` : ''}
+        ${S.me.canLead ? `<button class="ib" onclick="startRename('${p.id}')" title="Umbenennen">✏️</button>` : ''}
+        ${p.id === myId || !S.me.canLead ? '' : `<button class="ib ${ui.confirm === 'kick' + p.id ? 'warn' : ''}" onclick="kick('${p.id}')" title="Entfernen">${ui.confirm === 'kick' + p.id ? 'Sicher?' : '✖'}</button>`}</div>`).join('')
+    + `<p class="small">👑 übergibt die Krone: Der andere leitet das Spiel${S.pin && S.pin.set && S.pin.protectTech ? ', darf aber nichts unter „Raum & Technik“ ändern (dafür braucht es die PIN)' : ''}. ✏️ umbenennen · ✖ aus dem Spiel nehmen.${S.pin && S.pin.set ? '' : ' Ohne Host-PIN ist 👑, wer zuerst beigetreten ist.'}</p>`
+    + (ui.crownMsg ? `<div class="sysout bad">${esc(ui.crownMsg)}</div>` : '');
 }
 
 let pauseTimer = null;
@@ -1287,7 +1409,7 @@ function renderPause() {
     <div class="big">🍺</div><h1>Pause!</h1>
     <div class="pcount" id="pc">${S.phaseMs ? '' : '⏸'}</div>
     <p>${S.phaseMs ? 'bis es weitergeht' : 'Es geht weiter, wenn der Host startet.'}${nb ? `<br>Gleich: <b>Block ${nb.num} von ${nb.total}</b>` : ''}</p>
-    ${S.me.isVip ? '<button class="btn" onclick="advance()">⏭ Pause beenden</button><button class="btn ghost" onclick="hostAct(\'extend\')">➕ 5 Minuten länger</button>' : ''}
+    ${S.me.canLead ? '<button class="btn" onclick="advance()">⏭ Pause beenden</button><button class="btn ghost" onclick="hostAct(\'extend\')">➕ 5 Minuten länger</button>' : ''}
   </div>`;
   clearInterval(pauseTimer);
   if (S.phaseMs && !S.frozen) pauseTimer = setInterval(() => {
@@ -1299,7 +1421,7 @@ function renderPause() {
 
 function renderFrozen() {
   main.innerHTML = `<div class="center"><div class="big">⏸</div><h1>Spiel angehalten</h1><p>Gleich geht es weiter …</p>
-    ${S.me.isVip ? '<button class="btn" onclick="hostAct(\'resume\')">▶️ Spiel fortsetzen</button>' : ''}</div>`;
+    ${S.me.canLead ? '<button class="btn" onclick="hostAct(\'resume\')">▶️ Spiel fortsetzen</button>' : ''}</div>`;
 }
 
 // ---------- Fragen ----------
@@ -1490,7 +1612,7 @@ function renderRank(end) {
     ${end && S.awards ? S.awards.filter(a => a.id === me.id).map(a => `<div class="myaward">${a.icon} <b>${esc(a.title)}</b><small>${esc(a.text)}</small></div>`).join('') : ''}
     <h1>${end ? (me.rank === 1 ? (tied.length ? 'Geteilter Sieg!' : 'Du hast gewonnen!') : `Platz ${me.rank}`) : pts(me.score)}</h1>
     <p>${me.rank === 1 ? (end ? `${pts(me.score)} – stark!` : tied.length ? `Gleichauf mit ${tied.join(', ')} 🤝` : 'Du führst! 🔥') : `${pts(gap)} hinter ${esc(ahead.name)}${tied.length ? ` · gleichauf mit ${tied.join(', ')}` : ''}`}</p>
-    ${me.isVip ? `<button class="btn ${end ? '' : 'ghost'}" onclick="advance()">${end ? 'Neue Runde' : 'Weiter'}</button>` : ''}
+    ${me.canLead ? `<button class="btn ${end ? '' : 'ghost'}" onclick="advance()">${end ? 'Neue Runde' : 'Weiter'}</button>` : ''}
   </div>`;
 }
 </script>

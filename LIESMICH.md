@@ -106,6 +106,15 @@ Der 👑-Spieler tippt in der Lobby auf **⚙️ Einstellungen**, im Spiel oben 
 - **🔒 Sichere Adresse:** Stand (aktiv, Zertifikat, im Heimnetz erreichbar); Einrichten und Details auf der Unterseite (siehe unten).
 - **Eigenes WLAN:** ob es eingerichtet ist, WLAN-Name und Passwort, letzter Start, Test und Protokoll.
 
+**🔑 Host-PIN** – damit nicht jeder, der zuerst kommt, alles darf:
+- **Ohne PIN** (Standard) ist 👑, wer zuerst beitritt, und darf alles. In der Lobby erinnert ein Hinweis daran, eine PIN festzulegen.
+- **PIN festlegen** (4 Ziffern) kann der 👑. Wer die PIN eingibt („👑 Host werden“ in der Lobby oder 🔒 an einer gesperrten Kachel), ist **angemeldet** und bekommt die Krone. Das Handy wird gemerkt und ist beim nächsten Mal automatisch Host – auch nach einem Neustart des Pi.
+- **Was die PIN schützt:** *Raum & Technik* (Musik & Licht, Netzwerk, System, Fragen-Quelle – Standard an) und *Auch das Spiel leiten* (Starten, Weiter, Spiel- und Fragen-Einstellungen – Standard aus).
+- **Krone übergeben:** unter 👥 Spieler mit 👑. Der andere leitet dann das Spiel; an die Technik kommt er nur mit PIN. Wer angemeldet ist, kann die Krone jederzeit zurückholen.
+- **Gemerkte Handys** stehen unter 🔑 Host-PIN und lassen sich dort entfernen. **PIN ändern** und **PIN entfernen** ebenfalls dort.
+- **PIN vergessen?** „Mit Code vom Fernseher zurücksetzen“: Der Fernseher zeigt 60 Sekunden lang einen Code – wer ihn eintippt (also im Raum ist), legt eine neue PIN fest. Alle gemerkten Handys gelten danach nicht mehr.
+- Nach 5 falschen PINs ist die Eingabe 60 Sekunden gesperrt. Die PIN liegt nur als Hash in `host.json` auf dem Pi.
+
 **🛠️ System**
 - **Update holen, Pi neu starten, Pi ausschalten.**
 - **📚 Fragen-Quelle:** welches Fragen-Repo geladen ist; Aktualisieren, Wechseln und Zugriffsschlüssel auf der Unterseite (in der Lobby).
