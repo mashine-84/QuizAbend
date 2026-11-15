@@ -363,11 +363,14 @@ function spotifyUpdate() {
   spotify.onPhase(state.phase, { sound: !!(q && (q.audio || q.video || q.spotify)) });
 }
 
-// Eigene Icons (z. B. das Spotify-Icon für Spotify-Fragen): Datei icons/<name>.svg|png|webp neben server.js
-// (nicht im Git – Marken-Icons bringt der Besitzer selbst mit). Fehlt sie, bleibt das Emoji.
-const ICON_DIR = path.join(__dirname, 'icons');
+// Eigene Icons (z. B. das Spotify-Icon für Spotify-Fragen): Datei <name>.svg|png|webp. Fehlt sie, bleibt das Emoji.
+// Marken-Icons kommen nicht ins (öffentliche) App-Repo.
+// Gesucht wird zuerst im Fragen-Repo (fragen/_repo/icons/ – privat, per GitHub hochladbar, kommt mit „Update holen“),
+// dann in icons/ neben server.js.
+const ICON_DIRS = [path.join(FRAGEN_DIR, '_repo', 'icons'), path.join(__dirname, 'icons')];
+const iconFile = file => ICON_DIRS.map(d => path.join(d, file)).find(f => fs.existsSync(f)) || null;
 function brandIcon(name) {
-  for (const ext of ['svg', 'png', 'webp']) if (fs.existsSync(path.join(ICON_DIR, `${name}.${ext}`))) return `/icons/${name}.${ext}`;
+  for (const ext of ['svg', 'png', 'webp']) if (iconFile(`${name}.${ext}`)) return `/icons/${name}.${ext}`;
   return null;
 }
 
@@ -1296,8 +1299,8 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && p.startsWith('/media/')) return serveMedia(req, res, p.slice(7));
   if (req.method === 'GET' && p.startsWith('/sounds/')) return serveMusic(res, p.slice(8));
   if (req.method === 'GET' && /^\/icons\/[a-z0-9-]+\.(svg|png|webp)$/.test(p)) {
-    const f = path.join(ICON_DIR, path.basename(p));
-    if (!fs.existsSync(f)) { res.writeHead(404); return res.end(); }
+    const f = iconFile(path.basename(p));
+    if (!f) { res.writeHead(404); return res.end(); }
     res.writeHead(200, { 'Content-Type': { svg: 'image/svg+xml', png: 'image/png', webp: 'image/webp' }[p.split('.').pop()], 'Cache-Control': 'max-age=3600' });
     return fs.createReadStream(f).pipe(res);
   }
