@@ -70,8 +70,8 @@ const ANL_BILD = {
   video: () => `${anlTv(`<rect x="80" y="24" width="140" height="72" rx="4" fill="#2b5c8a"/><path d="M140,44 L166,60 L140,76Z" fill="#fff"/>`)}
     <text x="150" y="170" font-size="30" text-anchor="middle">👀</text><text x="150" y="200" font-size="12" fill="#cfc9f2" text-anchor="middle">Läuft nur einmal – genau hinschauen</text>`,
   spotify: () => `${anlTv(`<circle cx="150" cy="60" r="30" fill="#1DB954"/><path d="M134,52 Q150,46 168,54 M136,62 Q150,57 164,64 M138,71 Q150,67 161,73" stroke="#14102b" stroke-width="4" fill="none" stroke-linecap="round"/>`)}
-    <text x="60" y="172" font-size="28" text-anchor="middle">🎶</text><text x="150" y="172" font-size="28" text-anchor="middle">⏸️</text><text x="240" y="172" font-size="28" text-anchor="middle">▶️</text>
-    <text x="150" y="200" font-size="12" fill="#cfc9f2" text-anchor="middle">Song – Frage – Musik läuft weiter</text>`,
+    <text x="60" y="172" font-size="28" text-anchor="middle">🎶</text><text x="150" y="172" font-size="28" text-anchor="middle">👂</text><text x="240" y="172" font-size="28" text-anchor="middle">🤔</text>
+    <text x="150" y="200" font-size="12" fill="#cfc9f2" text-anchor="middle">Erst hören – dann die Frage rund um den Song</text>`,
   los: i => {
     const steps = [];
     for (let b = 1; b <= Math.min(i.bloecke, 3); b++) {

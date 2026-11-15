@@ -119,7 +119,7 @@
       "id": "spotify", "nurWenn": "spotify", "kicker": "Fragearten",
       "icon": "🎵", "titel": "Spotify",
       "text": "Ein Song-Ausschnitt läuft über die Musikanlage – dann die Frage.",
-      "punkte": ["Die Musik im Hintergrund **pausiert** dafür", "Gefragt wird nach Titel, Interpret oder Jahr", "Danach läuft die Musik weiter"]
+      "punkte": ["Erst **genau hinhören**, dann kommt die Frage", "Gefragt wird **rund um den Song** – manchmal zum Song selbst, manchmal zu etwas, das nur über sein Jahr oder Thema damit zusammenhängt", "Danach antworten wie gewohnt"]
     },
     {
       "id": "los", "kicker": "So geht QuizAbend",
