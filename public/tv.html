@@ -530,10 +530,8 @@
   .anl { flex: 1; display: flex; flex-direction: column; min-height: 0; }
   .anltop { display: flex; justify-content: space-between; align-items: center; font-size: 1.35vw; color: var(--muted); font-weight: 700; }
   .anldots { display: flex; gap: .35vw; } .anldots i { width: 1.6vw; height: .45vh; min-height: 3px; border-radius: 2px; background: rgba(255,255,255,.18); } .anldots i.on { background: var(--c); }
-  /* Überschrift wie die Fragekarte im Spiel: dunkle Schrift auf weißer Karte */
-  .anl h2 { align-self: flex-start; font-size: 3.2vw; font-weight: 900; letter-spacing: -.02em; margin-top: 1.2vh; line-height: 1.1; background: #fff; color: #1b1440; border-radius: 1.4vw; padding: 1.4vh 2vw; box-shadow: 0 1vh 0 rgba(0,0,0,.25); }
-  .anlkopf { margin-top: 1.4vh; } .anlkopf .anllead2 { white-space: normal; font-size: 1.6vw; color: #d9d4ff; font-weight: 600; } .anlkopf .anllead2 b { color: #fff; }
-  .anllead { font-size: 1.9vw; color: #d9d4ff; font-weight: 600; margin-top: 1.6vh; }
+  .anl h2 { font-size: 3.5vw; font-weight: 900; letter-spacing: -.02em; margin-top: 1.2vh; line-height: 1.1; }
+  .anllead { font-size: 1.9vw; color: #d9d4ff; font-weight: 600; margin-top: .6vh; }
   .anlvis .ktext { z-index: 2; font-size: 2vw; max-width: 38vw; }
   .anlbody { flex: 1; min-height: 0; display: grid; grid-template-columns: 46vw 1fr; gap: 3vw; align-items: center; margin-top: 2.5vh; }
   .anlvis { height: 100%; max-height: 54vh; border-radius: 1.4vw; background: rgba(255,255,255,.04); position: relative; overflow: hidden; display: grid; place-items: center; }
@@ -856,14 +854,6 @@ function renderLobby() {
 // ---------- Anleitung „So geht QuizAbend“ ----------
 // Der 👑 blättert am Handy; bei Folien zum Ausprobieren zeigt der Kasten links live, was die Handys getippt haben.
 let anlKey = '';
-// Fragearten: Kopf genau wie im Spiel (leerer Uhr-Ring, Icon + Name der Frageart, bei Punkten nach Schwierigkeit der Punkte-Pill)
-function anlKopf(s, info) {
-  const spot = s.id === 'spotify';
-  const pill = info.scoring === 'level' ? (s.id === 'zuordnen' ? '1 Punkt je Paar' : s.id === 'rf' ? '1 Punkt je Aussage' : '1–3 Punkte') : '';
-  return `<div class="qhead anlkopf anim"><div class="timer">${TIMER_TRACK}</div>
-    <div class="qinfo"><div class="ql1"><span class="qcat"><span class="qico">${spot ? ic('spotify', '#1DB954') : s.icon}</span>${spot ? `<span class="spot">${esc(s.titel)}</span>` : esc(s.titel)}</span>${pill ? `<span class="qpts">${pill}</span>` : ''}</div>
-      ${s.text ? `<div class="ql2 anllead2">${anlText(s.text)}</div>` : ''}</div></div>`;
-}
 const ANL_FARBEN = ['Rot', 'Blau', 'Gelb', 'Grün'];
 function renderAnleitung() {
   const a = S.anleitung, s = a.slide, key = a.idx + ':' + s.id;
@@ -873,8 +863,8 @@ function renderAnleitung() {
     const vis = s.uebung ? '' : anlBild(s.id, a.info) || `<div class="anlbig">📖</div>`;
     app.innerHTML = `<div class="anl">
       <div class="anltop"><span>📖 ${esc(s.kicker || 'So geht QuizAbend')}</span><span class="anldots">${Array.from({ length: a.total }, (_, i) => `<i class="${i <= a.idx ? 'on' : ''}"></i>`).join('')}</span></div>
-      ${s.icon ? anlKopf(s, a.info) : `<h2 class="anim">${anlText(s.titel)}</h2>
-      ${s.text ? `<div class="anllead anim" style="animation-delay:.08s">${anlText(s.text)}</div>` : ''}`}
+      <h2 class="anim">${s.icon ? (s.id === 'spotify' ? ic('spotify', '#1DB954') : s.icon) + ' ' : ''}${anlText(s.titel)}</h2>
+      ${s.text ? `<div class="anllead anim" style="animation-delay:.08s">${anlText(s.text)}</div>` : ''}
       <div class="anlbody">
         <div class="anlvis anim ${s.uebung && ['pin', 'land'].includes(s.uebung.art) ? 'map' : ''}" id="anlvis" style="animation-delay:.15s">${vis}</div>
         <ul>${(s.punkte || []).map((t, i) => `<li class="anim" style="animation-delay:${.25 + i * .12}s">${anlText(t)}</li>`).join('')}</ul>
