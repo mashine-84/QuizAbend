@@ -288,7 +288,9 @@
   .iicon.sc { animation: pulse 1.2s ease-in-out infinite; }
   /* Spotify-Musikfrage: Spotify-Grün als Erkennungsfarbe */
   .spot { color: #1ed760 !important; }
-  .bicon { width: 1em; height: 1em; object-fit: contain; vertical-align: -0.12em; display: inline-block; }
+  .fa { width: 1em; height: 1em; display: inline-block; vertical-align: -0.125em; color: var(--fc, currentColor); flex: none; overflow: visible; }
+  .btn .fa, .seg button .fa, .pill .fa, .qpts .fa { color: currentColor; }
+  .qpts .fa { margin-right: .3em; }
   .eq.spot i { background: #1ed760 !important; }
   .pbar.spot i { background: #1ed760 !important; }
   .eq { display: flex; gap: .8vw; align-items: flex-end; height: 10vh; margin-top: 2vh; }
@@ -439,6 +441,7 @@
 <div id="app"></div>
 <div class="status" id="status">Leertaste = weiter · F = Vollbild</div>
 <script src="/qr.js"></script>
+<script src="/icons.js"></script>
 <script>
 const SHAPES = ['▲', '◆', '●', '■'];
 const LITE = /[?&]lite=1/.test(location.search);
@@ -500,12 +503,12 @@ function ptsPill() {
   const q = S.question;
   if (!q || q.tiebreak) return '';
   const pt = ptsText(q);
-  if (S.special) return `<span class="qpts sp">⭐ Spezialfrage</span><span class="qpts">${pt || 'Punkte'} ×${S.special.mult}</span>`;
+  if (S.special) return `<span class="qpts sp">${ic('star')} Spezialfrage</span><span class="qpts">${pt || 'Punkte'} ×${S.special.mult}</span>`;
   return pt ? `<span class="qpts">${pt}</span>` : '';
 }
 // Großer Titel im Kopf: die Frageart (die Kategorie steht wieder in der Fragekarte)
-// Icon einer Frage/Frageart: eigenes Bild (z. B. Spotify-Icon aus icons/), sonst das Emoji
-const bicon = (q, fallback = '') => q && q.iconImg ? `<img class="bicon" src="${q.iconImg}" alt="">` : (q && q.icon) || fallback;
+// Icon einer Frage/Frageart: Spotify-Logo aus Font Awesome, sonst das Emoji (icons.js tauscht es gegen ein Symbol)
+const bicon = (q, fallback = '') => q && (q.brand === 'spotify' || q.id === 'spotify') ? ic('spotify', '#1DB954') : (q && q.icon) || fallback;
 function qType(q) {
   const t = (icon, text) => `<span class="qico">${icon}</span>${text}`;
   if (q.tiebreak) return t('⚔️', 'Stechen um Platz 1');

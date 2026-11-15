@@ -14,6 +14,7 @@ Deutsches Party-Quiz: Der Fernseher (`public/tv.html`) zeigt das Spiel, die Hand
 - **Ein AudioContext** für alles (HDMI am Pi kann nur einen Stream). Musik über `makeTrack(name)`, Einzeltöne über `shot(track, gain)`. Sich überlagernde Jingles übersteuern → vorher ausblenden.
 - **Hue-Bridge**: höchstens ~1 Befehl pro Sekunde für die Gruppe (`groupSend`-Warteschlange).
 - OLED-Fernseher: feste, helle Elemente vermeiden, wo es geht.
+- **Symbole:** Font Awesome Free über `public/icons.js` (erzeugt von `public/icons-erzeugen.py`). Im Code Emojis schreiben – eingetragene Emojis werden beim Anzeigen automatisch getauscht; fehlt eins, in `EMOJI` im Erzeuger eintragen und neu erzeugen. Direkt: `ic('spotify', '#1DB954')`. Avatare bleiben Emojis.
 - **Eigenes WLAN (Hotspot) = kein Internet:** Hue, https, Spotify (und alles, was Internet oder das Heimnetz braucht) sind dort abgeschaltet; `hotspot()` im Server.
 
 ## Spielablauf (Phasen in `server.js`)
