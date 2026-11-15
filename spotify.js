@@ -277,7 +277,20 @@ let gameStarted = false;
 // info.sound: in der Medien-Phase läuft Ton oder Video (beim Merkbild nicht – dann weiterspielen)
 function onPhase(phase, info = {}) {
   if (!ready()) return;
-  if (phase === 'lobby') { gameStarted = false; pausedByUs = false; want = current = null; return; }
+  if (phase === 'lobby') {
+    gameStarted = false; want = null;
+    // Nach einem Spiel (Siegerehrung hat pausiert): Musik in der Lobby weiterlaufen lassen – an derselben Stelle.
+    // Die nächste Runde pausiert dann für den Opener und setzt danach fort, statt die Playlist neu zu starten.
+    if (pausedByUs) {
+      want = 'play';
+      queue = queue.then(() => new Promise(r => setTimeout(r, 400))).then(async () => {
+        if (want !== 'play' || !ready()) return;
+        const r = await play();
+        if (r.ok) { current = 'play'; pausedByUs = false; log('Weiter (Lobby nach dem Spiel)'); }
+      }).catch(e => log('Nicht erreichbar: ' + e.message));
+    } else current = null;
+    return;
+  }
   if (phase === 'media' && !info.sound) phase = 'question';
   if (phase === 'intro' && info.sound) phase = 'media';   // Ankündigung einer Musik-/Film-/Spotify-Frage: Musik schon hier aus
   const next = PAUSE_PHASES.has(phase) ? 'pause' : PLAY_PHASES.has(phase) ? 'play' : null;
