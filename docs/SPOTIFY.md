@@ -16,7 +16,7 @@ Code: [`spotify.js`](../spotify.js) (Anmeldung, Geräte, Pause/Weiter), Server-T
 | Fragen, Auflösung, Rangliste | ▶️ läuft (zum ersten Mal: deine Playlist, sonst das, was zuletzt lief) |
 | **Musikfrage** (Soundcheck, Spotify) / **Filmfrage** (Seh-Test) – schon ab der **Ankündigung**, solange Ton oder Video läuft | ⏸ Pause – danach, wenn die Antworten kommen, geht es weiter |
 | Merkbild (stilles Bild) | ▶️ läuft weiter |
-| **Blockpause** | ⏸ Pause – die Pausenmusik des Quiz läuft |
+| **Blockpause** | ▶️ läuft – erst in der **letzten Minute** (Countdown-Musik am Fernseher) ⏸ Pause. Pause ohne Zeitlimit (∞) oder Quiz-Ton aus: läuft durch. „+5 Minuten“ setzt die Musik wieder fort |
 | **Siegerehrung** | ⏸ Pause |
 
 Regeln dahinter:
@@ -29,7 +29,7 @@ Regeln dahinter:
 ## Warum so – die Vorteile
 
 - **Eure eigene Musik** statt Dauerschleife: Playlist der Party, keine Lizenzfragen, keine Dateien auf dem Pi.
-- **Kein Ton-Chaos:** Bei Musik- und Filmfragen ist Spotify automatisch still, die Quiz-Musik in Opener und Pause hat ihren Auftritt.
+- **Kein Ton-Chaos:** Bei Musik- und Filmfragen ist Spotify automatisch still, die Quiz-Musik im Opener und in der letzten Pausenminute hat ihren Auftritt.
 - **Der Pi bleibt entlastet:** Er spielt die Musik nicht selbst ab (der Pi 3B könnte über HDMI nur einen Tonstrom gleichzeitig) – das macht der Receiver.
 
 ## Abhängigkeiten

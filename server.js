@@ -342,8 +342,21 @@ function setPhase(phase, ms, next) {
   if (phase === 'pause' && ms) hueDimTimer = setTimeout(() => {
     if (state.phase === 'pause' && !state.frozen && !hotspot()) hue.onPhase('pausedim', { ms: Math.max(0, state.phaseEnds - Date.now() - PAUSE_GRACE_MS) }).catch(() => {});
   }, Math.max(3500, ms - 60000 - PAUSE_GRACE_MS));
+  armSpotifyFinale();
 }
 let hueDimTimer = null;
+
+// Blockpause: Spotify läuft weiter, in der letzten Minute spielt der Fernseher seine Countdown-Musik –
+// Spotify vorher ausblenden (Fade 1,5 s + Wartezeit + Funk, darum gut 3 s Vorlauf). Ohne Dauer (∞) oder ohne Quiz-Ton: durchlaufen lassen.
+const SPOTIFY_FINALE_LEAD_MS = 60000 + 500 + 3000;   // dazu kommt PAUSE_GRACE_MS (weiter unten definiert)
+let spotifyFinaleTimer = null;
+function armSpotifyFinale() {
+  clearTimeout(spotifyFinaleTimer);
+  if (state.phase !== 'pause' || state.frozen || !state.phaseEnds || !settings.sound.on) return;
+  spotifyFinaleTimer = setTimeout(() => {
+    if (state.phase === 'pause' && !state.frozen && !hotspot()) spotify.onPhase('pausefinale');
+  }, Math.max(0, state.phaseEnds - Date.now() - SPOTIFY_FINALE_LEAD_MS - PAUSE_GRACE_MS));
+}
 
 // Licht passend zur Phase (macht nichts, solange Hue nicht eingerichtet ist – und nicht im eigenen WLAN des Pi,
 // dort ist die Bridge nicht erreichbar)
@@ -822,7 +835,7 @@ function freeze() {
   const remaining = state.phaseEnds ? Math.max(0, state.phaseEnds - Date.now()) : 0;
   clearTimer();
   state.frozen = { remaining, hadTimer: !!state.phaseEnds };
-  clearTimeout(hueDimTimer);
+  clearTimeout(hueDimTimer); clearTimeout(spotifyFinaleTimer);
   broadcast();
   hueUpdate();
 }
