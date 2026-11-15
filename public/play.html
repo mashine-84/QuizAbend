@@ -671,7 +671,7 @@ function renderAnleitung() {
     <button class="btn ghost" onclick="anlCall('stop')">✕ Anleitung beenden</button>` : '';
   main.innerHTML = `<div class="anlp">
     <div class="anlhead"><span>📖 Anleitung</span><span>${a.idx + 1} / ${a.total}</span></div>
-    <h2>${anlText(s.titel)}</h2>
+    <h2>${s.icon ? (s.id === 'spotify' ? ic('spotify', '#1DB954') : s.icon) + ' ' : ''}${anlText(s.titel)}</h2>
     ${body}
     ${u ? `<div class="anlok" id="anlok">${anlMsg}</div>` : ''}
     ${nav}</div>`;

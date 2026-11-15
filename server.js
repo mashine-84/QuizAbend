@@ -1289,7 +1289,7 @@ function anleitungFolien() {
     radius_welt: MAP_RADIUS_KM.welt, radius_europa: MAP_RADIUS_KM.europa, radius_deutschland: MAP_RADIUS_KM.deutschland };
   const fill = t => String(t == null ? '' : t).replace(/\{(\w+)\}/g, (m, k) => vals[k] != null ? vals[k] : m);
   return anleitung.folien.filter(x => (!x.nurWenn || [].concat(x.nurWenn).some(k => f.has(k))) && (!x.wertung || x.wertung === settings.scoring))
-    .map(x => ({ id: String(x.id), kicker: fill(x.kicker), titel: fill(x.titel), text: fill(x.text), punkte: (x.punkte || []).map(fill),
+    .map(x => ({ id: String(x.id), icon: x.icon || null, kicker: fill(x.kicker), titel: fill(x.titel), text: fill(x.text), punkte: (x.punkte || []).map(fill),
       tipp: x.tipp ? fill(x.tipp) : null, uebung: x.uebung && KARTEN_OK(x.uebung) ? { ...x.uebung, frage: fill(x.uebung.frage) } : null }));
 }
 const KARTEN_OK = u => !['pin', 'land'].includes(u.art) || !!KARTEN[u.karte || 'deutschland'];
