@@ -19,14 +19,14 @@ Deutsches Party-Quiz: Der Fernseher (`public/tv.html`) zeigt das Spiel, die Hand
 - **Eigenes WLAN (Hotspot) = kein Internet:** Hue, https, Spotify (und alles, was Internet oder das Heimnetz braucht) sind dort abgeschaltet; `hotspot()` im Server.
 
 ## Spielablauf (Phasen in `server.js`)
-`lobby → ident (Opener) → opening (Intro) → block → intro → [media | preview] → question → [special] → votes → reveal → … → scores → pause → ident → block … → scores → [tiebreak] → end`. Rechte: `canLead(id)` (Spiel leiten) und `canTech(id)` (Raum & Technik) in `server.js` – ohne Host-PIN der 👑 (`vipId()`), mit PIN je nach Schutz nur Angemeldete (`/api/pin`, `host.json`). Pub-Quiz-Modus: Host steuert „Frage auflösen“/„Nächste Frage“ (`locked`). `setPhase(phase, ms, next)`, `advance()` = überspringen.
+`lobby → ident (Opener) → opening (Intro) → block → intro → [media | preview] → question → [special] → votes → reveal → … → scores → pause → ident → block … → scores → [tiebreak] → end`. Rechte: `canLead(id)` (Spiel leiten) und `canTech(id)` (Raum & Technik) in `server.js` – ohne Host-PIN der 👑 (`vipId()`), mit PIN je nach Schutz nur Angemeldete (`/api/pin`, `host.json`). Anleitung (`anleitung.json`, `/api/anleitung`) ist keine eigene Phase, sondern liegt über der Lobby (`anleitung` im Server, `S.anleitung` in den Clients). Pub-Quiz-Modus: Host steuert „Frage auflösen“/„Nächste Frage“ (`locked`). `setPhase(phase, ms, next)`, `advance()` = überspringen.
 
 ## Musik & Sounds
 Selbst erzeugt mit numpy/scipy (A-Dur/a-Moll, 128 BPM, gleiche Klangbausteine), Skripte in `sounds/standard/erzeugen*.py`, MP3 per ffmpeg. Eigene Dateien `sounds/<name>.*` ersetzen die Standards (gitignored). Neue Musik in die `MUSIC`-Liste in `server.js` eintragen.
 
 ## Fragen
 Die Fragenpakete liegen in einem **eigenen Fragen-Repo** (`mashine-84/QuizAbend-Fragen`, privat), das der Pi nach `fragen/_repo/` klont (`fragenrepo.js`, Einstellung am Handy unter ⚙️ › 🛠️ System › 📚 Fragen-Quelle). Hier liegen nur die Testpakete Soundcheck/Seh-Test. Neue Fragen also im Fragen-Repo anlegen – dort stehen `FORMAT.md` (vollständige Format-Referenz), `REGELN.md` (vor dem Schreiben lesen) und `pruefen.js` (0 Fehler nötig).
-- **Neue Frageart oder neues Feld:** hier umsetzen und die Tabelle in `LIESMICH.md` („Eigene Fragen und Pakete“) ergänzen – danach im Fragen-Repo `FORMAT.md`, `REGELN.md` und `pruefen.js` nachziehen (eigener PR dort). Sonst schreibt Claude dort Fragen nach veraltetem Stand.
+- **Neue Frageart oder neues Feld:** hier umsetzen, die Tabelle in `LIESMICH.md` („Eigene Fragen und Pakete“) ergänzen und die **Anleitung** nachziehen (`anleitung.json`: Folie mit `nurWenn`, ggf. Varianten je `wertung`; Grafik in `public/anleitung.js`; Merkmal in `gameFeatures()` im Server; `node test/anleitung.js`) – danach im Fragen-Repo `FORMAT.md`, `REGELN.md` und `pruefen.js` nachziehen (eigener PR dort). Sonst schreibt Claude dort Fragen nach veraltetem Stand.
 
 ## Testen
 - Playwright mit `google-chrome`: Fernseher 1280×720 (`/tv?lite=1`), Handys 390×844.

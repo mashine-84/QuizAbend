@@ -284,6 +284,24 @@
   .sysout { background: rgba(47,179,109,.25); border-radius: 12px; padding: 10px 12px; font-size: 14px; white-space: pre-wrap; }
   .sysout.bad { background: rgba(229,72,77,.25); }
   .pcount { font-size: 64px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--c); }
+
+  /* Anleitung: Fernbedienung (👑) und Ausprobieren (alle) */
+  .anlp { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+  .anlhead { display: flex; justify-content: space-between; align-items: baseline; color: var(--muted); font-size: 14px; font-weight: 700; }
+  .anlp h2 { font-size: 23px; line-height: 1.15; }
+  .anlp .anlask { background: #fff; color: #1b1440; border-radius: 14px; padding: 10px 14px; text-align: center; font-weight: 900; font-size: 19px; }
+  .anlp .grid { min-height: 230px; }
+  .anlp .ans.mine { outline: 4px solid #fff; outline-offset: -4px; }
+  .anlp .ans.dim { opacity: .45; }
+  .anlok { text-align: center; font-size: 15px; color: #8ff0b5; font-weight: 800; min-height: 20px; }
+  .anlinp { display: flex; gap: 8px; } .anlinp input { flex: 1; min-width: 0; font: inherit; font-size: 26px; font-weight: 900; text-align: center; border-radius: 14px; border: none; padding: 12px; }
+  .anlinp .btn { width: auto; padding: 12px 18px; }
+  .anlwatch { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; color: var(--muted); font-size: 17px; }
+  .anlwatch .big { font-size: 64px; }
+  .anlnav { display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; }
+  .anlnav .btn { padding: 15px 8px; font-size: 19px; }
+  .anlp select { font: inherit; font-size: 16px; font-weight: 700; padding: 10px; border-radius: 12px; background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.2); }
+  .anlp select option { color: #1b1440; }
 </style>
 </head>
 <body>
@@ -479,7 +497,10 @@ function render() {
   const lobbyKey = S.phase === 'lobby' ? [S.players.filter(p => p.connected).length, JSON.stringify(S.packs), ui.settings].join(',') : '';
   const joinKey = me ? '' : (S.taken || S.players.map(p => p.avatar)).join('');
   const hostKey = ui.host ? [S.players.map(p => p.id + p.name + p.connected).join(','), ui.renaming].join('|') : '';
-  const key = [joinKey, hostKey, ui.host, S.frozen, JSON.stringify(S.system), S.kicked, S.phase, S.qNum, me ? me.id : '-', me && JSON.stringify(me.answer && (me.answer.choice ?? me.answer.value ?? me.answer.order ?? me.answer.pos ?? me.answer.region)),
+  const anl = S.phase === 'lobby' && S.anleitung, myTry = anl && me && (anl.tries || []).find(t => t.id === me.id);
+  // Anleitung: neu zeichnen bei neuer Folie und eigener Antwort (nicht bei der Karte – Zoom bleibt erhalten)
+  const anlKey = anl ? [anl.idx, anl.total, anl.slide.id, anl.slide.uebung && !['pin', 'land'].includes(anl.slide.uebung.art) && myTry ? JSON.stringify(myTry) : ''].join(':') : '';
+  const key = [anlKey, joinKey, hostKey, ui.host, S.frozen, JSON.stringify(S.system), S.kicked, S.phase, S.qNum, me ? me.id : '-', me && JSON.stringify(me.answer && (me.answer.choice ?? me.answer.value ?? me.answer.order ?? me.answer.pos ?? me.answer.region)),
     me && me.isVip, me && me.canLead, me && me.canTech, me && me.authed, JSON.stringify(S.pin), lobbyKey, S.question && S.question.step,
     me && me.isHost ? S.players.map(p => (p.answered ? 1 : 0) + (p.connected ? 'c' : '')).join('') + JSON.stringify(me.hostQ) : ''].join('|');
   if (key === lastKey) return; // nichts Relevantes geändert (Eingaben nicht zerstören)
@@ -493,7 +514,7 @@ function render() {
   if (ui.pinOpen) return renderPin();
   if (ui.settings) return renderSettings();
   if (S.frozen) return renderFrozen();
-  if (S.phase === 'lobby') return renderLobby();
+  if (S.phase === 'lobby') return S.anleitung ? renderAnleitung() : renderLobby();
   if (S.phase === 'pause') return renderPause();
   if (me.isHost) return renderModerator();
   if (S.phase === 'locked') return renderInfo('🔒', me.answer ? 'Eingeloggt!' : 'Zeit ist um!', 'Der Gamemaster löst gleich auf – schau auf den Fernseher.');
@@ -588,11 +609,58 @@ function renderLobby() {
     <p>${gm ? 'Pub-Quiz: Du spielst nicht mit, sondern moderierst.<br>' : 'Schau auf den Fernseher.<br>'}${n} von max. ${S.maxPlayers} Spielern da.</p>
     ${S.me.canLead ? `
       <button class="btn" onclick="advance()" ${canStart ? '' : 'disabled'}>${canStart ? 'Alle da – Spiel starten!' : k.questions ? `Warte auf Mitspieler (min. ${S.minPlayers})` : 'Erst Fragenpakete wählen'}</button>
+      <button class="btn ghost" onclick="anlCall('start')">📖 Anleitung zeigen</button>
       ${gm ? '<button class="btn ghost" onclick="openPlan()">📋 Fragen planen</button>' : ''}
       <button class="btn ghost" onclick="openSettings()">⚙️ Einstellungen${k.errors ? ' · ⚠️' : ''}</button>
       <p class="small">${blocks > 1 ? `${blocks} Blöcke · ` : ''}${k.questions} Fragen${k.special && k.special.on ? ` · ⭐ Spezialfrage ×${k.special.mult}` : ''}</p>`
       : `<p>${S.me.isVip ? 'Zum Starten brauchst du die Host-PIN.' : 'Warte, bis 👑 das Spiel startet …'}</p>${becomeHost}${S.me.canTech ? '<button class="btn ghost" onclick="openSettings()">⚙️ Raum & Technik</button>' : ''}`}
     <button class="leave" onclick="leave()">Spiel verlassen</button></div>`;
+}
+
+// ---------- Anleitung „So geht QuizAbend“ (anleitung.json): 👑 blättert, alle können ausprobieren ----------
+let anlEst = '', anlMsg = '';
+async function anlCall(action, extra) {
+  const { ok, data } = await post('/api/anleitung', { id: myId, action, ...(extra || {}) });
+  if (!ok && data && data.text) alert(data.text);
+  return ok;
+}
+async function anlTry(body) {
+  if (await anlCall('try', body)) { anlMsg = '✓ Gesendet – schau auf den Fernseher!'; if (navigator.vibrate) navigator.vibrate(15); }
+  const el = document.getElementById('anlok'); if (el) el.textContent = anlMsg;
+}
+const ANL_FARBEN = ['Rot', 'Blau', 'Gelb', 'Grün'];
+const anlText = s => esc(s || '').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+function renderAnleitung() {
+  const a = S.anleitung, s = a.slide, u = s.uebung, me = S.me, lead = me.canLead;
+  const mine = (a.tries || []).find(t => t.id === me.id);
+  if (renderAnleitung.slide !== a.idx + s.id) { renderAnleitung.slide = a.idx + s.id; anlMsg = mine ? '✓ Gesendet – du kannst nochmal tippen.' : ''; anlEst = ''; geoMap = null; }
+  let body;
+  if (!u) body = `<div class="anlwatch"><div class="big">📺</div><p>Schau auf den Fernseher!</p></div>`;
+  else if (u.art === 'choice') body = `<div class="anlask">${esc(u.frage)}</div>
+    <div class="grid">${ANL_FARBEN.map((n, i) => `<button class="ans c${i} ${mine ? (mine.choice === i ? 'mine' : 'dim') : ''}" onclick="anlTry({ choice: ${i} })"><span class="shape">${shapeSvg(i)}</span>${n}</button>`).join('')}</div>`;
+  else if (u.art === 'estimate') body = `<div class="anlask">${esc(u.frage)}</div>
+    <form class="anlinp" onsubmit="event.preventDefault(); const v = this.z.value.replace(',', '.'); if (v.trim() !== '') anlTry({ value: Number(v) })">
+      <input name="z" type="text" inputmode="decimal" placeholder="${mine ? fmt(mine.value) : 'Zahl'}" autocomplete="off"><button class="btn">Senden</button></form>`;
+  else body = `<div class="anlask">${esc(u.frage)}</div><div class="kmap" id="anlmap"><div class="kload">Karte lädt …</div></div>
+    <p class="khelp">${u.art === 'pin' ? 'Tippen setzt den Pin' : 'Tippe auf das Bundesland'} – zum Üben zählt jeder Tipp sofort. Zoomen mit zwei Fingern.</p>`;
+  const nav = lead ? `<div class="anlnav"><button class="btn ghost" onclick="anlCall('prev')" ${a.idx ? '' : 'disabled'}>‹ Zurück</button>
+      <button class="btn" onclick="anlCall('next')">${a.idx + 1 < a.total ? 'Weiter ›' : 'Fertig ✓'}</button></div>
+    <select onchange="anlCall('goto', { idx: +this.value })">${a.list.map((x, i) => `<option value="${i}" ${i === a.idx ? 'selected' : ''}>${i + 1}. ${esc(x.titel)}</option>`).join('')}</select>
+    <button class="btn ghost" onclick="anlCall('stop')">✕ Anleitung beenden</button>` : '';
+  main.innerHTML = `<div class="anlp">
+    <div class="anlhead"><span>📖 Anleitung</span><span>${a.idx + 1} / ${a.total}</span></div>
+    <h2>${anlText(s.titel)}</h2>
+    ${body}
+    ${u ? `<div class="anlok" id="anlok">${anlMsg}</div>` : ''}
+    ${nav}</div>`;
+  if (u && (u.art === 'pin' || u.art === 'land')) {
+    const host = document.getElementById('anlmap'), key = renderAnleitung.slide;
+    loadKarte(u.karte || 'deutschland').then(m => {
+      if (!document.contains(host) || renderAnleitung.slide !== key) return;
+      geoMap = kMount(host, m, { mode: u.art, color: me.color, avatar: me.avatar, value: mine ? (u.art === 'pin' ? mine.pos : mine.region) : null,
+        onPick: v => { if (v) anlTry(u.art === 'pin' ? { pos: v } : { region: v }); } });
+    }).catch(() => { host.innerHTML = '<div class="kload">Karte fehlt – bitte „Update holen“.</div>'; });
+  }
 }
 
 // ---------- Einstellungen für den Gamemaster ----------

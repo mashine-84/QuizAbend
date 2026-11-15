@@ -1,0 +1,132 @@
+{
+  "_hinweis": "Anleitung „So geht QuizAbend“ (am Handy des 👑 in der Lobby: 📖 Anleitung zeigen). Folien von oben nach unten. Felder: id (bestimmt die Grafik am Fernseher), nurWenn (Folie nur, wenn das im Spiel vorkommt: choice, image, flash, estimate, pin, land, match, tf, audio, video, spotify, pub, special, pause), wertung (speed = nach Schnelligkeit, level = nach Schwierigkeit), kicker, titel, text, punkte (Stichpunkte, **fett** erlaubt), tipp, uebung (zum Ausprobieren am Handy: art choice | estimate | pin | land, frage, karte, einheit). Platzhalter: {zeit} {host} {bloecke} {fragen} {spezial} {pause} {radius_welt} {radius_europa} {radius_deutschland}.",
+  "folien": [
+    {
+      "id": "start", "kicker": "So geht QuizAbend",
+      "titel": "Fernseher fragt – Handy antwortet",
+      "text": "Alle schauen auf den Fernseher, geantwortet wird geheim am Handy.",
+      "punkte": ["Jede Frage hat **{zeit} Sekunden**", "Antworten sind **geheim** – erst bei der Auflösung sieht man, wer was getippt hat", "👑 **{host}** leitet das Spiel"]
+    },
+    {
+      "id": "pub", "nurWenn": "pub", "kicker": "So geht QuizAbend",
+      "titel": "🎤 Pub-Quiz mit Gamemaster",
+      "text": "{host} spielt nicht mit, sondern moderiert.",
+      "punkte": ["Der Gamemaster liest vor und **löst per Knopf auf**", "Ist die Zeit um, wartet das Spiel auf ihn", "Er sieht die Lösung am Handy – also nicht über die Schulter schauen 😉"]
+    },
+    {
+      "id": "punkte", "wertung": "speed", "kicker": "So geht QuizAbend",
+      "titel": "Punkte: schnell und richtig",
+      "text": "Wer schneller richtig antwortet, bekommt mehr – gezählt wird am Blockende.",
+      "punkte": ["Richtig = **500 bis 1000** Punkte, je schneller, desto mehr", "Mehrmals richtig am Stück = **Serienbonus** bis +150", "Punktestand gibt es **am Ende jedes Blocks**"]
+    },
+    {
+      "id": "punkte_level", "wertung": "level", "kicker": "So geht QuizAbend",
+      "titel": "Punkte: je schwerer, desto mehr",
+      "text": "Tempo zählt nicht – nur, ob es stimmt.",
+      "punkte": ["Richtig = **1, 2 oder 3 Punkte** – je nach Schwierigkeit", "Oben bei der Frage steht, was sie bringt", "Lass dir Zeit: **schnell sein bringt nichts**", "Punktestand gibt es **am Ende jedes Blocks**"]
+    },
+    {
+      "id": "spezial", "nurWenn": "special", "kicker": "So geht QuizAbend",
+      "titel": "⭐ Die geheime Spezialfrage",
+      "text": "Eine Frage im Spiel zählt **×{spezial}** – welche, wird erst nach dem Antworten verraten.",
+      "punkte": ["Jede Frage könnte es sein", "Je später im Spiel, desto wahrscheinlicher", "Danach siehst du **„Spezialfrage!“** am Fernseher"]
+    },
+    {
+      "id": "quiz", "nurWenn": "choice", "kicker": "Fragearten",
+      "titel": "❓ Quizfrage",
+      "text": "Vier Antworten – am Handy die gleiche Farbe tippen.",
+      "punkte": ["**Farbe und Form** sind gleich wie am Fernseher", "Getippt ist getippt – **nicht änderbar**", "Die letzten 5 Sekunden wird der Kreis **rot**"],
+      "tipp": "Probier's aus: Tippt am Handy auf **Blau**!",
+      "uebung": { "art": "choice", "frage": "Tippe auf Blau!" }
+    },
+    {
+      "id": "bild", "nurWenn": "image", "kicker": "Fragearten",
+      "titel": "🖼️ Bilderrätsel",
+      "text": "Zur Frage gibt es ein Bild – genau hinschauen.",
+      "punkte": ["Das Bild steht neben der Frage am Fernseher", "Geantwortet wird wie bei der Quizfrage", "Manchmal ist es auch eine **Schätzfrage** zum Bild"]
+    },
+    {
+      "id": "merkbild", "nurWenn": "flash", "kicker": "Fragearten",
+      "titel": "📸 Merkbild",
+      "text": "Erst kommt nur das Bild – dann die Frage, **ohne** Bild.",
+      "punkte": ["Das Bild ist nur ein paar Sekunden zu sehen", "**Alles merken:** Farben, Zahlen, Dinge", "Danach fragt das Quiz nach einem Detail"]
+    },
+    {
+      "id": "schaetzen", "nurWenn": "estimate", "wertung": "speed", "kicker": "Fragearten",
+      "titel": "🔢 Schätzfrage",
+      "text": "Zahl eintippen – wer am nächsten dran ist, gewinnt.",
+      "punkte": ["Je näher, desto mehr Punkte – der Nächste bekommt **+200**", "Die **Einheit** steht dabei (m, kg …)", "**Jahreszahlen:** nur ±2 Jahre zählen", "Bei Gleichstand am Ende: **Stechen** mit einer Schätzfrage"],
+      "tipp": "Probier's aus: Wie viele Leute sitzen gerade hier im Raum?",
+      "uebung": { "art": "estimate", "frage": "Wie viele Leute sitzen gerade hier im Raum?" }
+    },
+    {
+      "id": "schaetzen_level", "nurWenn": "estimate", "wertung": "level", "kicker": "Fragearten",
+      "titel": "🔢 Schätzfrage",
+      "text": "Zahl eintippen – nur wer am nächsten dran ist, bekommt Punkte.",
+      "punkte": ["**Nur der Nächste** bekommt die Punkte der Frage", "Die **Einheit** steht dabei (m, kg …)", "**Jahreszahlen:** nur ±2 Jahre zählen", "Bei Gleichstand am Ende: **Stechen** mit einer Schätzfrage"],
+      "tipp": "Probier's aus: Wie viele Leute sitzen gerade hier im Raum?",
+      "uebung": { "art": "estimate", "frage": "Wie viele Leute sitzen gerade hier im Raum?" }
+    },
+    {
+      "id": "pin", "nurWenn": "pin", "wertung": "speed", "kicker": "Fragearten",
+      "titel": "📍 Wo liegt das?",
+      "text": "Auf der Karte am Handy einen Pin setzen.",
+      "punkte": ["**Zwei Finger** zoomen, ein Finger verschiebt", "Tippen setzt den Pin – nochmal tippen versetzt ihn", "Im **goldenen Kreis** = richtig, je näher, desto mehr", "Nur im gestrichelten **Spielfeld** tippen"],
+      "tipp": "Probier's aus: Setz einen Pin auf deinen Wohnort!",
+      "uebung": { "art": "pin", "karte": "deutschland", "frage": "Wo wohnst du?" }
+    },
+    {
+      "id": "pin_level", "nurWenn": "pin", "wertung": "level", "kicker": "Fragearten",
+      "titel": "📍 Wo liegt das?",
+      "text": "Auf der Karte am Handy einen Pin setzen.",
+      "punkte": ["**Zwei Finger** zoomen, ein Finger verschiebt", "Tippen setzt den Pin – nochmal tippen versetzt ihn", "Im **goldenen Kreis** = richtig = Punkte der Frage", "Nur im gestrichelten **Spielfeld** tippen"],
+      "tipp": "Probier's aus: Setz einen Pin auf deinen Wohnort!",
+      "uebung": { "art": "pin", "karte": "deutschland", "frage": "Wo wohnst du?" }
+    },
+    {
+      "id": "land", "nurWenn": "land", "kicker": "Fragearten",
+      "titel": "🗺️ Welches Land?",
+      "text": "Das gesuchte Land oder Bundesland auf der Karte antippen.",
+      "punkte": ["Das angetippte Land hebt sich **in deiner Farbe** heraus", "Den **Namen siehst du nicht** – sonst wär's zu leicht", "Kleine Länder haben einen **Kreis** zum Antippen"],
+      "tipp": "Probier's aus: Tippe auf dein Bundesland!",
+      "uebung": { "art": "land", "karte": "deutschland", "frage": "Tippe auf dein Bundesland!" }
+    },
+    {
+      "id": "zuordnen", "nurWenn": "match", "kicker": "Fragearten",
+      "titel": "🔗 Zuordnung",
+      "text": "Erst die Begriffe merken, dann die Partner zuordnen.",
+      "punkte": ["Am Handy: Nummer wählen, dann den Partner tippen", "Falsch? Antippen – der Begriff wandert zurück", "**Jedes richtige Paar** zählt · 30 Sekunden"]
+    },
+    {
+      "id": "rf", "nurWenn": "tf", "kicker": "Fragearten",
+      "titel": "⚖️ Richtig oder falsch",
+      "text": "Bei jeder Aussage entscheiden: stimmt oder stimmt nicht.",
+      "punkte": ["Am Handy bei jeder Aussage **✓ oder ✗** tippen", "**Jede richtig eingeschätzte** Aussage zählt", "Aufgelöst wird Aussage für Aussage"]
+    },
+    {
+      "id": "ton", "nurWenn": "audio", "kicker": "Fragearten",
+      "titel": "🎧 Soundcheck",
+      "text": "Erst kommt ein Ton vom Fernseher – dann die Frage.",
+      "punkte": ["**Leise sein** und genau hinhören", "Manchmal läuft der Ausschnitt **rückwärts** oder mehrmals", "Danach antworten wie gewohnt"]
+    },
+    {
+      "id": "video", "nurWenn": "video", "kicker": "Fragearten",
+      "titel": "👀 Seh-Test",
+      "text": "Erst läuft ein Video – dann die Frage.",
+      "punkte": ["Das Video läuft nur **einmal**", "Auf **Details** achten", "Danach antworten wie gewohnt"]
+    },
+    {
+      "id": "spotify", "nurWenn": "spotify", "kicker": "Fragearten",
+      "titel": "🎵 Spotify",
+      "text": "Ein Song-Ausschnitt läuft über die Musikanlage – dann die Frage.",
+      "punkte": ["Die Musik im Hintergrund **pausiert** dafür", "Gefragt wird nach Titel, Interpret oder Jahr", "Danach läuft die Musik weiter"]
+    },
+    {
+      "id": "los", "kicker": "So geht QuizAbend",
+      "titel": "Gleich geht's los!",
+      "text": "{bloecke} · {fragen} Fragen{spezial_kurz}{pause_kurz}",
+      "punkte": ["Leichte Fragen zuerst, **schwere am Ende**", "Nach jedem Block die **Rangliste**", "Am Ende **Siegerehrung** mit Auszeichnungen", "Handy weg oder neu geladen? **Einfach wieder öffnen** – die Punkte bleiben"],
+      "tipp": "{host} startet gleich das Spiel."
+    }
+  ]
+}

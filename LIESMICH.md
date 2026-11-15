@@ -18,6 +18,13 @@ Lade Node.js (LTS-Version) von https://nodejs.org herunter und installiere es.
 
 **Steuerung am Laptop:** Leertaste/Enter = weiter (überspringt Wartezeiten) · F = Vollbild
 
+### 📖 Anleitung für neue Mitspieler
+In der Lobby tippt der 👑 auf **📖 Anleitung zeigen**. Der Fernseher erklärt Folie für Folie, wie das Spiel läuft – mit Grafik auf jeder Folie. Der 👑 blättert am Handy (‹ Zurück / Weiter ›, Liste zum Springen, ✕ Beenden), am Laptop gehen auch Leertaste/→, ← und Esc.
+- Es kommen **nur die Fragearten vor, die im eingestellten Spiel drin sind**, und die Punkte-Folien passen zur Wertung (nach Tempo oder nach Schwierigkeit).
+- Bei Quizfrage, Schätzfrage und den Karten können **alle am Handy ausprobieren** – der Fernseher zeigt live, wer was getippt hat. Zählt nicht für das Spiel.
+- „Spiel starten“ beendet die Anleitung automatisch.
+- **Anpassen:** Texte stehen in `anleitung.json` (wird bei jedem Öffnen neu gelesen), die Grafiken in `public/anleitung.js` (eine pro Folien-ID). Felder und Platzhalter sind oben in der Datei erklärt. Neue Frageart? Folie mit `nurWenn` ergänzen, Grafik dazu, `node test/anleitung.js` prüft beides.
+
 ## Raspberry Pi (z. B. Pi 3 Model B) als feste Quiz-Box
 Der Pi hängt per HDMI am Fernseher. Nach dem Einschalten startet das Quiz von selbst im Vollbild, einen Laptop brauchst du dann nicht mehr.
 
@@ -317,6 +324,7 @@ Beispiel (Windows, Eingabeaufforderung): `set FRAGEN=15 && node server.js`
 - `public/tv.html`: Fernseher-Ansicht (Lobby, Frage, Auflösung, Rangliste, Siegerpodest)
 - `public/play.html`: Handy-Controller
 - `public/qr.js`: QR-Code-Generator (funktioniert offline)
+- `anleitung.json` und `public/anleitung.js`: Anleitung „So geht QuizAbend“ (Texte bzw. Grafiken je Folie)
 - `public/karte.js` und `public/karten/*.json`: Karten für Geografie-Fragen, offline. Erzeugt mit `node karten/erzeugen.js` aus `karten/quelle/`: Länder aus **Natural Earth** (gemeinfrei, über das npm-Paket `world-atlas`, ISC), Bundesländer aus **deutschlandGeoJSON** (github.com/isellsoap/deutschlandGeoJSON, Unlicense = gemeinfrei). Deutsche Ländernamen in `karten/namen.js`.
 - `public/icons.js`: Symbole aus **Font Awesome Free** (https://fontawesome.com, Icons unter CC BY 4.0), funktioniert offline. Im Code stehen weiter Emojis; `icons.js` tauscht sie beim Anzeigen gegen die Symbole (Spieler-Avatare und Gesichter wie 🤫 bleiben Emojis). Erzeugt mit `public/icons-erzeugen.py` – neue Symbole dort eintragen.
 - `hue.js`: Philips-Hue-Steuerung (Kopplung, Bereich, Licht je Spielphase)

@@ -700,7 +700,7 @@ function startGame() {
   if (!questions.length) return false;
   for (const p of players.values()) { p.score = 0; p.streak = 0; }
   const pub = pubActive(), host = vipId();
-  state = newGameState();
+  state = newGameState(); anleitung = null;
   state.pub = pub; state.hostId = pub ? host : null; state.scoring = settings.scoring;
   state.pubSpecial = pub && settings.special.on ? (pubPlan && pubPlan.special) || null : null;
   state.questions = questions;
@@ -1194,6 +1194,7 @@ function baseView() {
     // Stechen um Platz 1: wer darf antworten (nur in der Ansage und während der Stechen-Frage)
     tiebreak: state.tiebreak && (ph === 'tiebreak' || (q && q.tiebreak)) ? { ids: state.tiebreak.ids, round: state.tiebreak.round } : null,
     awards: ph === 'end' ? computeAwards() : null,   // Sonderpreise bei der Siegerehrung
+    anleitung: anleitungView(),
   };
   if (q && ['intro', 'media', 'preview', 'question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
     const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category, tiebreak: !!q.tiebreak }; // Schwierigkeit wird im Spiel nicht verraten …
@@ -1245,6 +1246,108 @@ function viewFor(client, base) {
     answer: state.answers[me.id] || null,
     result: state.results[me.id] || null,
   } : null };
+}
+
+// ---------- Anleitung „So geht QuizAbend“ ----------
+// Inhalt in anleitung.json (wird bei jedem Öffnen neu gelesen, also ohne Neustart änderbar). Der 👑 öffnet sie in der Lobby
+// und blättert am Handy; alle können bei Folien mit "uebung" am Handy ausprobieren, der Fernseher zeigt die Tipps.
+// Folien erscheinen nur, wenn das im Spiel vorkommt (nurWenn), und passend zur Wertung (wertung: speed | level).
+const ANLEITUNG_FILE = path.join(__dirname, 'anleitung.json');
+let anleitung = null;   // { folien, id (aktuelle Folie), tries: { folienId: { spielerId: Antwort } } }
+function gameFeatures() {
+  const f = new Set(), qs = settings.blocks.flatMap(blockPool);
+  for (const q of qs) {
+    f.add(q.kind);
+    if (q.image && !q.flash) f.add('image');
+    if (q.flash) f.add('flash');
+    if (q.audio) f.add('audio');
+    if (q.video) f.add('video');
+    if (q.spotify) f.add('spotify');
+  }
+  if (settings.pub && settings.pub.on) f.add('pub');
+  if (settings.special && settings.special.on) f.add('special');
+  if (settings.pause && settings.pause.on && settings.blocks.length > 1) f.add('pause');
+  return f;
+}
+function anleitungInfo() {
+  const h = players.get(pubActive() ? hostId() : vipId());
+  const sum = packSummary(), nb = sum.blocks.filter(b => b.plays).length || 1;
+  return { zeit: QUESTION_TIME_MS / 1000, fragen: sum.questions, bloecke: nb, scoring: settings.scoring,
+    spezial: settings.special && settings.special.on ? settings.special.mult : null,
+    pause: settings.pause && settings.pause.on && nb > 1 ? settings.pause.minutes : null,
+    radius: MAP_RADIUS_KM, host: h ? { name: h.name, avatar: h.avatar, color: h.color } : null, pub: !!(settings.pub && settings.pub.on) };
+}
+function anleitungFolien() {
+  const f = gameFeatures(), info = anleitungInfo();
+  const vals = { zeit: info.zeit, host: info.host ? info.host.name : 'Der Host', fragen: info.fragen, spezial: info.spezial || 2,
+    bloecke: info.bloecke === 1 ? '1 Block' : info.bloecke + ' Blöcke', pause: info.pause,
+    spezial_kurz: info.spezial ? ` · ⭐ Spezialfrage ×${info.spezial}` : '', pause_kurz: info.pause != null ? ` · 🍺 ${info.pause ? info.pause + ' Min. ' : ''}Pause` : '',
+    radius_welt: MAP_RADIUS_KM.welt, radius_europa: MAP_RADIUS_KM.europa, radius_deutschland: MAP_RADIUS_KM.deutschland };
+  const fill = t => String(t == null ? '' : t).replace(/\{(\w+)\}/g, (m, k) => vals[k] != null ? vals[k] : m);
+  return anleitung.folien.filter(x => (!x.nurWenn || [].concat(x.nurWenn).some(k => f.has(k))) && (!x.wertung || x.wertung === settings.scoring))
+    .map(x => ({ id: String(x.id), kicker: fill(x.kicker), titel: fill(x.titel), text: fill(x.text), punkte: (x.punkte || []).map(fill),
+      tipp: x.tipp ? fill(x.tipp) : null, uebung: x.uebung && KARTEN_OK(x.uebung) ? { ...x.uebung, frage: fill(x.uebung.frage) } : null }));
+}
+const KARTEN_OK = u => !['pin', 'land'].includes(u.art) || !!KARTEN[u.karte || 'deutschland'];
+function anleitungLesen() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(ANLEITUNG_FILE, 'utf8'));
+    if (!Array.isArray(raw.folien) || !raw.folien.length) throw new Error('keine Folien');
+    return raw.folien.filter(x => x && x.id && x.titel);
+  } catch (e) { console.log('  Anleitung nicht lesbar: ' + e.message); return null; }
+}
+function anleitungView() {
+  if (!anleitung || state.phase !== 'lobby') return null;
+  const list = anleitungFolien();
+  if (!list.length) return null;
+  let idx = list.findIndex(x => x.id === anleitung.id);
+  if (idx < 0) idx = Math.min(anleitung.idx || 0, list.length - 1);
+  anleitung.id = list[idx].id; anleitung.idx = idx;
+  const s = list[idx], u = s.uebung;
+  const tries = u ? Object.entries(anleitung.tries[s.id] || {}).filter(([id]) => players.has(id)).sort((a, b) => a[1].at - b[1].at).map(([id, a]) => {
+    const t = { id };
+    if (u.art === 'choice') t.choice = a.choice;
+    if (u.art === 'estimate') t.value = a.value;
+    if (u.art === 'pin') t.pos = a.pos;
+    if (u.art === 'land') { t.region = a.region; t.n = KARTEN[u.karte || 'deutschland'].regions.get(a.region).n; }
+    return t;
+  }) : null;
+  return { idx, total: list.length, slide: s, tries, info: anleitungInfo(), list: list.map(x => ({ id: x.id, titel: x.titel })) };
+}
+function anleitungAction(body) {
+  const a = body.action;
+  if (state.phase !== 'lobby') return { ok: false, text: 'Die Anleitung geht nur vor dem Spiel.' };
+  if (a === 'try') {
+    const pl = players.get(body.id), v = anleitungView();
+    const u = v && v.slide.uebung;
+    if (!pl || !u) return { ok: false };
+    let ans = null;
+    if (u.art === 'choice' && [0, 1, 2, 3].includes(body.choice)) ans = { choice: body.choice };
+    if (u.art === 'estimate' && Number.isFinite(Number(body.value)) && Math.abs(Number(body.value)) < 1e9 && body.value !== '') ans = { value: Number(body.value) };
+    if (u.art === 'pin' && Array.isArray(body.pos) && body.pos.length === 2 && body.pos.every(Number.isFinite) && inMapField(u.karte || 'deutschland', body.pos)) ans = { pos: body.pos.map(n => Math.round(n * 1e4) / 1e4) };
+    if (u.art === 'land' && KARTEN[u.karte || 'deutschland'].regions.has(body.region)) ans = { region: body.region };
+    if (!ans) return { ok: false };
+    (anleitung.tries[v.slide.id] = anleitung.tries[v.slide.id] || {})[pl.id] = { ...ans, at: Date.now() };   // Üben: ändern erlaubt
+    return { ok: true };
+  }
+  if (body.role !== 'tv' && !canLead(body.id)) return { ok: false, status: 403 };
+  if (a === 'start') {
+    const folien = anleitungLesen();
+    if (!folien) return { ok: false, text: 'anleitung.json fehlt oder ist kaputt – Details im Protokoll.' };
+    anleitung = { folien, id: null, idx: 0, tries: {} };
+    if (!anleitungView()) { anleitung = null; return { ok: false, text: 'Keine passenden Folien.' }; }
+    return { ok: true };
+  }
+  if (!anleitung) return { ok: false };
+  if (a === 'stop') { anleitung = null; return { ok: true }; }
+  const v = anleitungView(); if (!v) return { ok: false };
+  let to = v.idx;
+  if (a === 'next') to++;
+  else if (a === 'prev') to--;
+  else if (a === 'goto') to = Math.round(Number(body.idx));
+  if (!(to >= 0 && to < v.total)) return a === 'next' && to === v.total ? (anleitung = null, { ok: true, done: true }) : { ok: false };
+  anleitung.idx = to; anleitung.id = v.list[to].id;
+  return { ok: true };
 }
 
 // Pub-Quiz: Der Host sieht am Handy die Frage samt Lösung (zum Moderieren)
@@ -1534,6 +1637,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && p === '/qr.js') return serveFile(res, 'qr.js');
   if (req.method === 'GET' && p === '/icons.js') return serveFile(res, 'icons.js');
   if (req.method === 'GET' && p === '/karte.js') return serveFile(res, 'karte.js');
+  if (req.method === 'GET' && p === '/anleitung.js') return serveFile(res, 'anleitung.js');
   if (req.method === 'GET' && /^\/karten\/[a-z]+\.json$/.test(p) && KARTEN[p.slice(8, -5)]) return serveFile(res, 'karten/' + p.slice(8));
   if (req.method === 'GET' && p.startsWith('/media/')) return serveMedia(req, res, p.slice(7));
   if (req.method === 'GET' && p.startsWith('/sounds/')) return serveMusic(res, p.slice(8));
@@ -1661,6 +1765,13 @@ const server = http.createServer(async (req, res) => {
     if (!canLead(body.id) || state.phase !== 'lobby') return json(res, 403, { ok: false });
     loadPacks();
     return json(res, 200, planAction(body));
+  }
+
+  if (req.method === 'POST' && p === '/api/anleitung') {
+    const body = await readBody(req);
+    const r = anleitungAction(body);
+    if (r.ok) broadcast();
+    return json(res, r.status || (r.ok ? 200 : 409), r);
   }
 
   if (req.method === 'POST' && p === '/api/host') {
