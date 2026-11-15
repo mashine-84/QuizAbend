@@ -122,6 +122,8 @@ for (const f of (() => { try { return fs.readdirSync(KARTEN_DIR); } catch (_) { 
 }
 // Wie weit daneben noch Punkte gibt (km): Welt grob, Deutschland fein
 const MAP_RANGE_KM = { welt: 2500, europa: 1000, deutschland: 250 };
+// Pin-Fragen: bis zu diesem Abstand (km) zählt ein Tipp als richtig – pro Frage mit "radius" einstellbar
+const MAP_RADIUS_KM = { welt: 300, europa: 100, deutschland: 25 };
 const inMapField = (map, [lat, lon]) => { const f = KARTEN[map].field, t = 0.02; return lat >= f.s - t && lat <= f.n + t && lon >= f.w - t && lon <= f.e + t; };
 const MAP_TIME_MS = Math.round(QUESTION_TIME_MS * 1.25);   // Karte zoomen und tippen dauert etwas länger
 function findRegion(map, name) {
@@ -222,7 +224,10 @@ function normalizeQuestion(q, dir, packName, packLevel) {
       if (o.length !== 2 || !(Math.abs(o[0]) <= 90) || !(Math.abs(o[1]) <= 180)) throw new Error('"ort" muss [Breite, Länge] sein, z. B. [45.76, 4.84] für Lyon');
       if (q.toleranz !== undefined && !(Number(q.toleranz) > 0)) throw new Error('"toleranz" muss eine Entfernung in km über 0 sein');
       if (!inMapField(map, o)) throw new Error(`"ort" liegt außerhalb der Karte „${map}“ – Breite und Länge vertauscht?`);
-      return { ...base, kind: 'pin', map, target: o, name: q.name ? String(q.name) : '', range: q.toleranz !== undefined ? Number(q.toleranz) : MAP_RANGE_KM[map] || 1000 };
+      if (q.radius !== undefined && !(Number(q.radius) > 0)) throw new Error('"radius" muss eine Entfernung in km über 0 sein (bis dahin zählt der Pin als richtig)');
+      const radius = q.radius !== undefined ? Number(q.radius) : MAP_RADIUS_KM[map] || 100;
+      const range = Math.max(q.toleranz !== undefined ? Number(q.toleranz) : MAP_RANGE_KM[map] || 1000, radius * 2);
+      return { ...base, kind: 'pin', map, target: o, name: q.name ? String(q.name) : '', radius, range };
     }
     if (q.land !== undefined) {
       const region = findRegion(map, q.land);
@@ -767,16 +772,15 @@ function scoreQuestion() {
       state.results[p.id] = { gain, correct: closest, exact: diff === 0, answered: true, value: a.value, outOfRange: !inRange(diff) };
     }
   } else if (q.kind === 'pin') {
-    // Wie eine Schätzfrage: je näher, desto mehr (bis 800), der Nächste +200. Ab "range" km gibt es nichts.
-    const dists = list.map(p => state.answers[p.id]).filter(Boolean).map(a => kmBetween(a.pos, q.target)).filter(d => d <= q.range);
-    const best = dists.length ? Math.min(...dists) : null;
+    // Im Radius = richtig: 700–1000 Punkte (je näher, desto mehr). Außerhalb Teilpunkte bis "range" (bis 600), dann nichts.
     for (const p of list) {
       const a = state.answers[p.id];
       if (!a) { streakBonus(p, false); state.results[p.id] = { gain: 0, correct: false, answered: false }; continue; }
-      const d = kmBetween(a.pos, q.target), closest = best !== null && d === best;
-      const gain = round10(800 * Math.max(0, 1 - d / q.range)) + (closest ? 200 : 0) + streakBonus(p, closest);
+      const d = kmBetween(a.pos, q.target), inside = d <= q.radius;
+      const base = inside ? 700 + 300 * (1 - d / q.radius) : 600 * Math.max(0, 1 - (d - q.radius) / (q.range - q.radius));
+      const gain = round10(base) + streakBonus(p, inside);
       p.score += gain;
-      state.results[p.id] = { gain, correct: closest, answered: true, km: Math.round(d * 10) / 10, outOfRange: d > q.range };
+      state.results[p.id] = { gain, correct: inside, answered: true, km: Math.round(d * 10) / 10, outOfRange: d > q.range };
     }
   } else if (q.kind === 'land') {
     for (const p of list) {
@@ -832,15 +836,13 @@ function scoreByLevel(q) {
       state.results[p.id] = { gain, correct: closest, exact: diff === 0, answered: true, value: a.value, outOfRange: !inRange(diff) };
     }
   } else if (q.kind === 'pin') {
-    // Wer am nächsten dran ist (innerhalb von "range" km), bekommt die Punkte der Schwierigkeit
-    const dists = list.map(p => state.answers[p.id]).filter(Boolean).map(a => kmBetween(a.pos, q.target)).filter(d => d <= q.range);
-    const best = dists.length ? Math.min(...dists) : null;
+    // Im Radius = richtig = Punkte der Schwierigkeit
     for (const p of list) {
       const a = state.answers[p.id];
       if (!a) { state.results[p.id] = { gain: 0, correct: false, answered: false }; continue; }
-      const d = kmBetween(a.pos, q.target), closest = best !== null && d === best, gain = closest ? lv : 0;
+      const d = kmBetween(a.pos, q.target), inside = d <= q.radius, gain = inside ? lv : 0;
       p.score += gain;
-      state.results[p.id] = { gain, correct: closest, answered: true, km: Math.round(d * 10) / 10, outOfRange: d > q.range };
+      state.results[p.id] = { gain, correct: inside, answered: true, km: Math.round(d * 10) / 10, outOfRange: d > q.range };
     }
   } else if (q.kind === 'land') {
     for (const p of list) {
@@ -1090,7 +1092,7 @@ function baseView() {
       if (q.kind === 'tf') vq.statements = q.statements;
       if (q.kind === 'estimate') { vq.unit = q.unit; vq.year = q.year; vq.tolerance = q.tolerance; vq.show = q.show; }
       if (q.kind === 'pin' || q.kind === 'land') vq.map = q.map;
-      if (q.kind === 'pin') vq.range = q.range;
+      if (q.kind === 'pin') { vq.range = q.range; vq.radius = q.radius; }
     }
     if (ph === 'votes' || ph === 'reveal') {
       const byTime = Object.entries(state.answers).sort((a, b) => a[1].at - b[1].at);
@@ -1135,7 +1137,7 @@ function hostSolution() {
   if (q.brand) out.brand = q.brand;
   if (q.kind === 'choice') { out.answers = q.answers; out.correct = q.correct; }
   if (q.kind === 'estimate') { out.value = q.value; out.unit = q.unit; out.year = q.year; out.tolerance = q.tolerance; }
-  if (q.kind === 'pin') { out.solution = (q.name || 'Ort') + ` (${q.target[0].toFixed(2)}, ${q.target[1].toFixed(2)})`; }
+  if (q.kind === 'pin') { out.solution = (q.name || 'Ort') + ` (${q.target[0].toFixed(2)}, ${q.target[1].toFixed(2)}) – richtig bis ${q.radius} km`; }
   if (q.kind === 'land') out.solution = q.name;
   if (q.kind === 'match') out.pairs = q.left.map((l, i) => [l, q.right[q.solution[i]]]);
   if (q.kind === 'tf') out.items = q.statements.map((t, i) => [t, q.truths[i]]);
