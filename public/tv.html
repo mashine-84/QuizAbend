@@ -1213,9 +1213,14 @@ function renderGeo(byId) {
       const [rx, ry] = kRadius(m, q.target[0], q.radius || 0);
       const circle = q.radius ? `<g class="kradius"><ellipse cx="${tx}" cy="${ty}" rx="${rx}" ry="${ry}"/></g>
         <g transform="translate(${tx},${ty + ry + 16 * u}) scale(${u})"><g class="kradtxt"><rect x="-38" y="-13" width="76" height="24" rx="12"/><text y="5" text-anchor="middle">${kKm(q.radius)}</text></g></g>` : '';
-      // Reihenfolge: Linien, übrige Pins, Ziel-Pin, Name – der Pin des Gewinners liegt vorn und etwas größer
-      over.innerHTML = circle + lines + rows.filter(x => x !== win).map(x => { const p = byId[x.id]; return kPin(m, x.pos[0], x.pos[1], p.color, p.avatar, u, 40, 'dim'); }).join('')
-        + target + label + (win ? kPin(m, win.pos[0], win.pos[1], byId[win.id].color, byId[win.id].avatar, u, 46, 'kpinwin') : '');
+            // Reihenfolge (hinten nach vorn): Radius, Linien, goldener Ziel-Pin, Spieler-Pins (falsche blass, richtige kräftig,
+      // der Nächste ganz vorn und etwas größer), Name der Stadt
+      const ok = x => (byId[x.id].result || {}).correct;
+      const userPin = (x, size, cls) => { const p = byId[x.id]; return kPin(m, x.pos[0], x.pos[1], p.color, p.avatar, u, size, cls); };
+      over.innerHTML = circle + lines + target
+        + rows.filter(x => x !== win && !ok(x)).reverse().map(x => userPin(x, 40, 'dim')).join('')
+        + rows.filter(x => x !== win && ok(x)).reverse().map(x => userPin(x, 40, '')).join('')
+        + (win ? userPin(win, 46, 'kpinwin') : '') + label;
       side.innerHTML = `<div class="klist">${rows.map((x, i) => { const p = byId[x.id], r = p.result || {};
         return `<div class="krow ${r.correct ? 'best' : ''}" style="--pc:${p.color};animation-delay:${GEO_LINES_S + 0.2 + i * 0.3}s !important"><span class="vav" style="--pc:${p.color}">${p.avatar}</span><b>${esc(p.name)}</b><i>${kKm(x.km)}</i><span class="eg ${r.correct ? '' : r.gain ? 'mid' : 'no'}">${r.correct ? '✓' : r.gain ? '≈' : '✗'}</span></div>`; }).join('') || '<div class="khint">Niemand hat getippt 🤷</div>'}</div>`;
       setTimeout(() => { geoLanded = S.qNum; const c = document.getElementById('chips'); if (c) c.innerHTML = chips(); }, (GEO_LINES_S + rows.length * 0.3) * 1000);
