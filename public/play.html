@@ -162,14 +162,28 @@
   .settings { display: flex; flex-direction: column; gap: 12px; }
   .shead { display: flex; align-items: center; justify-content: space-between; }
   .shead h2 { font-size: 19px; flex: 1; min-width: 0; margin: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .burger { width: 44px; height: 44px; flex: none; border: none; border-radius: 12px; background: rgba(255,255,255,.1); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: pointer; }
-  .burger i { display: block; width: 20px; height: 2.5px; border-radius: 2px; background: #fff; transition: transform .2s, opacity .2s; }
-  .burger.open i:nth-child(1) { transform: translateY(7.5px) rotate(45deg); } .burger.open i:nth-child(2) { opacity: 0; } .burger.open i:nth-child(3) { transform: translateY(-7.5px) rotate(-45deg); }
-  .smenu { display: flex; flex-direction: column; gap: 6px; background: rgba(255,255,255,.06); border-radius: 14px; padding: 6px; }
-  .smenu button { display: flex; align-items: center; gap: 12px; text-align: left; font: inherit; color: #fff; background: none; border: none; border-radius: 10px; padding: 12px; cursor: pointer; }
-  .smenu button.on { background: rgba(245,176,20,.18); }
-  .smenu .si { font-size: 24px; }
-  .smenu b { display: block; font-size: 17px; } .smenu small { display: block; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .shead .back { width: 44px; flex: none; font-size: 26px; padding: 4px 0; }
+  .tgrp { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 800; margin: 6px 2px -4px; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tile { background: rgba(255,255,255,.07); border: none; color: #fff; font: inherit; text-align: left; border-radius: 16px; padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 6px; min-height: 104px; position: relative; cursor: pointer; }
+  .tile .tt { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .tile .ti { font-size: 26px; line-height: 1; }
+  .tile b { font-size: 17px; }
+  .tile .st { font-size: 12.5px; font-weight: 700; color: var(--muted); line-height: 1.3; }
+  .st .ok { color: #8ff0b5; } .st .warn { color: #ffcf66; } .st .off { color: #8d86b8; }
+  .tile.wide { grid-column: 1 / -1; min-height: 0; flex-direction: row; align-items: center; gap: 12px; }
+  .tile.wide .ti { font-size: 30px; }
+  .tile .go { position: absolute; right: 12px; top: 12px; color: var(--muted); font-weight: 900; }
+  .tile.wide .go { top: 50%; transform: translateY(-50%); }
+  .live { background: linear-gradient(135deg, rgba(229,72,77,.25), rgba(245,176,20,.18)); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .live .lh { display: flex; justify-content: space-between; align-items: center; font-weight: 800; }
+  .live .lh small { color: var(--muted); font-weight: 700; }
+  .btn.sm2 { font-size: 16px; padding: 12px; }
+  .fs { background: rgba(255,255,255,.07); border: none; font: inherit; text-align: left; border-radius: 12px; padding: 12px 14px; color: #fff; font-weight: 700; display: flex; justify-content: space-between; gap: 10px; cursor: pointer; width: 100%; }
+  .fs span:last-child { color: var(--muted); font-weight: 900; }
+  .stline { display: flex; gap: 8px; align-items: center; font-size: 14px; color: #8ff0b5; font-weight: 700; margin: 2px 0; }
+  .stline.warn { color: #ffcf66; } .stline.off { color: var(--muted); }
+  .seg2 { grid-template-columns: 1fr 1fr !important; } .seg2 button { font-size: 17px !important; }
   .pergame { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px 14px; font-weight: 700; }
   .pergame span { flex: 1; }
   .pergame button { width: 42px; height: 42px; border-radius: 50%; border: none; font: inherit; font-size: 24px; font-weight: 900; background: rgba(255,255,255,.15); color: #fff; }
@@ -244,7 +258,7 @@
 </head>
 <body>
 <div class="offline" id="offline">Verbindung weg – verbinde neu …</div>
-<header id="hdr" style="display:none"><span class="av" id="hAv"></span><span id="hName"></span><span class="score" id="hScore">0</span><button class="hostbtn" id="hostBtn" style="display:none" onclick="toggleHost()">🎛️</button></header>
+<header id="hdr" style="display:none"><span class="av" id="hAv"></span><span id="hName"></span><span class="score" id="hScore">0</span><button class="hostbtn" id="hostBtn" style="display:none" onclick="openSettings()">⚙️</button></header>
 <main id="main"></main>
 <script>
 // ---------- Bildschirm wach halten, solange die Seite offen ist ----------
@@ -441,11 +455,10 @@ function render() {
 
   if (S.system) return renderInfo(sysIcon(S.system.icon), S.system.text, esc(S.system.sub || 'Das Quiz ist gleich wieder da.'));
   if (!me) return renderJoin();
-  if (ui.host && me.isVip && S.phase !== 'lobby') return renderHost();
-  ui.host = false;
+  if (!me.isVip) ui.settings = false;
+  if (ui.settings) return renderSettings();
   if (S.frozen) return renderFrozen();
-  if (S.phase !== 'lobby') ui.settings = false;
-  if (S.phase === 'lobby') return ui.settings && me.isVip ? renderSettings() : renderLobby();
+  if (S.phase === 'lobby') return renderLobby();
   if (S.phase === 'pause') return renderPause();
   if (me.isHost) return renderModerator();
   if (S.phase === 'locked') return renderInfo('🔒', me.answer ? 'Eingeloggt!' : 'Zeit ist um!', 'Der Gamemaster löst gleich auf – schau auf den Fernseher.');
@@ -544,7 +557,7 @@ function renderLobby() {
 
 // ---------- Einstellungen für den Gamemaster ----------
 async function openSettings() {
-  ui.settings = true; ui.edit = null; ui.section = 'game'; ui.menu = false; ui.planOpen = false; ui.pick = null; lastKey = '';
+  ui.settings = true; ui.edit = null; ui.section = null; ui.sub = null; ui.planOpen = false; ui.pick = null; ui.renaming = null; lastKey = '';
   main.innerHTML = '<div class="center"><p>Lade Einstellungen …</p></div>';
   ui.packs = await fetch('/api/pakete').then(r => r.json()).catch(() => null);
   ui.hue = { st: (await hueCall('status')) || null };
@@ -592,15 +605,15 @@ function setPause(d) {
 // Update-Symbol: zwei runde Pfeile, dreht sich während des Updates
 const RELOAD_SVG = '<svg class="reload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>';
 const sysIcon = i => i === 'update' ? `<span class="spin">${RELOAD_SVG}</span>` : i;
-function systemSection(sys) {
+function systemSection(sys, noWifi) {
   if (!sys || (!sys.canUpdate && !sys.canPower)) return '';
   const btn = (a, label, cls) => `<button class="btn ${cls || 'ghost'} sysb" onclick="sysAction('${a}')">${ui.confirm === a ? 'Wirklich? Nochmal tippen' : label}</button>`;
-  return `<h3>🛠️ System</h3>
+  return `<h3>🍓 Raspberry Pi</h3>
     ${sys.canUpdate ? btn('update', `<span class="${ui.updating ? 'spin' : ''}">${RELOAD_SVG}</span> ${ui.updating ? 'Update läuft …' : 'Update holen'}`) : ''}
     ${sys.canPower ? btn('reboot', '🔄 Pi neu starten') + btn('poweroff', '🔌 Pi ausschalten', 'danger') : ''}
     ${ui.sys ? `<div class="sysout ${ui.sys.ok ? '' : 'bad'}">${esc(ui.sys.text)}</div>` : ''}
     ${sys.canUpdate && !sys.autoRestart ? '<p class="small">Nach einem Update den Server neu starten.</p>' : ''}
-    ${wifiSection(sys, btn)}`;
+    ${noWifi ? '' : wifiSection(sys, btn)}`;
 }
 // Eigenes WLAN: Stand, letzter Start, Test und Protokoll – damit man ohne SSH sieht, was los ist
 function wifiSection(sys, btn) {
@@ -943,12 +956,77 @@ const stepper = (label, value, minus, plus) =>
 function renderSettings() {
   const d = ui.packs;
   if (!d) { main.innerHTML = '<div class="center"><p>Konnte die Einstellungen nicht laden.</p><button class="btn" onclick="closeSettings()">Zurück</button></div>'; return; }
-  if (ui.edit !== null && cfg().blocks[ui.edit]) return renderBlockEditor();
-  if (ui.planOpen) return ui.pick ? renderPlanPick() : renderPlan();
-  const c = cfg(), sum = d.summary;
-  const sec = SECTIONS.find(x => x.id === ui.section) || SECTIONS[0];
-  let body = '';
-  if (sec.id === 'game') body = `
+  const lobby = S.phase === 'lobby';
+  if (lobby && ui.edit !== null && cfg().blocks[ui.edit]) return renderBlockEditor();
+  if (lobby && ui.planOpen) return ui.pick ? renderPlanPick() : renderPlan();
+  let sec = SECTIONS.find(x => x.id === ui.section) || null;
+  if (sec && !lobby && !sec.game) sec = null;   // Spiel/Fragen nur in der Lobby
+  const sub = sec && ui.sub && SUBS[ui.sub] && SUBS[ui.sub][0] === sec.id ? ui.sub : null;
+  const title = sub ? SUBS[sub][1] : sec ? `${sec.icon} ${sec.title}` : '⚙️ Einstellungen';
+  const body = sub ? settingsSub(sub, d) : sec ? settingsSection(sec.id, d) : settingsStart(d);
+  main.innerHTML = `<div class="settings">
+    <div class="shead">${sec ? '<button class="btn sm back" onclick="settingsBack()" aria-label="Zurück">‹</button>' : ''}
+      <h2>${title}</h2><button class="btn sm" onclick="closeSettings()">Fertig</button></div>
+    ${body}
+  </div>`;
+}
+
+// Startseite: Kacheln mit Stand. Im Spiel oben die Spielsteuerung, Spiel/Fragen erst wieder in der Lobby.
+function settingsStart(d) {
+  const lobby = S.phase === 'lobby', st = tileStatus(d);
+  const tile = x => `<button class="tile ${x.wide ? 'wide' : ''}" onclick="showSection('${x.id}')"><span class="go">›</span><span class="ti">${x.icon}</span>
+    <span class="tt"><b>${x.title}</b><span class="st">${st[x.id] || ''}</span></span></button>`;
+  const grp = (g, label) => { const l = SECTIONS.filter(x => x.group === g && (lobby || x.game)); return l.length ? `<div class="tgrp">${label}</div><div class="tiles">${l.map(tile).join('')}</div>` : ''; };
+  return (lobby ? '' : liveControls())
+    + grp('vor', lobby ? 'Vor dem Spiel' : 'Während des Spiels')
+    + grp('technik', 'Raum & Technik')
+    + (lobby ? '' : '<p class="small">🎲 Spiel und 📚 Fragen lassen sich nach dem Spiel wieder ändern.</p>');
+}
+function liveControls() {
+  const ph = S.phase, b = S.block;
+  const where = ph === 'end' ? 'Siegerehrung' : ph === 'pause' ? 'Pause' : b && b.len ? `${b.total > 1 ? `Block ${b.num} · ` : ''}Frage ${b.q}/${b.len}` : '';
+  let btns;
+  if (ph === 'end') btns = '<button class="btn sm2" onclick="advance()">🔁 Neue Runde</button>';
+  else if (S.frozen) btns = '<button class="btn sm2" onclick="hostAct(\'resume\')">▶️ Fortsetzen</button>';
+  else if (ph === 'pause') btns = '<div class="row2"><button class="btn sm2" onclick="advance()">⏭ Pause beenden</button><button class="btn ghost sm2" onclick="hostAct(\'extend\')">➕ 5 Minuten</button></div>';
+  else btns = '<div class="row2"><button class="btn sm2" onclick="hostAct(\'pause\')">⏸ Anhalten</button><button class="btn ghost sm2" onclick="advance()">⏭ Überspringen</button></div>';
+  return `<div class="live"><div class="lh"><span>${S.frozen ? '⏸ Spiel angehalten' : ph === 'end' ? '🏆 Spiel vorbei' : '🎮 Spiel läuft'}</span><small>${where}</small></div>${btns}</div>`;
+}
+// Stand je Kachel (eine bis zwei kurze Zeilen)
+function tileStatus(d) {
+  const c = cfg(), sum = d.summary, ok = t => `<span class="ok">✓ ${t}</span>`, warn = t => `<span class="warn">⚠️ ${t}</span>`, off = t => `<span class="off">${t}</span>`;
+  const sp = ui.spotify && ui.spotify.st, hue = ui.hue && ui.hue.st, hs = ui.https && ui.https.st, sys = d.system || {}, r = d.repo || {};
+  const n = S.players.filter(p => p.connected).length, vip = S.players.find(p => p.id === S.vip);
+  const blocks = c.blocks.length;
+  return {
+    spiel: `${c.pub && c.pub.on ? '🍻 Pub-Quiz' : 'Normal'} · ${(c.scoring || 'speed') === 'level' ? 'Schwierigkeit' : 'Schnelligkeit'}<br>${c.special.on ? `Spezialfrage ×${c.special.mult}` : 'Keine Spezialfrage'}${c.pause.on && blocks > 1 ? ` · Pause ${c.pause.minutes ? c.pause.minutes + ' min' : '∞'}` : ''}`,
+    fragen: `${blocks} ${blocks === 1 ? 'Block' : 'Blöcke'} · ${sum.questions} Fragen<br>${d.errors.length ? warn('Fehler in Fragendateien') : r.error ? warn('Fragen-Repo: Fehler') : r.url ? ok('Fragen-Repo geladen') : off('Nur Testfragen')}`,
+    spieler: `${n} ${n === 1 ? 'Spieler' : 'Spieler'}${vip ? ` · 👑 ${esc(vip.name)}` : ''}`,
+    musik: `${sp ? (sp.blocked ? off('Spotify: nur im Heim-WLAN') : sp.connected ? (sp.device ? (sp.enabled ? ok('Spotify · ' + esc(sp.device.name)) : off('Spotify aus')) : warn('Spotify: Gerät wählen')) : off('Spotify nicht verbunden')) : ''}<br>${hue ? (hue.blocked ? off('Hue: nur im Heim-WLAN') : hue.paired ? (hue.enabled !== false ? ok('Hue') : off('Hue aus')) : off('Hue nicht eingerichtet')) : ''}`,
+    netz: `${hs ? (hs.hotspot ? off('Eigenes WLAN aktiv') : hs.active ? ok('https aktiv') : hs.host ? warn('https nicht aktiv') : off('https nicht eingerichtet')) : ''}<br>${sys.wifi ? (sys.wifi.service === 'enabled' ? 'Eigenes WLAN bereit' : warn('Eigenes WLAN fehlt')) : ''}`,
+    system: `Update · Neustart · Aus${r.url ? '<br>Fragen-Quelle: Repo' : ''}`,
+  };
+}
+
+function settingsSection(id, d) {
+  const c = cfg(), sum = d.summary, more = (label, sub, extra) => `<button class="fs" onclick="showSection(ui.section, '${sub}')"><span>${label}</span>${extra || ''}<span>›</span></button>`;
+  if (id === 'spiel') return `
+    <h3>🎮 Modus</h3>
+    <div class="seg seg2">${[[false, 'Normal'], [true, '🍻 Pub-Quiz']].map(([v, l]) => `<button class="${!!(c.pub && c.pub.on) === v ? 'on' : ''}" onclick="cfg().pub = { on: ${v} }; saveCfg()">${l}</button>`).join('')}</div>
+    <p class="small">${c.pub && c.pub.on ? 'Pub-Quiz: Du moderierst und spielst nicht mit. Nach jeder Frage löst du per Knopf auf und schaltest weiter. Fragen vorab planen: unter 📚 Fragen.' : 'Normal: Alle spielen mit, das Spiel läuft von selbst.'}</p>
+    <h3>🏅 Punkte</h3>
+    <div class="seg seg2">${[['speed', 'Schnelligkeit'], ['level', 'Schwierigkeit']].map(([v, l]) => `<button class="${(c.scoring || 'speed') === v ? 'on' : ''}" onclick="cfg().scoring='${v}'; saveCfg()">${l}</button>`).join('')}</div>
+    <p class="small">${(c.scoring || 'speed') === 'level'
+      ? 'Richtige Antwort = 1 bis 3 Punkte, je nach Schwierigkeit. Zuordnung: jedes richtige Paar 1 Punkt. Schätzfrage: wer am nächsten dran ist, bekommt die Punkte. Tempo zählt nicht.'
+      : 'Bis zu 1000 Punkte je Frage: Wer schneller richtig antwortet, bekommt mehr, dazu Bonus für Serien. Schätz- und Zuordnungsfragen geben Teilpunkte.'}</p>
+    <h3>⭐ Spezialfrage</h3>
+    <label class="switch"><input type="checkbox" ${c.special.on ? 'checked' : ''} onchange="setSpecial(this.checked)"><span>Eine geheime Spezialfrage pro Spiel</span></label>
+    ${c.special.on ? `<div class="seg">${[2, 3, 4].map(m => `<button class="${c.special.mult === m ? 'on' : ''}" onclick="setMult(${m})">×${m}</button>`).join('')}</div>
+      <p class="small">Erst nach dem Antworten wird verraten, dass es die Spezialfrage war. Die Punkte zählen dann ×${c.special.mult}.</p>` : ''}
+    <h3>🍺 Pause zwischen den Blöcken</h3>
+    <label class="switch"><input type="checkbox" ${c.pause.on ? 'checked' : ''} onchange="cfg().pause.on = this.checked; saveCfg()"><span>Pausen-Bildschirm</span></label>
+    ${c.pause.on ? stepper('Dauer in Minuten', c.pause.minutes || '∞', `setPause(-1)`, `setPause(1)`) + `<p class="small">${c.pause.minutes ? `Nach ${c.pause.minutes} Minuten geht es automatisch weiter.` : 'Die Pause läuft, bis du sie am Handy beendest.'} Du kannst sie jederzeit beenden oder verlängern.</p>` : ''}`;
+  if (id === 'fragen') return `
     <h3>Frageblöcke</h3>
     ${stepper('Anzahl Blöcke', c.blocks.length, `setBlocks(${c.blocks.length - 1})`, `setBlocks(${c.blocks.length + 1})`)}
     ${c.blocks.map((b, i) => {
@@ -962,37 +1040,53 @@ function renderSettings() {
     <p class="small">Insgesamt ${sum.questions} Fragen. Leichte Fragen kommen zuerst, schwere werden mit jeder Frage wahrscheinlicher.</p>
     ${d.history ? `<div class="histline"><span>🔁 Schon gespielt: <b>${d.history.played}</b> von ${d.history.total} Fragen</span>${d.history.played ? `<button class="mini" onclick="resetHistory(this)">Zurücksetzen</button>` : ''}</div>
     <p class="small">Neue Spiele nehmen zuerst Fragen, die noch nicht dran waren – sind alle durch, die, die am längsten her sind.</p>` : ''}
-    <h3>🏅 Punkte</h3>
-    <div class="seg" style="grid-template-columns: 1fr 1fr">${[['speed', 'Schnelligkeit'], ['level', 'Schwierigkeit']].map(([v, l]) => `<button class="${(c.scoring || 'speed') === v ? 'on' : ''}" onclick="cfg().scoring='${v}'; saveCfg()">${l}</button>`).join('')}</div>
-    <p class="small">${(c.scoring || 'speed') === 'level'
-      ? 'Richtige Antwort = 1 bis 3 Punkte, je nach Schwierigkeit. Zuordnung: jedes richtige Paar 1 Punkt. Schätzfrage: wer am nächsten dran ist, bekommt die Punkte. Tempo zählt nicht.'
-      : 'Bis zu 1000 Punkte je Frage: Wer schneller richtig antwortet, bekommt mehr, dazu Bonus für Serien. Schätz- und Zuordnungsfragen geben Teilpunkte.'}</p>
-    <h3>⭐ Spezialfrage</h3>
-    <label class="switch"><input type="checkbox" ${c.special.on ? 'checked' : ''} onchange="setSpecial(this.checked)"><span>Eine zufällige Spezialfrage pro Spiel</span></label>
-    ${c.special.on ? `<div class="seg">${[2, 3, 4].map(m => `<button class="${c.special.mult === m ? 'on' : ''}" onclick="setMult(${m})">×${m}</button>`).join('')}</div>
-      <p class="small">Erst nach dem Antworten wird verraten, dass es die Spezialfrage war. Die Punkte zählen dann ×${c.special.mult}.</p>` : ''}
-    <h3>🍺 Pause nach jedem Block</h3>
-    <label class="switch"><input type="checkbox" ${c.pause.on ? 'checked' : ''} onchange="cfg().pause.on = this.checked; saveCfg()"><span>Pausen-Bildschirm zwischen den Blöcken</span></label>
-    ${c.pause.on ? stepper('Dauer in Minuten', c.pause.minutes || '∞', `setPause(-1)`, `setPause(1)`) + `<p class="small">${c.pause.minutes ? `Nach ${c.pause.minutes} Minuten geht es automatisch weiter.` : 'Die Pause läuft, bis du sie am Handy beendest.'} Du kannst sie jederzeit beenden oder verlängern.</p>` : ''}
-    <h3>🍻 Pub-Quiz-Modus</h3>
-    <label class="switch"><input type="checkbox" ${c.pub && c.pub.on ? 'checked' : ''} onchange="cfg().pub = { on: this.checked }; saveCfg()"><span>Ich moderiere und spiele nicht mit</span></label>
-    ${c.pub && c.pub.on ? `<p class="small">Du bist Gamemaster: Nach jeder Frage löst du per Knopf auf und schaltest zur nächsten Frage weiter. Vor dem Start kannst du die Fragen planen.</p>
-      <button class="btn ghost" onclick="openPlan()">📋 Fragen planen</button>` : ''}
-    ${d.errors.length ? `<div class="errors"><b>⚠️ Fehler in Fragendateien</b>${d.errors.map(e => `<div><code>${esc(e.file)}</code><br>${esc(e.error)}</div>`).join('')}</div>` : ''}`;
-  else if (sec.id === 'fragen') body = repoSection(d);
-  else if (sec.id === 'integ') body = (hueSection() + spotifySection()) || '<p class="small">Keine Integrationen verfügbar.</p>';
-  else if (sec.id === 'netz') body = httpsSection();
-  else body = `
-    <h3>🔊 Sound</h3>
-    <label class="switch"><input type="checkbox" ${c.sound.on ? 'checked' : ''} onchange="cfg().sound.on = this.checked; saveCfg()"><span>Musik und Sounds am Fernseher</span></label>
-    ${systemSection(d.system)}`;
-  main.innerHTML = `<div class="settings">
-    <div class="shead"><button class="burger ${ui.menu ? 'open' : ''}" onclick="toggleMenu()" aria-label="Menü"><i></i><i></i><i></i></button>
-      <h2>${sec.title}</h2><button class="btn sm" onclick="closeSettings()">Fertig</button></div>
-    ${ui.menu ? `<nav class="smenu">${SECTIONS.map(x => `<button class="${x.id === sec.id ? 'on' : ''}" onclick="showSection('${x.id}')">
-      <span class="si">${x.icon}</span><span><b>${x.title}</b><small>${x.sub}</small></span></button>`).join('')}</nav>` : ''}
-    ${body}
-  </div>`;
+    ${c.pub && c.pub.on ? `<h3>📋 Pub-Quiz</h3><button class="fs" onclick="openPlan()"><span>Fragen vorab planen</span><span>›</span></button>` : ''}
+    ${d.errors.length ? `<div class="errors"><b>⚠️ Fehler in Fragendateien</b>${d.errors.map(e => `<div><code>${esc(e.file)}</code><br>${esc(e.error)}</div>`).join('')}</div>` : ''}
+    <p class="small">Woher die Fragen kommen (Fragen-Repo), steht unter 🛠️ System.</p>`;
+  if (id === 'spieler') return playersSection();
+  if (id === 'musik') {
+    const sp = ui.spotify && ui.spotify.st, hue = ui.hue && ui.hue.st;
+    return `<h3>🔊 Ton am Fernseher</h3>
+      ${S.phase === 'lobby' ? `<label class="switch"><input type="checkbox" ${c.sound.on ? 'checked' : ''} onchange="cfg().sound.on = this.checked; saveCfg()"><span>Musik und Sounds am Fernseher</span></label>`
+        : `<p class="small">${c.sound.on ? '🔊 An' : '🔇 Aus'} – umstellen geht in der Lobby.</p>`}
+      ${sp ? `<h3>🎵 Spotify</h3>
+        ${sp.blocked ? '<p class="small">📶 Nur im Heim-WLAN – der Pi hat gerade sein eigenes WLAN an.</p>'
+          : sp.connected ? `<div class="stline">✓ Verbunden als ${esc(sp.user || 'Spotify-Nutzer')}${sp.device ? ` · ${esc(sp.device.name)}` : ''}</div>
+            ${sp.device ? `<label class="switch"><input type="checkbox" ${sp.enabled ? 'checked' : ''} onchange="spotifyDo('enable', { on: this.checked })"><span>Spotify im Spiel steuern</span></label>` : ''}`
+          : '<p class="small">Nicht verbunden.</p>'}
+        ${more(sp.connected ? 'Gerät, Playlist, Lautstärke, Test' : 'Spotify einrichten', 'spotify')}` : ''}
+      ${hue ? `<h3>💡 Philips Hue</h3>
+        ${hue.blocked ? '<p class="small">📶 Nur im Heim-WLAN.</p>' : hue.paired ? `<div class="stline">✓ Gekoppelt</div>` : '<p class="small">Nicht eingerichtet.</p>'}
+        ${more(hue.paired ? 'Lampen, Test, Entkoppeln' : 'Bridge suchen und koppeln', 'hue')}` : ''}
+      ${ui.spotify && ui.spotify.msg ? `<div class="sysout ${ui.spotify.msg.ok ? '' : 'bad'}">${esc(ui.spotify.msg.text)}</div>` : ''}`;
+  }
+  if (id === 'netz') {
+    const hs = ui.https && ui.https.st, sys = d.system || {};
+    const btn = (a, label, cls) => `<button class="btn ${cls || 'ghost'} sysb" onclick="sysAction('${a}')">${ui.confirm === a ? 'Wirklich? Nochmal tippen' : label}</button>`;
+    return `<h3>🔒 Sichere Adresse</h3>
+      ${hs ? (hs.hotspot ? '<p class="small">📶 Eigenes WLAN aktiv – die sichere Adresse gibt es nur im Heim-WLAN.</p>'
+        : hs.host ? `<div class="repobox"><b>${esc(hs.host)}</b><small>${hs.active ? '🔒 Aktiv – die Handys nutzen diese Adresse' : hs.busy ? esc(hs.busy) : 'Noch nicht aktiv'}</small></div>
+          ${hs.validTo ? `<div class="stline">✓ Zertifikat gültig bis ${fmtDate(hs.validTo)}</div>` : ''}
+          ${hs.dns ? `<div class="stline ${hs.dns.ok ? '' : 'warn'}">${hs.dns.ok ? '✓ Im Heimnetz erreichbar' : '⚠️ Router löst die Adresse nicht auf – Details unten'}</div>` : ''}`
+        : '<p class="small">Mit https bleibt der Bildschirm am Handy zuverlässig an – und Spotify lässt sich verbinden.</p>') : ''}
+      ${hs && !hs.hotspot ? more(hs.host ? 'Details, Name und Token ändern' : 'Sichere Adresse einrichten', 'https') : ''}
+      ${sys.wifi ? wifiSection(sys, btn) : ''}`;
+  }
+  if (id === 'system') {
+    const r = d.repo || {};
+    return `${systemSection(d.system, true) || '<p class="small">Updates und Ausschalten gehen nur auf dem Pi.</p>'}
+      <h3>📚 Fragen-Quelle</h3>
+      ${r.url ? `<div class="repobox"><b>${esc(r.url.replace(/^https:\/\/github\.com\//, ''))}</b><small>${r.present ? '✓ Geladen' : 'Noch nicht geladen'}${r.error ? ' · ⚠️ Fehler' : ''}</small></div>` : '<p class="small">Noch kein Fragen-Repo – es gibt nur die Testfragen.</p>'}
+      ${S.phase === 'lobby' ? more(r.url ? 'Aktualisieren, wechseln, Zugriffsschlüssel' : 'Fragen-Repo eintragen', 'repo') : '<p class="small">Ändern geht in der Lobby.</p>'}`;
+  }
+  return '';
+}
+function settingsSub(sub, d) {
+  if (sub === 'spotify') return spotifySection();
+  if (sub === 'hue') return hueSection() || '<p class="small">Nicht verfügbar.</p>';
+  if (sub === 'https') return httpsSection();
+  if (sub === 'repo') return repoSection(d);
+  return '';
 }
 // ---------- Pub-Quiz: Fragen planen (nur in der Lobby) ----------
 async function planCall(action, extra) {
@@ -1099,15 +1193,18 @@ function renderModerator() {
 }
 
 // Hamburger-Menü der Einstellungen
+// Einstellungen: Startseite mit Kacheln, zwei Gruppen. game: nur in der Lobby änderbar (Server nimmt Einstellungen nur dort an)
 const SECTIONS = [
-  { id: 'game', icon: '🎲', title: 'Spieleinstellungen', sub: 'Frageblöcke, Spezialfrage, Pause' },
-  { id: 'fragen', icon: '📚', title: 'Fragen', sub: 'Fragen-Repo eintragen, wechseln, aktualisieren' },
-  { id: 'integ', icon: '🧩', title: 'Integrationen', sub: 'Philips Hue, Spotify' },
-  { id: 'netz', icon: '🔒', title: 'Sichere Adresse', sub: 'https im Heim-WLAN – Bildschirm bleibt an' },
-  { id: 'system', icon: '🛠️', title: 'Systemeinstellungen', sub: 'Sound, Update, Neustart, Ausschalten' },
+  { id: 'spiel', group: 'vor', icon: '🎲', title: 'Spiel', game: false },
+  { id: 'fragen', group: 'vor', icon: '📚', title: 'Fragen', game: false },
+  { id: 'spieler', group: 'vor', icon: '👥', title: 'Spieler', wide: true, game: true },
+  { id: 'musik', group: 'technik', icon: '🎵', title: 'Musik & Licht', game: true },
+  { id: 'netz', group: 'technik', icon: '📶', title: 'Netzwerk', game: true },
+  { id: 'system', group: 'technik', icon: '🛠️', title: 'System', game: true },
 ];
-function toggleMenu() { ui.menu = !ui.menu; lastKey = ''; render(); }
-function showSection(id) { ui.section = id; ui.menu = false; lastKey = ''; render(); window.scrollTo(0, 0); }
+const SUBS = { spotify: ['musik', '🎵 Spotify'], hue: ['musik', '💡 Philips Hue'], https: ['netz', '🔒 Sichere Adresse'], repo: ['system', '📚 Fragen-Quelle'] };
+function showSection(id, sub) { ui.section = id; ui.sub = sub || null; ui.renaming = null; lastKey = ''; render(); window.scrollTo(0, 0); }
+function settingsBack() { if (ui.sub) ui.sub = null; else ui.section = null; ui.renaming = null; lastKey = ''; render(); window.scrollTo(0, 0); }
 
 function renderBlockEditor() {
   const d = ui.packs, bi = ui.edit, b = cfg().blocks[bi], dis = new Set(b.disabled), s = d.summary.blocks[bi] || { available: 0 };
@@ -1134,7 +1231,6 @@ function renderBlockEditor() {
 }
 
 // ---------- Host-Menü (während des Spiels) ----------
-function toggleHost() { ui.host = !ui.host; ui.renaming = null; lastKey = ''; render(); }
 function hostAct(action, extra) { return post('/api/host', { id: myId, action, ...extra }); }
 async function kick(id) { if (ui.confirm !== 'kick' + id) { ui.confirm = 'kick' + id; lastKey = ''; return render(); } ui.confirm = null; await hostAct('kick', { target: id }); }
 function startRename(id) { ui.renaming = id; lastKey = ''; render(); const i = document.getElementById('rn'); if (i) { i.focus(); i.select(); } }
@@ -1144,24 +1240,16 @@ async function saveRename(ev, id) {
   if (!ok) { document.getElementById('rnerr').textContent = data.error || 'Hat nicht geklappt.'; return; }
   ui.renaming = null; lastKey = ''; render();
 }
-function renderHost() {
-  const ph = S.phase, inGame = !['lobby', 'end'].includes(ph);
-  main.innerHTML = `<div class="settings">
-    <div class="shead"><h2>🎛️ Host</h2><button class="btn sm" onclick="toggleHost()">Zurück</button></div>
-    ${inGame ? (S.frozen
-      ? '<button class="btn" onclick="hostAct(\'resume\')">▶️ Spiel fortsetzen</button>'
-      : '<button class="btn ghost" onclick="hostAct(\'pause\')">⏸ Spiel anhalten</button>') : ''}
-    ${ph === 'pause' ? '<button class="btn" onclick="advance()">⏭ Pause beenden</button><button class="btn ghost" onclick="hostAct(\'extend\')">➕ 5 Minuten länger</button>'
-      : inGame ? '<button class="btn ghost" onclick="advance()">⏭ Weiter / überspringen</button>' : ''}
-    <h3>👥 Spieler</h3>
-    ${S.players.map(p => ui.renaming === p.id
-      ? `<form class="prow2" onsubmit="saveRename(event, '${p.id}')"><span class="pav" style="--pc:${p.color}">${p.avatar}</span>
-          <input id="rn" maxlength="14" value="${esc(p.name)}"><button class="btn sm">OK</button></form><div class="err" id="rnerr"></div>`
-      : `<div class="prow2 ${p.connected ? '' : 'off'}"><span class="pav" style="--pc:${p.color}">${p.avatar}</span>
-          <span class="pn">${esc(p.name)}${p.id === S.vip ? ' 👑' : ''}<small>${HIDE_PTS.includes(S.phase) ? '' : p.score + ' P'}${p.connected ? '' : (HIDE_PTS.includes(S.phase) ? '' : ' · ') + 'offline'}</small></span>
-          <button class="ib" onclick="startRename('${p.id}')" title="Umbenennen">✏️</button>
-          ${p.id === myId ? '' : `<button class="ib ${ui.confirm === 'kick' + p.id ? 'warn' : ''}" onclick="kick('${p.id}')" title="Entfernen">${ui.confirm === 'kick' + p.id ? 'Sicher?' : '✖'}</button>`}</div>`).join('')}
-  </div>`;
+// Spieler: umbenennen, entfernen (Lobby und Spiel)
+function playersSection() {
+  return S.players.map(p => ui.renaming === p.id
+    ? `<form class="prow2" onsubmit="saveRename(event, '${p.id}')"><span class="pav" style="--pc:${p.color}">${p.avatar}</span>
+        <input id="rn" maxlength="14" value="${esc(p.name)}"><button class="btn sm">OK</button></form><div class="err" id="rnerr"></div>`
+    : `<div class="prow2 ${p.connected ? '' : 'off'}"><span class="pav" style="--pc:${p.color}">${p.avatar}</span>
+        <span class="pn">${esc(p.name)}${p.id === S.vip ? ' 👑' : ''}<small>${p.id === myId ? 'du · ' : ''}${HIDE_PTS.includes(S.phase) || S.phase === 'lobby' ? '' : p.score + ' P'}${p.connected ? '' : ' · offline'}</small></span>
+        <button class="ib" onclick="startRename('${p.id}')" title="Umbenennen">✏️</button>
+        ${p.id === myId ? '' : `<button class="ib ${ui.confirm === 'kick' + p.id ? 'warn' : ''}" onclick="kick('${p.id}')" title="Entfernen">${ui.confirm === 'kick' + p.id ? 'Sicher?' : '✖'}</button>`}</div>`).join('')
+    + `<p class="small">✏️ umbenennen · ✖ aus dem Spiel nehmen. 👑 ist, wer zuerst beigetreten ist.</p>`;
 }
 
 let pauseTimer = null;

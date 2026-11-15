@@ -52,7 +52,7 @@ Keine neuen Node-Pakete: Der Server nutzt nur das, was Node mitbringt.
 1. Am Handy **duckdns.org** öffnen und anmelden (z. B. mit Google).
 2. Bei *sub domain* einen Namen ausdenken (z. B. `meinquiz`) und **add domain** tippen.
 3. Den **token** oben auf der Seite kopieren.
-4. Im Quiz unter ⚙️ Einstellungen › 🔒 **Sichere Adresse** Name und Token eintragen, **Einrichten** tippen.
+4. Im Quiz unter ⚙️ › 📶 Netzwerk › 🔒 **Sichere Adresse** Name und Token eintragen, **Einrichten** tippen.
 5. Nach 1–3 Minuten erscheinen drei grüne Haken: *Zeigt auf …* · *Zertifikat gültig bis …* · *Im Heimnetz erreichbar*.
 
 ### Fritz!Box: DNS-Rebind-Schutz
@@ -84,7 +84,7 @@ Startet der Pi sein eigenes WLAN (kein Heim-WLAN in Reichweite), gibt es dort ke
 
 ## Entfernen
 
-⚙️ › 🔒 Sichere Adresse › **Sichere Adresse entfernen**: löscht Name, Token und Zertifikat vom Pi, der https-Server stoppt, alles läuft wieder über http. Den Namen bei DuckDNS kann man dort zusätzlich löschen.
+⚙️ › 📶 Netzwerk › 🔒 Sichere Adresse › **Sichere Adresse entfernen**: löscht Name, Token und Zertifikat vom Pi, der https-Server stoppt, alles läuft wieder über http. Den Namen bei DuckDNS kann man dort zusätzlich löschen.
 
 ## Für Entwickler: testen
 
