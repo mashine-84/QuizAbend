@@ -55,7 +55,7 @@
       "id": "schaetzen", "nurWenn": "estimate", "wertung": "speed", "kicker": "Fragearten",
       "icon": "🔢", "titel": "Schätzfrage",
       "text": "Zahl eintippen – wer am nächsten dran ist, gewinnt.",
-      "punkte": ["Je näher, desto mehr Punkte – der Nächste bekommt **+200**", "Die **Einheit** steht dabei (m, kg …)", "**Jahreszahlen:** nur ±2 Jahre zählen", "Bei Gleichstand am Ende: **Stechen** mit einer Schätzfrage"],
+      "punkte": ["Je näher, desto mehr Punkte – der Nächste bekommt **+200**", "Die **Einheit** steht dabei (m, kg …)", "Steht ein **±** bei der Frage, gibt es nur so nah dran Punkte", "Bei Gleichstand am Ende: **Stechen** mit einer Schätzfrage"],
       "tipp": "Probier's aus: Wie viele Leute sitzen gerade hier im Raum?",
       "uebung": { "art": "estimate", "frage": "Wie viele Leute sitzen gerade hier im Raum?" }
     },
@@ -63,7 +63,7 @@
       "id": "schaetzen_level", "nurWenn": "estimate", "wertung": "level", "kicker": "Fragearten",
       "icon": "🔢", "titel": "Schätzfrage",
       "text": "Zahl eintippen – nur wer am nächsten dran ist, bekommt Punkte.",
-      "punkte": ["**Nur der Nächste** bekommt die Punkte der Frage", "Die **Einheit** steht dabei (m, kg …)", "**Jahreszahlen:** nur ±2 Jahre zählen", "Bei Gleichstand am Ende: **Stechen** mit einer Schätzfrage"],
+      "punkte": ["**Nur der Nächste** bekommt die Punkte der Frage", "Die **Einheit** steht dabei (m, kg …)", "Steht ein **±** bei der Frage, gibt es nur so nah dran Punkte", "Bei Gleichstand am Ende: **Stechen** mit einer Schätzfrage"],
       "tipp": "Probier's aus: Wie viele Leute sitzen gerade hier im Raum?",
       "uebung": { "art": "estimate", "frage": "Wie viele Leute sitzen gerade hier im Raum?" }
     },

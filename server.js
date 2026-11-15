@@ -205,9 +205,10 @@ function normalizeQuestion(q, dir, packName, packLevel) {
   if (q.schaetzen !== undefined) {
     const value = Number(String(q.schaetzen).replace(',', '.'));
     if (!isFinite(value)) throw new Error('"schaetzen" muss eine Zahl sein');
-    // Jahreszahl-Fragen ("In welchem Jahr …") zählen nur bis ±2 Jahre; mit "toleranz" frei einstellbar
+    // Jahreszahl erkannt ("In welchem Jahr …"): nur für die Anzeige (Ziffernblock ohne Komma, „Jahre“)
     const year = q.jahr !== undefined ? !!q.jahr : /\bJahr\b/i.test(String(q.frage)) && Number.isInteger(value) && !q.einheit?.match?.(/^(m|km|g|kg|s|%)$/);
-    let tolerance = q.toleranz !== undefined ? Number(q.toleranz) : year ? 2 : null;
+    // Toleranz (±) nur, wenn sie bei der Frage steht ("toleranz": 2) – auch bei Jahreszahlen. Ohne: der Nächste gewinnt.
+    let tolerance = q.toleranz === undefined || q.toleranz === false || q.toleranz === null ? null : Number(q.toleranz);
     if (tolerance !== null && !(tolerance >= 0)) throw new Error('"toleranz" muss eine Zahl ab 0 sein');
     // Auflösung am Fernseher: "pegel" (Säulen + steigender Wasserpegel) für Höhen und Gewichte, sonst Slotmaschine.
     // Automatisch erkannt, mit "anzeige": "pegel" | "slot" fest einstellbar.
@@ -834,7 +835,7 @@ function recordStats() {
     st.streak = ok ? st.streak + 1 : 0; st.best = Math.max(st.best, st.streak);
     if (a && ok && left <= 3000) st.late++;
     if (a && q.kind === 'estimate') {
-      const err = Math.abs(a.value - q.value) / Math.max(Math.abs(q.value), 1);
+      const err = estErr(q, a.value);
       if (!st.est || err < st.est.err) st.est = { err, value: a.value, target: q.value, unit: q.unit || '', year: !!q.year };
     }
   }
@@ -865,6 +866,10 @@ function streakBonus(p, ok) {
 }
 const round10 = x => Math.round(x / 10) * 10;
 
+// Wie weit daneben (Anteil): sonst relativ zum Wert. Jahreszahlen relativ dazu, wie lange es her ist (mind. 10 Jahre) –
+// 1989 statt 1980 ist ein deutlicher Fehler, 1500 statt 1453 nicht so sehr (ohne Toleranz gilt das für jede Jahresfrage).
+const estErr = (q, v) => Math.abs(v - q.value) / (q.year ? Math.max(10, Math.abs(new Date().getFullYear() - q.value)) : Math.max(Math.abs(q.value), 1));
+
 function scoreQuestion() {
   const q = currentQuestion();
   if (inTiebreak(q)) return scoreTiebreak(q);
@@ -882,7 +887,7 @@ function scoreQuestion() {
       const diff = Math.abs(a.value - q.value);
       // Mit Toleranz: exakt = volle Punkte, am Rand weniger, außerhalb nichts
       const acc = tol !== null ? (diff <= tol ? 1 - diff / (tol + 1) : 0)
-        : q.value === 0 ? (diff === 0 ? 1 : 0) : Math.max(0, 1 - diff / Math.abs(q.value));
+        : q.value === 0 && !q.year ? (diff === 0 ? 1 : 0) : Math.max(0, 1 - estErr(q, a.value));
       const closest = best !== null && diff === best;
       const gain = round10(800 * acc) + (closest ? 200 : 0) + streakBonus(p, closest);
       p.score += gain;
