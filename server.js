@@ -572,8 +572,10 @@ function afterIntro() {
 function playSpotifySnippet(q) {
   const o = q.audioOpts, n = o.repeat || 1, total = (n * o.dauer + (n - 1) * o.gap) * 1000;
   const key = state.idx;
+  state.snip = null;   // { k, at }: wann Spotify die k-te Wiederholung tatsächlich gestartet hat (Anzeige am Fernseher)
   setPhase('media', total + 10000, afterMedia);
-  spotify.snippet(q.spotify, o, () => state.idx === key && state.phase === 'media' && !state.frozen).then(r => {
+  spotify.snippet(q.spotify, o, () => state.idx === key && state.phase === 'media' && !state.frozen,
+    k => { if (state.idx === key && state.phase === 'media') { state.snip = { k, at: Date.now() }; broadcast(); } }).then(r => {
     if (state.idx !== key || state.phase !== 'media' || state.frozen) return;
     if (!r.ok) console.log('  Spotify-Musikfrage ging nicht – weiter mit der Frage');
     afterMedia();
@@ -962,6 +964,7 @@ function baseView() {
     const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category, tiebreak: !!q.tiebreak }; // Schwierigkeit wird im Spiel nicht verraten …
     // … außer bei Punkten nach Schwierigkeit: dann steht oben, was die Frage bringt (Zuordnen: 1 Punkt je Paar)
     if ((state.scoring || settings.scoring) === 'level') { vq.points = stepCount(q) ? 1 : (q.level || 1); vq.perPair = q.kind === 'match'; vq.perItem = q.kind === 'tf'; }
+    if (ph === 'media' && q.spotify && state.snip) vq.snip = { k: state.snip.k, sinceMs: Date.now() - state.snip.at };
     if (ph === 'media') { vq.video = q.video || null; vq.audio = q.audio || null; vq.spotify = !!q.spotify; vq.audioOpts = q.audioOpts || null; vq.flash = q.flash ? q.image : null; }
     if (q.brand) vq.brand = q.brand;
     if (ph !== 'intro' && ph !== 'media' && q.kind === 'match') vq.left = q.left;

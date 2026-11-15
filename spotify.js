@@ -199,7 +199,8 @@ const ready = () => !!(cfg.refresh && cfg.device && cfg.enabled !== false && !en
 // opts: { start, dauer, repeat, gap } in Sekunden. Läuft in derselben Warteschlange wie Pause/Weiter.
 // Vorher wird die Hintergrundmusik (Playlist + Stelle) gemerkt, danach geht sie dort weiter.
 const wait = ms => new Promise(r => setTimeout(r, ms));
-function snippet(uri, opts, stillWanted = () => true) {
+// onStart(k): wird gerufen, sobald Spotify das Abspielen der k-ten Wiederholung bestätigt hat (für die Anzeige am TV)
+function snippet(uri, opts, stillWanted = () => true, onStart = () => {}) {
   const job = queue.then(async () => {
     const id = await deviceId();
     if (!id) { log('Musikfrage: Gerät nicht gefunden'); return { ok: false }; }
@@ -214,10 +215,12 @@ function snippet(uri, opts, stillWanted = () => true) {
       if (!stillWanted()) break;
       const r = await playOn(id, { uris: [uri], position_ms: Math.round((opts.start || 0) * 1000) });
       if (!OK(r)) { log('Musikfrage ging nicht: ' + errText(r)); return { ok: false }; }
+      onStart(k);
       await wait(len);
       await api('PUT', '/me/player/pause');
       if (k < n - 1) await wait(gap);
     }
+    await wait(900);   // der Ton kommt etwa so viel später aus dem Lautsprecher – so läuft der Balken am TV zu Ende
     current = 'pause';
     if (bgSaved) pausedByUs = true;
     return { ok: true };

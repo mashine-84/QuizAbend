@@ -935,20 +935,26 @@ function renderSpotify() {
   const n = o.repeat || 1, len = o.dauer || 10, GAP = o.gap || 2.5, total = n * len + (n - 1) * GAP;
   app.innerHTML = `<div class="intro">
     <div class="iicon sc">🎵</div><div class="ilabel spot">Hör genau hin!</div>
-    <div class="icat">Läuft über Spotify</div>
+    <div class="icat" id="astat">Gleich geht's los …</div>
     <div class="eq spot">${Array.from({ length: 9 }, (_, i) => `<i style="animation-delay:${i * 0.11}s"></i>`).join('')}</div>
     <div class="pbar wide spot"><i id="apbar" style="width:0%"></i></div>
     ${n > 1 ? `<div class="icat" id="arep">1. Mal von ${n}</div>` : ''}</div>`;
-  const t0 = Date.now() + 700;   // Spotify braucht einen Moment, bis der Ton kommt
+  // Der Balken läuft erst los, wenn der Pi meldet, dass Spotify wirklich spielt (S.question.snip, je Wiederholung),
+  // plus SPOT_LAG – so lange braucht der Ton vom Befehl bis aus dem Lautsprecher.
+  const SPOT_LAG = 0.9;
+  let base = null, k = 0;
   const tick = setInterval(() => {
     const b = document.getElementById('apbar');
     if (!b || S.phase !== 'media' || S.qNum !== key) { clearInterval(tick); return; }
-    const el = Math.max(0, (Date.now() - t0) / 1000);
-    b.style.width = Math.min(100, el / total * 100) + '%';
+    const sn = S.question && S.question.snip;
+    if (sn && (base === null || sn.k !== k)) { k = sn.k; base = Date.now() - sn.sinceMs + SPOT_LAG * 1000; const st = document.getElementById('astat'); if (st) st.textContent = 'Läuft über Spotify'; }
+    if (base === null) return;
+    const inRep = Math.min(len, Math.max(0, (Date.now() - base) / 1000));
+    const pauseDone = inRep >= len && k < n - 1 ? Math.min(GAP, (Date.now() - base) / 1000 - len) : 0;
+    b.style.width = Math.min(100, (k * (len + GAP) + inRep + Math.max(0, pauseDone)) / total * 100) + '%';
     const r = document.getElementById('arep');
-    if (r) { const k = Math.min(n - 1, Math.floor(el / (len + GAP))), inGap = el - k * (len + GAP) > len && k < n - 1;
-      r.textContent = inGap ? `Pause … gleich das ${k + 2}. Mal` : `${k + 1}. Mal von ${n}`; }
-  }, 200);
+    if (r) r.textContent = inRep >= len && k < n - 1 ? `Pause … gleich das ${k + 2}. Mal` : `${k + 1}. Mal von ${n}`;
+  }, 100);
 }
 
 // ---------- Zuordnen: erst nur die Begriffe ----------
