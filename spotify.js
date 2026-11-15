@@ -1,7 +1,8 @@
 // Spotify Connect: Musik läuft auf einem Spotify-Gerät im Heimnetz (z. B. Yamaha-Receiver), das Quiz steuert nur
 // „Pause“ und „Weiter“ über die offizielle Spotify-Schnittstelle (Web API). Der Pi spielt selbst keine Spotify-Musik ab.
 //   - Läuft während des Spiels; pausiert, wenn das Quiz eigene Musik hat (Opener, Intro, Blockseite, Blockpause, Siegerehrung)
-//     und bei Musik-/Filmfragen (solange Ton/Video läuft) – danach geht es weiter.
+//     und bei Musik-/Filmfragen (ab der Ankündigung, solange Ton/Video läuft) – danach geht es weiter.
+//   - Vor dem Pausieren wird ausgeblendet (1,5 s), wenn das Gerät Lautstärke über Spotify erlaubt.
 //   - Braucht Spotify Premium, eine eigene (kostenlose) Spotify-App des Besitzers und die sichere Adresse (https):
 //     Spotify leitet nach dem Anmelden nur an https-Adressen zurück.
 //   - Im eigenen WLAN des Pi (kein Internet) ist Spotify abgeschaltet.
@@ -183,6 +184,7 @@ async function play(opts = {}) {
   log('Abspielen ging nicht: ' + errText(r));
   return { ok: false, text: errText(r) };
 }
+const FADE_MS = 1500, FADE_STEPS = 6;   // Ausblenden vor dem Pausieren: 1,5 s in 6 Schritten (höchstens ~1 Befehl pro 250 ms)
 // force: auch pausieren, wenn Spotify gerade auf einem anderen Gerät läuft (Test-Knopf)
 async function pause(opts = {}) {
   const st = await api('GET', '/me/player');
@@ -193,7 +195,21 @@ async function pause(opts = {}) {
   // (die ID kann sich ändern, z. B. bei Alexa nach dem Übertragen).
   const ours = !cfg.device || on.id === cfg.device.id || on.name === cfg.device.name;
   if (!ours && !opts.force) { log(`Nicht pausiert: Spotify spielt gerade auf „${on.name || 'anderem Gerät'}“`); return { ok: true, wasPlaying: false, text: `Spotify spielt gerade auf „${on.name}“ – nicht angehalten.` }; }
-  const r = await api('PUT', '/me/player/pause' + (on.id ? `?device_id=${encodeURIComponent(on.id)}` : ''));
+  const dq = on.id ? `?device_id=${encodeURIComponent(on.id)}` : '';
+  // Ausblenden: Lautstärke in Schritten herunter, pausieren, Lautstärke wieder zurück (für das nächste Abspielen).
+  // Geht nur, wenn das Gerät Lautstärke über Spotify erlaubt – sonst wird direkt pausiert.
+  const vol = on.supports_volume !== false && Number.isFinite(on.volume_percent) && on.volume_percent > 0 && !opts.noFade ? on.volume_percent : null;
+  let faded = false;
+  if (vol) {
+    for (let i = 1; i <= FADE_STEPS; i++) {
+      const v = await api('PUT', `/me/player/volume?volume_percent=${Math.round(vol * (1 - i / FADE_STEPS) ** 1.5)}${dq ? '&' + dq.slice(1) : ''}`);
+      if (!OK(v)) break;   // Gerät lehnt Lautstärke ab (z. B. VOLUME_CONTROL_DISALLOW): ohne Ausblenden weiter
+      faded = true;
+      await new Promise(res => setTimeout(res, FADE_MS / FADE_STEPS));
+    }
+  }
+  const r = await api('PUT', '/me/player/pause' + dq);
+  if (faded) { await new Promise(res => setTimeout(res, 300)); await api('PUT', `/me/player/volume?volume_percent=${vol}${dq ? '&' + dq.slice(1) : ''}`); }
   if (OK(r)) return { ok: true, wasPlaying: true };
   log('Pausieren ging nicht: ' + errText(r));
   return { ok: false, text: errText(r) };
@@ -234,7 +250,7 @@ function snippet(uri, opts, stillWanted = () => true) {
 
 // ---------- Spielphasen ----------
 // Quiz hat eigene Musik/Ton: Spotify pausieren. Sonst (während des Spiels) spielen. Lobby: nicht eingreifen.
-const PAUSE_PHASES = new Set(['ident', 'opening', 'block', 'pause', 'media', 'end']);   // block: Blockseite mit eigenem Jingle
+const PAUSE_PHASES = new Set(['ident', 'opening', 'block', 'pause', 'media', 'end']);   // block: Blockseite mit Jingle; dazu die Ankündigung vor Musik-/Filmfragen (siehe onPhase)
 const PLAY_PHASES = new Set(['intro', 'preview', 'question', 'locked', 'special', 'votes', 'reveal', 'scores', 'tiebreak']);
 let gameStarted = false;
 // info.sound: in der Medien-Phase läuft Ton oder Video (beim Merkbild nicht – dann weiterspielen)
@@ -242,6 +258,7 @@ function onPhase(phase, info = {}) {
   if (!ready()) return;
   if (phase === 'lobby') { gameStarted = false; pausedByUs = false; want = current = null; return; }
   if (phase === 'media' && !info.sound) phase = 'question';
+  if (phase === 'intro' && info.sound) phase = 'media';   // Ankündigung einer Musik-/Film-/Spotify-Frage: Musik schon hier aus
   const next = PAUSE_PHASES.has(phase) ? 'pause' : PLAY_PHASES.has(phase) ? 'play' : null;
   if (!next || next === want) return;
   want = next;

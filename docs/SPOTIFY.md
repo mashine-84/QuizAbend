@@ -14,12 +14,13 @@ Code: [`spotify.js`](../spotify.js) (Anmeldung, Geräte, Pause/Weiter), Server-T
 | **Opener** und **Intro** („So wird gefragt“) | ⏸ Pause – das Quiz spielt seinen Opener-Jingle |
 | **Blockseite** (Block 1, Block 2 …) | ⏸ Pause – das Quiz spielt den Block-Jingle; danach geht es weiter |
 | Fragen, Auflösung, Rangliste | ▶️ läuft (zum ersten Mal: deine Playlist, sonst das, was zuletzt lief) |
-| **Musikfrage** (Soundcheck) / **Filmfrage** (Seh-Test), solange Ton oder Video läuft | ⏸ Pause – danach, wenn die Antworten kommen, geht es weiter |
+| **Musikfrage** (Soundcheck, Spotify) / **Filmfrage** (Seh-Test) – schon ab der **Ankündigung**, solange Ton oder Video läuft | ⏸ Pause – danach, wenn die Antworten kommen, geht es weiter |
 | Merkbild (stilles Bild) | ▶️ läuft weiter |
 | **Blockpause** | ⏸ Pause – die Pausenmusik des Quiz läuft |
 | **Siegerehrung** | ⏸ Pause |
 
 Regeln dahinter:
+- **Ausblenden:** Vor jeder Pause wird die Musik in 1,5 Sekunden leiser gedreht und erst dann angehalten; danach stellt das Quiz die Lautstärke wieder zurück. Das geht nur bei Geräten, die Lautstärke über Spotify erlauben – sonst wird direkt pausiert.
 - **Nur fortsetzen, was das Quiz selbst angehalten hat.** Hast du Spotify zwischendurch selbst pausiert, bleibt es aus.
 - **Läuft Spotify gerade auf einem anderen Gerät** (z. B. deinem Handy), greift das Quiz nicht ein.
 - Schnelles Weiterklicken schickt nur den letzten Stand (Befehle werden kurz gebündelt).
