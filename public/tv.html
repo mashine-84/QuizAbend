@@ -530,8 +530,10 @@
   .anl { flex: 1; display: flex; flex-direction: column; min-height: 0; }
   .anltop { display: flex; justify-content: space-between; align-items: center; font-size: 1.35vw; color: var(--muted); font-weight: 700; }
   .anldots { display: flex; gap: .35vw; } .anldots i { width: 1.6vw; height: .45vh; min-height: 3px; border-radius: 2px; background: rgba(255,255,255,.18); } .anldots i.on { background: var(--c); }
-  .anl h2 { font-size: 3.5vw; font-weight: 900; letter-spacing: -.02em; margin-top: 1.2vh; line-height: 1.1; }
-  .anllead { font-size: 1.9vw; color: #d9d4ff; font-weight: 600; margin-top: .6vh; }
+  /* Überschrift wie die Fragekarte im Spiel: dunkle Schrift auf weißer Karte */
+  .anl h2 { align-self: flex-start; font-size: 3.2vw; font-weight: 900; letter-spacing: -.02em; margin-top: 1.2vh; line-height: 1.1; background: #fff; color: #1b1440; border-radius: 1.4vw; padding: 1.4vh 2vw; box-shadow: 0 1vh 0 rgba(0,0,0,.25); }
+  .anllead { font-size: 1.9vw; color: #d9d4ff; font-weight: 600; margin-top: 1.6vh; }
+  .anlvis .ktext { z-index: 2; font-size: 2vw; max-width: 38vw; }
   .anlbody { flex: 1; min-height: 0; display: grid; grid-template-columns: 46vw 1fr; gap: 3vw; align-items: center; margin-top: 2.5vh; }
   .anlvis { height: 100%; max-height: 54vh; border-radius: 1.4vw; background: rgba(255,255,255,.04); position: relative; overflow: hidden; display: grid; place-items: center; }
   .anlvis > svg { width: 100%; height: 100%; }
@@ -894,7 +896,8 @@ function anlLive(u, tries) {
   // Karte (Pin oder Land)
   loadKarte(u.karte || 'deutschland').then(m => {
     if (!document.contains(box)) return;
-    if (!box.dataset.ready) { box.innerHTML = frage + kSvg(m, { small: true }); box.dataset.ready = '1'; }
+    // Frage wie bei den Kartenfragen im Spiel: weiße Karte oben links über der Karte
+    if (!box.dataset.ready) { box.innerHTML = kSvg(m, { small: true }) + `<div class="ktext"><small>Ausprobieren</small>${esc(u.frage || '')}</div>`; box.dataset.ready = '1'; }
     const svg = box.querySelector('svg'), over = svg.querySelector('.kover');
     kSizeSmall(svg, 6);
     const u2 = kUnit(svg);
