@@ -41,12 +41,12 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 - **Feste Adresse:** Das Setup nennt den Pi `quizabend`. Die Handys erreichen das Quiz dann auch über **http://quizabend.local**. Der QR-Code nutzt weiterhin die IP, das klappt auf jedem Handy. Mit `--name NAME` wählst du einen anderen Namen.
 - **Eigenes WLAN für unterwegs:** Findet der Pi beim Start kein bekanntes WLAN, macht er nach etwa 45 Sekunden ein eigenes WLAN „QuizAbend“ auf. Name und Passwort stehen mit WLAN-QR-Code auf dem Fernseher. Zu Hause verbindet er sich wie gewohnt mit deinem WLAN, dort funktionieren dann auch Updates. Mit Netzwerkkabel geht beides gleichzeitig. Abschalten mit `--ohne-hotspot`.
   - **Quiz öffnet sich von selbst:** Im eigenen WLAN beantwortet der Pi alle Internet-Adressen selbst. Die Internet-Prüfung der Handys landet so beim Quiz, und Android („Im Netzwerk anmelden“) bzw. das iPhone (Anmeldefenster) öffnen die Quiz-Seite automatisch – wie bei einem Hotel-WLAN. Klappt das mal nicht, geht weiter der Quiz-QR-Code. Hinweis fürs iPhone: Im Anmeldefenster oben „Abbrechen“ → „Ohne Internet verwenden“ wählen, wenn man lieber in Safari spielt.
-  - **Prüfen ohne SSH:** Am Handy des 👑 unter ⚙️ Einstellungen › Systemeinstellungen › **📶 Eigenes WLAN** steht, ob es eingerichtet ist, WLAN-Name und Passwort, was beim letzten Start passiert ist und das Protokoll.
-  - **🧪 Eigenes WLAN testen:** Der Pi startet neu und öffnet 3 Minuten lang sein eigenes WLAN, auch wenn dein WLAN da ist. Handy damit verbinden, `http://quizabend.local` oder `http://10.42.0.1` öffnen. Danach verbindet er sich wieder mit deinem WLAN, das Ergebnis steht in den Systemeinstellungen.
+  - **Prüfen ohne SSH:** Am Handy des 👑 unter ⚙️ › 📶 Netzwerk › **Eigenes WLAN** steht, ob es eingerichtet ist, WLAN-Name und Passwort, was beim letzten Start passiert ist und das Protokoll.
+  - **🧪 Eigenes WLAN testen:** Der Pi startet neu und öffnet 3 Minuten lang sein eigenes WLAN, auch wenn dein WLAN da ist. Handy damit verbinden, `http://quizabend.local` oder `http://10.42.0.1` öffnen. Danach verbindet er sich wieder mit deinem WLAN, das Ergebnis steht unter ⚙️ › 📶 Netzwerk.
   - Das eigene WLAN läuft über `hostapd` (sauberes WPA2, funktioniert mit dem WLAN-Chip des Pi 3). Fehlt `hostapd`, installiert der Pi es beim nächsten Start zu Hause selbst (steht im Protokoll). Bis dahin dient der Hotspot des NetworkManagers als Notlösung. Verbundene Handys stehen ebenfalls im Protokoll. Nach jedem WLAN-Wechsel startet der Pi avahi neu, damit `quizabend.local` erreichbar bleibt (avahi weicht sonst gern auf `quizabend-2.local` aus).
   - Das Startskript legt die Hotspot-Verbindung selbst an, falls sie fehlt. Nur der Startdienst selbst braucht einmalig `setup.sh` (steht sonst als Hinweis am Handy).
 - **Update, Neustart, Ausschalten:** Unter ⚙️ Einstellungen am Handy des 👑-Spielers. Bitte den Pi so ausschalten statt einfach den Stecker zu ziehen, das schont die SD-Karte. Das Handy zeigt an, wann der Pi aus ist („✅ Jetzt Stecker ziehen“).
-- **Fragen ändern:** Die Fragen kommen aus dem **Fragen-Repo** (siehe „Eigene Fragen und Pakete“). Neue Fragen dort hochladen, dann am Handy „Update holen“ oder unter ⚙️ › 📚 Fragen „Fragen aktualisieren“ – ohne Neustart.
+- **Fragen ändern:** Die Fragen kommen aus dem **Fragen-Repo** (siehe „Eigene Fragen und Pakete“). Neue Fragen dort hochladen, dann am Handy „Update holen“ oder unter ⚙️ › 🛠️ System › 📚 Fragen-Quelle „Fragen aktualisieren“ – ohne Neustart.
 - **Updates holen:** `cd QuizAbend && git pull && sudo systemctl restart quizabend`
 - **Autostart abschalten:** `sudo systemctl disable quizabend` und `rm ~/.config/autostart/quizabend-kiosk.desktop`
 
@@ -77,35 +77,42 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 - **🔊 Sounds** (abschaltbar): Ticken in den letzten 5 Sekunden, Gong bei der Auflösung, Fanfare bei der Siegerehrung. Am Laptop braucht der Browser für Ton einmal einen Klick auf den Fernseher-Bildschirm.
 - Handy-Akku leer oder Seite neu geladen? Einfach wieder öffnen, der Spielstand bleibt erhalten.
 
-## Host-Steuerung während des Spiels (👑)
-Oben rechts am Handy des 👑-Spielers öffnet **🎛️** das Host-Menü:
-- **Spiel anhalten / fortsetzen:** Timer, Video und Ton stoppen, alle Bildschirme zeigen „Spiel angehalten“.
-- **Weiter / überspringen**
-- **Spieler umbenennen (✏️) oder entfernen (✖)**
-
 ## Einstellungen am Handy (👑)
-Der 👑-Spieler tippt in der Lobby auf **⚙️ Einstellungen**. Über das Menü (☰ oben links) wechselt er zwischen den Bereichen (Spieleinstellungen, 📚 Fragen, Integrationen, Systemeinstellungen), geöffnet wird immer **Spieleinstellungen**:
+Der 👑-Spieler tippt in der Lobby auf **⚙️ Einstellungen**, im Spiel oben rechts auf **⚙️**. Die Startseite zeigt Kacheln mit dem aktuellen Stand (✓ grün = läuft, ⚠️ gelb = braucht Aufmerksamkeit), aufgeteilt in **Vor dem Spiel** und **Raum & Technik**. Antippen öffnet den Bereich, „‹“ geht zurück, „Fertig“ schließt.
 
-**Spieleinstellungen**
-- **Anzahl Blöcke** (1 bis 6). Antippen eines Blocks öffnet seine Einstellungen: wie viele Fragen er hat und welche Pakete er nutzt. Pakete lassen sich einzeln oder als ganze Hauptkategorie an- und abhaken. Neben jedem Paket steht, wie viele leichte, mittlere und schwere Fragen es enthält.
+**Während des Spiels** steht oben die Spielsteuerung: **⏸ Anhalten / ▶️ Fortsetzen** (Timer, Video und Ton stoppen, alle Bildschirme zeigen „Spiel angehalten“), **⏭ Überspringen**, in der Pause **Pause beenden / ➕ 5 Minuten**, und **⏹ Spiel beenden** (zweimal tippen; geht sofort zur Siegerehrung mit dem aktuellen Punktestand, danach „Neue Runde“). Darunter nur die Bereiche, die im Spiel Sinn ergeben (👥 Spieler, 🎵 Musik & Licht, 📶 Netzwerk, 🛠️ System). 🎲 Spiel und 📚 Fragen lassen sich erst nach dem Spiel wieder ändern.
+
+**🎲 Spiel**
+- **Modus:** *Normal* (alle spielen mit, läuft von selbst) oder **🍻 Pub-Quiz** (der 👑-Spieler moderiert, siehe unten).
 - **🏅 Punkte:** *Schnelligkeit* (Standard): bis zu 1000 Punkte je Frage, schnellere richtige Antworten bringen mehr, dazu Serienbonus; Schätz- und Zuordnungsfragen geben Teilpunkte. *Schwierigkeit*: eine richtige Antwort bringt so viele Punkte wie die Schwierigkeit der Frage (1–3), Tempo zählt nicht. Ausnahmen: Bei Zuordnungsfragen gibt jedes richtige Paar 1 Punkt (3 von 4 richtig = 3 Punkte), bei „Richtig oder falsch“ jede richtig eingeschätzte Aussage 1 Punkt, bei Schätzfragen bekommt, wer am nächsten dran ist, die Punkte der Schwierigkeit (bei Jahreszahlen nur innerhalb von ±2 Jahren). Die Spezialfrage vervielfacht in beiden Fällen.
+- **⭐ Spezialfrage:** an/aus und der Multiplikator ×2, ×3 oder ×4.
+- **🍺 Pause zwischen den Blöcken** an/aus mit Dauer.
+
+**📚 Fragen**
+- **Anzahl Blöcke** (1 bis 6). Antippen eines Blocks öffnet seine Einstellungen: wie viele Fragen er hat und welche Pakete er nutzt. Pakete lassen sich einzeln oder als ganze Hauptkategorie an- und abhaken. Neben jedem Paket steht, wie viele leichte, mittlere und schwere Fragen es enthält.
+- **🔁 Schon gespielt:** Der Pi merkt sich in `verlauf.json`, welche Fragen schon gespielt wurden. Neue Spiele nehmen zuerst Fragen, die noch nicht dran waren; sind alle durch, die, die am längsten her sind. Hier steht, wie viele schon gespielt wurden, und der Verlauf lässt sich zurücksetzen.
+- Im Pub-Quiz-Modus: **Fragen vorab planen**.
+- Fehler in Fragendateien, zum Beispiel ein fehlendes Komma, erscheinen hier mit Dateiname und Zeile.
+
+**👥 Spieler** – auch im Spiel: Spieler **umbenennen (✏️)** oder **entfernen (✖)**.
+
+**🎵 Musik & Licht**
+- **Ton am Fernseher:** Musik und Sounds an/aus (umstellen in der Lobby).
+- **Spotify:** Stand, „Spotify im Spiel steuern“ an/aus; Gerät, Playlist, Lautstärke und Test auf der Unterseite (siehe unten).
+- **Philips Hue:** Stand; Koppeln, Lampen und Test auf der Unterseite (siehe unten).
+
+**📶 Netzwerk**
+- **🔒 Sichere Adresse:** Stand (aktiv, Zertifikat, im Heimnetz erreichbar); Einrichten und Details auf der Unterseite (siehe unten).
+- **Eigenes WLAN:** ob es eingerichtet ist, WLAN-Name und Passwort, letzter Start, Test und Protokoll.
+
+**🛠️ System**
+- **Update holen, Pi neu starten, Pi ausschalten.**
+- **📚 Fragen-Quelle:** welches Fragen-Repo geladen ist; Aktualisieren, Wechseln und Zugriffsschlüssel auf der Unterseite (in der Lobby).
+
+**Bei Gleichstand und Auszeichnungen** (fest eingebaut):
 - **🥇 Plätze bei Gleichstand:** Wer gleich viele Punkte hat, steht auf demselben Platz, der nächste Platz wird übersprungen (zweimal Platz 1, dann Platz 3).
 - **🏅 Auszeichnungen:** Bei der Siegerehrung erscheinen unter dem Podest Sonderpreise: ⚡ Schnellster Finger (kürzeste Zeit bis zur richtigen Antwort, ab 2 richtigen), 🎯 Beste Schätzung (geringste Abweichung), 🔥 Längste Serie (ab 3 richtigen am Stück) und 🍀 Glückspilz (richtig in den letzten 3 Sekunden). Preise gibt es nur, wenn jemand sie verdient hat, und sie werden möglichst auf verschiedene Spieler verteilt. Am Handy sieht jeder seinen eigenen Preis.
-- **🔁 Keine Wiederholungen:** Der Pi merkt sich in `verlauf.json`, welche Fragen schon gespielt wurden. Neue Spiele nehmen zuerst Fragen, die noch nicht dran waren; sind alle durch, die, die am längsten her sind. In den Spieleinstellungen steht, wie viele schon gespielt wurden – dort lässt sich der Verlauf auch zurücksetzen.
 - **⚔️ Stechen:** Sind am Spielende mehrere punktgleich auf Platz 1, kommt nach der Rangliste („Gleichstand an der Spitze – gleich wird gestochen!“) und vor dem Siegerpodest eine Extra-Schätzfrage. Nur die Punktgleichen dürfen antworten, die anderen schauen zu. Die Frage kommt aus allen Schätzfragen und ist möglichst eine der schwersten, die in diesem Spiel noch nicht dran war. Wer am nächsten dran ist, bekommt einen halben Punkt und gewinnt. Sind mehrere gleich nah dran, gewinnt, wer schneller geantwortet hat. Hat niemand geantwortet, wird mit einer neuen Frage erneut gestochen. Danach geht es direkt zum Podest – dort gibt es also immer nur einen Ersten. (Sind keine Schätzfragen mehr übrig, entscheidet das Los.)
-- **Spezialfrage:** an/aus und der Multiplikator ×2, ×3 oder ×4.
-- **Pause nach jedem Block** an/aus mit Dauer.
-
-- **🍻 Pub-Quiz-Modus:** Der 👑-Spieler spielt nicht mit, sondern ist Gamemaster und moderiert (siehe unten).
-
-**Integrationen**
-- **Philips Hue** (siehe unten).
-
-**Systemeinstellungen**
-- **Sound:** Musik und Sounds am Fernseher an/aus.
-- **System:** Update holen, Pi neu starten, Pi ausschalten.
-
-- Fehler in Fragendateien, zum Beispiel ein fehlendes Komma, erscheinen dort mit Dateiname und Zeile.
 
 Die Einstellungen bleiben gespeichert (`einstellungen.json`).
 
@@ -113,7 +120,7 @@ Die Einstellungen bleiben gespeichert (`einstellungen.json`).
 ### Fragen-Repo
 Die Fragenpakete liegen **nicht** in diesem Repo, sondern in einem eigenen (gern privaten) Git-Repo, z. B. `QuizAbend-Fragen`. So lässt sich das Quiz aktualisieren, ohne die Fragen anzufassen – und Fragen mit fremden Logos o. Ä. bleiben privat. In diesem Repo liegen nur zwei kleine Testpakete (Soundcheck, Seh-Test), damit das Quiz auch ohne Fragen-Repo startet.
 
-Einrichten am 👑-Handy unter ⚙️ Einstellungen › ☰ › **📚 Fragen**:
+Einrichten am 👑-Handy unter ⚙️ › 🛠️ System › **📚 Fragen-Quelle**:
 1. **Privates Repo?** Erst **🔑 Schlüssel erzeugen**, den angezeigten Schlüssel kopieren und im Fragen-Repo auf GitHub unter *Settings › Deploy keys › Add deploy key* eintragen (**ohne** Schreibzugriff). Öffentliche Repos brauchen das nicht.
 2. Repo-Adresse eintragen (z. B. `https://github.com/name/QuizAbend-Fragen`) und **Laden**.
 3. Danach aktualisiert **Update holen** das Fragen-Repo mit; neue Fragen brauchen keinen Neustart. Einzeln geht es mit **Fragen aktualisieren**.
@@ -211,9 +218,9 @@ Die Erzeuger-Skripte liegen daneben. Jede Datei lässt sich ersetzen, hier am Be
 - Wird die Pause verlängert oder übersprungen, blendet die Musik aus. Ist „Sounds“ in den Einstellungen aus, bleibt es still.
 
 ## 🍻 Pub-Quiz-Modus
-Einschalten unter ⚙️ Einstellungen › Spieleinstellungen › **Pub-Quiz-Modus**. Der 👑-Spieler wird zum **Gamemaster**: Er steht nicht in der Spielerliste, beantwortet keine Fragen und taucht nicht in der Rangliste auf. Auf dem Fernseher steht er in der Lobby als „🎤 Gamemaster“. Nach jedem Neustart des Pi ist er wieder aus, Standard ist der normale Modus.
+Einschalten unter ⚙️ › 🎲 Spiel › Modus **🍻 Pub-Quiz**. Der 👑-Spieler wird zum **Gamemaster**: Er steht nicht in der Spielerliste, beantwortet keine Fragen und taucht nicht in der Rangliste auf. Auf dem Fernseher steht er in der Lobby als „🎤 Gamemaster“. Nach jedem Neustart des Pi ist er wieder aus, Standard ist der normale Modus.
 
-**Vor dem Spiel – „📋 Fragen planen“** (in der Lobby oder in den Spieleinstellungen): Das Quiz zieht die Fragen wie gewohnt, der Gamemaster kann sie danach bearbeiten:
+**Vor dem Spiel – „📋 Fragen planen“** (in der Lobby oder unter ⚙️ › 📚 Fragen): Das Quiz zieht die Fragen wie gewohnt, der Gamemaster kann sie danach bearbeiten:
 - **↑ / ↓** ändern die Reihenfolge, auch über Blockgrenzen hinweg (die oberste Frage eines Blocks rutscht mit ↑ ans Ende des vorherigen Blocks).
 - **🎲** zieht eine andere Frage aus demselben Block, möglichst mit gleicher Schwierigkeit.
 - **📋** zeigt alle Fragen der Pakete des Blocks zum gezielten Auswählen.
@@ -231,7 +238,7 @@ Im Heim-WLAN kann das Quiz über eine echte https-Adresse laufen, z. B. `https:/
 
 **Ausführlich – was das ist, Vorteile, Abhängigkeiten, Datenschutz, Fehlersuche:** [docs/SICHERE-ADRESSE.md](docs/SICHERE-ADRESSE.md)
 
-**Einrichten (einmalig, am Handy des 👑 unter ⚙️ Einstellungen › 🔒 Sichere Adresse):**
+**Einrichten (einmalig, am Handy des 👑 unter ⚙️ › 📶 Netzwerk › 🔒 Sichere Adresse):**
 1. Am Handy duckdns.org öffnen und anmelden (z. B. mit Google).
 2. Einen Namen ausdenken (z. B. `meinquiz`) und „add domain“ tippen.
 3. Den **token** oben auf der Seite kopieren, Name und Token in den Einstellungen eintragen, „Einrichten“ tippen.
@@ -246,7 +253,7 @@ Der Pi trägt dann seine Heimnetz-IP bei DuckDNS ein, holt das Zertifikat (dafü
 ## 🎵 Spotify
 Während des Spiels läuft deine Spotify-Musik auf einem Spotify-Connect-Gerät im Heimnetz (z. B. dem Receiver). Das Quiz pausiert Spotify bei Opener, Intro, Blockseite, Blockpause und Siegerehrung sowie bei Musik- und Filmfragen ab der Ankündigung, solange Ton oder Video läuft – vorher wird ausgeblendet, danach geht es weiter. Der Quiz-Ton bleibt am Fernseher.
 
-Braucht **Spotify Premium**, eine kostenlose eigene Spotify-App (developer.spotify.com) und die **sichere Adresse** (https). Nur im Heim-WLAN. Einrichten am Handy des 👑 unter ⚙️ › 🧩 Integrationen › 🎵 Spotify.
+Braucht **Spotify Premium**, eine kostenlose eigene Spotify-App (developer.spotify.com) und die **sichere Adresse** (https). Nur im Heim-WLAN. Einrichten am Handy des 👑 unter ⚙️ › 🎵 Musik & Licht › 🎵 Spotify.
 
 **Ausführlich – Ablauf, Vorteile, Abhängigkeiten, Einrichten, Datenschutz, Fehlersuche:** [docs/SPOTIFY.md](docs/SPOTIFY.md)
 
@@ -255,7 +262,7 @@ Das Quiz kann das Licht im Raum mitsteuern. Es braucht dafür nur die Hue Bridge
 
 **Nur im Heim-WLAN:** Hat der Pi sein eigenes WLAN an, ist die Bridge nicht erreichbar – dann bleibt das Licht unverändert, und die Einstellungen zeigen einen Hinweis.
 
-**Einrichten (einmalig, am Handy des 👑 unter ⚙️ Einstellungen › Philips Hue):**
+**Einrichten (einmalig, am Handy des 👑 unter ⚙️ › 🎵 Musik & Licht › 💡 Philips Hue):**
 1. „Bridge suchen“ tippen. Das braucht Internet; ohne Internet die IP der Bridge eintippen (Hue-App › Einstellungen › Bridges › ⓘ).
 2. Den runden Knopf oben auf der Bridge drücken und innerhalb von 30 Sekunden „Verbinden“ tippen.
 3. Den Bereich wählen: einen Entertainment-Bereich (z. B. „TV“), einen Raum oder eine Zone.

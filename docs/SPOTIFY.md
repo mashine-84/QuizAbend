@@ -46,9 +46,9 @@ Keine neuen Node-Pakete: alles über Bordmittel von Node.
 
 ## Einrichten (einmalig, am Handy des 👑)
 
-Voraussetzung: Die sichere Adresse ist eingerichtet und aktiv (⚙️ › 🔒 Sichere Adresse, drei grüne Haken).
+Voraussetzung: Die sichere Adresse ist eingerichtet und aktiv (⚙️ › 📶 Netzwerk › 🔒 Sichere Adresse, drei grüne Haken).
 
-1. Unter ⚙️ › 🧩 **Integrationen** › 🎵 Spotify steht die Anleitung mit der **Redirect URI** (z. B. `https://meinquiz.duckdns.org/spotify/callback`) – kopieren.
+1. Unter ⚙️ › 🎵 **Musik & Licht** › 🎵 Spotify steht die Anleitung mit der **Redirect URI** (z. B. `https://meinquiz.duckdns.org/spotify/callback`) – kopieren.
 2. **developer.spotify.com/dashboard** öffnen, mit deinem Spotify-Konto anmelden, **Create app**:
    - Name z. B. „QuizAbend“, Beschreibung beliebig
    - **Redirect URIs:** die kopierte Adresse einfügen (genau so)
