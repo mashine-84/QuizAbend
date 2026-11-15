@@ -982,6 +982,10 @@ function settingsStart(d) {
     + grp('technik', 'Raum & Technik')
     + (lobby ? '' : '<p class="small">🎲 Spiel und 📚 Fragen lassen sich nach dem Spiel wieder ändern.</p>');
 }
+function endGame() {
+  if (ui.confirm !== 'endgame') { ui.confirm = 'endgame'; lastKey = ''; render(); setTimeout(() => { if (ui.confirm === 'endgame') { ui.confirm = null; lastKey = ''; render(); } }, 5000); return; }
+  ui.confirm = null; hostAct('end'); closeSettings();
+}
 function liveControls() {
   const ph = S.phase, b = S.block;
   const where = ph === 'end' ? 'Siegerehrung' : ph === 'pause' ? 'Pause' : b && b.len ? `${b.total > 1 ? `Block ${b.num} · ` : ''}Frage ${b.q}/${b.len}` : '';
@@ -990,6 +994,8 @@ function liveControls() {
   else if (S.frozen) btns = '<button class="btn sm2" onclick="hostAct(\'resume\')">▶️ Fortsetzen</button>';
   else if (ph === 'pause') btns = '<div class="row2"><button class="btn sm2" onclick="advance()">⏭ Pause beenden</button><button class="btn ghost sm2" onclick="hostAct(\'extend\')">➕ 5 Minuten</button></div>';
   else btns = '<div class="row2"><button class="btn sm2" onclick="hostAct(\'pause\')">⏸ Anhalten</button><button class="btn ghost sm2" onclick="advance()">⏭ Überspringen</button></div>';
+  if (ph !== 'end') btns += `<button class="btn ${ui.confirm === 'endgame' ? 'danger' : 'ghost'} sm2" onclick="endGame()">${ui.confirm === 'endgame' ? 'Wirklich beenden? Nochmal tippen' : '⏹ Spiel beenden'}</button>`
+    + (ui.confirm === 'endgame' ? '<p class="small">Es geht sofort zur Siegerehrung mit dem aktuellen Punktestand.</p>' : '');
   return `<div class="live"><div class="lh"><span>${S.frozen ? '⏸ Spiel angehalten' : ph === 'end' ? '🏆 Spiel vorbei' : '🎮 Spiel läuft'}</span><small>${where}</small></div>${btns}</div>`;
 }
 // Stand je Kachel (eine bis zwei kurze Zeilen)

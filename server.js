@@ -1437,6 +1437,9 @@ const server = http.createServer(async (req, res) => {
     switch (body.action) {
       case 'pause': freeze(); break;
       case 'resume': unfreeze(); break;
+      case 'end': // Spiel vorzeitig beenden: direkt zur Siegerehrung mit dem aktuellen Punktestand
+        if (!['lobby', 'end'].includes(state.phase)) setPhase('end');
+        break;
       case 'extend': // Blockpause um 5 Minuten verlängern
         if (state.phase === 'pause') setPhase('pause', (state.phaseEnds ? Math.max(0, state.phaseEnds - Date.now()) : 0) + 5 * 60000, state.next);
         break;

@@ -80,7 +80,7 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 ## Einstellungen am Handy (👑)
 Der 👑-Spieler tippt in der Lobby auf **⚙️ Einstellungen**, im Spiel oben rechts auf **⚙️**. Die Startseite zeigt Kacheln mit dem aktuellen Stand (✓ grün = läuft, ⚠️ gelb = braucht Aufmerksamkeit), aufgeteilt in **Vor dem Spiel** und **Raum & Technik**. Antippen öffnet den Bereich, „‹“ geht zurück, „Fertig“ schließt.
 
-**Während des Spiels** steht oben die Spielsteuerung: **⏸ Anhalten / ▶️ Fortsetzen** (Timer, Video und Ton stoppen, alle Bildschirme zeigen „Spiel angehalten“), **⏭ Überspringen**, in der Pause **Pause beenden / ➕ 5 Minuten**. Darunter nur die Bereiche, die im Spiel Sinn ergeben (👥 Spieler, 🎵 Musik & Licht, 📶 Netzwerk, 🛠️ System). 🎲 Spiel und 📚 Fragen lassen sich erst nach dem Spiel wieder ändern.
+**Während des Spiels** steht oben die Spielsteuerung: **⏸ Anhalten / ▶️ Fortsetzen** (Timer, Video und Ton stoppen, alle Bildschirme zeigen „Spiel angehalten“), **⏭ Überspringen**, in der Pause **Pause beenden / ➕ 5 Minuten**, und **⏹ Spiel beenden** (zweimal tippen; geht sofort zur Siegerehrung mit dem aktuellen Punktestand, danach „Neue Runde“). Darunter nur die Bereiche, die im Spiel Sinn ergeben (👥 Spieler, 🎵 Musik & Licht, 📶 Netzwerk, 🛠️ System). 🎲 Spiel und 📚 Fragen lassen sich erst nach dem Spiel wieder ändern.
 
 **🎲 Spiel**
 - **Modus:** *Normal* (alle spielen mit, läuft von selbst) oder **🍻 Pub-Quiz** (der 👑-Spieler moderiert, siehe unten).
