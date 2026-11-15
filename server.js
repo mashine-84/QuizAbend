@@ -113,11 +113,16 @@ for (const f of (() => { try { return fs.readdirSync(KARTEN_DIR); } catch (_) { 
   if (!f.endsWith('.json')) continue;
   try {
     const m = JSON.parse(fs.readFileSync(path.join(KARTEN_DIR, f), 'utf8'));
-    KARTEN[m.name] = { title: m.title, regions: new Map(m.regions.map(r => [r.id, { n: r.n }])) };
+    const cos = Math.cos(m.lat0 * Math.PI / 180), [x0, y0, w, h] = m.vb;
+    // Spielfeld (= Sichtbereich der Karte) in Breite/Länge: nur dort darf getippt werden
+    const field = { s: -(y0 + h) / m.k, n: -y0 / m.k, w: x0 / (cos * m.k) + m.lon0, e: (x0 + w) / (cos * m.k) + m.lon0 };
+    const inField = r => r.b[2] >= x0 && r.b[0] <= x0 + w && r.b[3] >= y0 && r.b[1] <= y0 + h;
+    KARTEN[m.name] = { title: m.title, field, regions: new Map(m.regions.filter(inField).map(r => [r.id, { n: r.n }])) };
   } catch (e) { console.log('  Karte ' + f + ' nicht lesbar: ' + e.message); }
 }
 // Wie weit daneben noch Punkte gibt (km): Welt grob, Deutschland fein
 const MAP_RANGE_KM = { welt: 2500, europa: 1000, deutschland: 250 };
+const inMapField = (map, [lat, lon]) => { const f = KARTEN[map].field, t = 0.02; return lat >= f.s - t && lat <= f.n + t && lon >= f.w - t && lon <= f.e + t; };
 const MAP_TIME_MS = Math.round(QUESTION_TIME_MS * 1.25);   // Karte zoomen und tippen dauert etwas länger
 function findRegion(map, name) {
   const want = String(name).trim().toLowerCase(), k = KARTEN[map];
@@ -216,6 +221,7 @@ function normalizeQuestion(q, dir, packName, packLevel) {
       const o = Array.isArray(q.ort) ? q.ort.map(Number) : [];
       if (o.length !== 2 || !(Math.abs(o[0]) <= 90) || !(Math.abs(o[1]) <= 180)) throw new Error('"ort" muss [Breite, Länge] sein, z. B. [45.76, 4.84] für Lyon');
       if (q.toleranz !== undefined && !(Number(q.toleranz) > 0)) throw new Error('"toleranz" muss eine Entfernung in km über 0 sein');
+      if (!inMapField(map, o)) throw new Error(`"ort" liegt außerhalb der Karte „${map}“ – Breite und Länge vertauscht?`);
       return { ...base, kind: 'pin', map, target: o, name: q.name ? String(q.name) : '', range: q.toleranz !== undefined ? Number(q.toleranz) : MAP_RANGE_KM[map] || 1000 };
     }
     if (q.land !== undefined) {
@@ -1365,7 +1371,8 @@ function validAnswer(q, body) {
   }
   if (q.kind === 'pin') {
     const pos = Array.isArray(body.pos) ? body.pos.map(Number) : [];
-    return pos.length === 2 && Math.abs(pos[0]) <= 90 && Math.abs(pos[1]) <= 360 ? { pos: [pos[0], ((pos[1] + 540) % 360) - 180] } : null;
+    if (!(pos.length === 2 && Math.abs(pos[0]) <= 90 && Math.abs(pos[1]) <= 360) || !inMapField(q.map, pos)) return null;   // nur im Spielfeld
+    return { pos: [pos[0], ((pos[1] + 540) % 360) - 180] };
   }
   if (q.kind === 'land') return typeof body.region === 'string' && KARTEN[q.map].regions.has(body.region) ? { region: body.region } : null;
   if (q.kind === 'match') {

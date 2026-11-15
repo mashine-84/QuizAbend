@@ -25,8 +25,16 @@ function kSvg(m, opts = {}) {
     ${m.bg ? `<path class="kbg" d="${m.bg}"/>` : ''}
     <g class="kland">${m.regions.map(r => `<path class="krg" data-id="${esc(r.id)}" d="${r.d}"/>`).join('')}</g>
     <g class="khit">${opts.small ? m.regions.filter(r => r.s).map(r => `<circle class="ksmall" data-id="${esc(r.id)}" cx="${r.c[0]}" cy="${r.c[1]}" r="0"/>`).join('') : ''}</g>
+    ${opts.frame ? kFrame(m) : ''}
     <g class="kover"></g></svg>`;
 }
+// Spielfeld = m.vb (das zeigt der Fernseher während der Frage). Außerhalb abgedunkelt, Rahmen gestrichelt.
+function kFrame(m) {
+  const v = m.vb, b = [v[0] - v[2] * 3, v[1] - v[3] * 3, v[2] * 7, v[3] * 7];
+  return `<path class="kout" fill-rule="evenodd" d="M${b[0]},${b[1]}h${b[2]}v${b[3]}h${-b[2]}Z M${v[0]},${v[1]}v${v[3]}h${v[2]}v${-v[3]}Z"/>
+    <rect class="kframe" x="${v[0]}" y="${v[1]}" width="${v[2]}" height="${v[3]}"/>`;
+}
+const kInside = (m, x, y) => x >= m.vb[0] && x <= m.vb[0] + m.vb[2] && y >= m.vb[1] && y <= m.vb[1] + m.vb[3];
 // Kartenmaßstab: wie viele Karten-Einheiten ein Bildschirmpixel ist (für gleich große Pins bei jedem Zoom)
 function kUnit(svg) {
   const vb = svg.viewBox.baseVal, r = svg.getBoundingClientRect();
@@ -69,7 +77,7 @@ function kClientToMap(svg, cx, cy) {
 // ---------- Handy: Karte mit Zoomen/Verschieben, Tippen setzt Pin oder wählt ein Gebiet ----------
 // mode 'pin' | 'land'; onPick(value) mit [lat, lon] bzw. Gebiets-ID
 function kMount(host, m, { mode, color, avatar, value, onPick }) {
-  host.innerHTML = kSvg(m, { small: mode === 'land' }) + `<div class="kzoom"><button data-z="1.6" aria-label="Vergrößern">＋</button><button data-z="0.625" aria-label="Verkleinern">－</button></div>`;
+  host.innerHTML = kSvg(m, { small: mode === 'land', frame: true }) + `<div class="ktoast" hidden>Außerhalb des Spielfelds – tippe im Rahmen</div><div class="kzoom"><button data-z="1.6" aria-label="Vergrößern">＋</button><button data-z="0.625" aria-label="Verkleinern">－</button></div>`;
   const svg = host.querySelector('svg'), over = svg.querySelector('.kover');
   let vb = m.vb.slice();
   const minW = m.vb[2] / 14, maxW = m.vb[2];
@@ -78,10 +86,15 @@ function kMount(host, m, { mode, color, avatar, value, onPick }) {
     kSizeSmall(svg, 11);
     draw();
   };
-  const clamp = () => {   // nicht aus der Karte hinausschieben
+  const clamp = () => {   // nur so weit verschieben, dass die Mitte im Spielfeld bleibt
     vb[2] = Math.min(maxW, Math.max(minW, vb[2])); vb[3] = vb[2] * m.vb[3] / m.vb[2];
-    vb[0] = Math.min(m.vb[0] + m.vb[2] - vb[2] * 0.3, Math.max(m.vb[0] - vb[2] * 0.7, vb[0]));
-    vb[1] = Math.min(m.vb[1] + m.vb[3] - vb[3] * 0.3, Math.max(m.vb[1] - vb[3] * 0.7, vb[1]));
+    vb[0] = Math.min(m.vb[0] + m.vb[2] - vb[2] / 2, Math.max(m.vb[0] - vb[2] / 2, vb[0]));
+    vb[1] = Math.min(m.vb[1] + m.vb[3] - vb[3] / 2, Math.max(m.vb[1] - vb[3] / 2, vb[1]));
+  };
+  const toast = host.querySelector('.ktoast');
+  const outside = () => {   // außerhalb getippt: kein Pin, kurz vibrieren und Hinweis
+    if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
+    toast.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { toast.hidden = true; }, 1800);
   };
   const zoomAt = (f, cx, cy) => {
     const [mx, my] = kClientToMap(svg, cx, cy);
@@ -126,7 +139,9 @@ function kMount(host, m, { mode, color, avatar, value, onPick }) {
     ptrs.delete(e.pointerId);
     if (ptrs.size < 2) pinch = null;
     if (ptrs.size === 0 && start && !moved) {
-      if (mode === 'pin') { const [x, y] = kClientToMap(svg, e.clientX, e.clientY); value = kUnproj(m, x, y).map(v => +v.toFixed(4)); }
+      const [x, y] = kClientToMap(svg, e.clientX, e.clientY);
+      if (!kInside(m, x, y)) { start = null; return outside(); }
+      if (mode === 'pin') value = kUnproj(m, x, y).map(v => +v.toFixed(4));
       else { const id = kRegionAt(svg, e.clientX, e.clientY); if (id) value = id; }
       draw(); if (navigator.vibrate) navigator.vibrate(12);
       onPick(value);
