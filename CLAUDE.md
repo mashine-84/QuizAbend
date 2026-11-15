@@ -19,7 +19,7 @@ Deutsches Party-Quiz: Der Fernseher (`public/tv.html`) zeigt das Spiel, die Hand
 - **Eigenes WLAN (Hotspot) = kein Internet:** Hue, https, Spotify (und alles, was Internet oder das Heimnetz braucht) sind dort abgeschaltet; `hotspot()` im Server.
 
 ## Spielablauf (Phasen in `server.js`)
-`lobby → ident (Opener) → opening (Intro) → block → intro → [media | preview] → question → [special] → votes → reveal → … → scores → pause → ident → block … → scores → [tiebreak] → end`. Pub-Quiz-Modus: Host steuert „Frage auflösen“/„Nächste Frage“ (`locked`). `setPhase(phase, ms, next)`, `advance()` = überspringen.
+`lobby → ident (Opener) → opening (Intro) → block → intro → [media | preview] → question → [special] → votes → reveal → … → scores → pause → ident → block … → scores → [tiebreak] → end`. Rechte: `canLead(id)` (Spiel leiten) und `canTech(id)` (Raum & Technik) in `server.js` – ohne Host-PIN der 👑 (`vipId()`), mit PIN je nach Schutz nur Angemeldete (`/api/pin`, `host.json`). Pub-Quiz-Modus: Host steuert „Frage auflösen“/„Nächste Frage“ (`locked`). `setPhase(phase, ms, next)`, `advance()` = überspringen.
 
 ## Musik & Sounds
 Selbst erzeugt mit numpy/scipy (A-Dur/a-Moll, 128 BPM, gleiche Klangbausteine), Skripte in `sounds/standard/erzeugen*.py`, MP3 per ffmpeg. Eigene Dateien `sounds/<name>.*` ersetzen die Standards (gitignored). Neue Musik in die `MUSIC`-Liste in `server.js` eintragen.
@@ -32,6 +32,6 @@ Die Fragenpakete liegen in einem **eigenen Fragen-Repo** (`mashine-84/QuizAbend-
 - Server auf eigenem Port starten (`PORT=3456 node server.js`), danach beenden. Kurze Fragezeit zum Testen: `SEKUNDEN=8`.
 - Zustände lassen sich am TV nachstellen: `S` setzen, `lastKey = ''; render();` (vorher `EventSource` abklemmen, sonst überschreibt der Server).
 - Spiele lassen sich auch ohne Browser per API + SSE (`/api/join`, `/events?id=…`, `/api/answer`, `/api/advance`) durchspielen.
-- `einstellungen.json` vor Tests sichern und danach zurückspielen; `einstellungen.json`, `verlauf.json`, `hue.json`, `https.json`, `.https/`, `spotify.json`, `hotspot*` nie committen.
+- `einstellungen.json` vor Tests sichern und danach zurückspielen; `einstellungen.json`, `verlauf.json`, `hue.json`, `https.json`, `.https/`, `spotify.json`, `host.json`, `hotspot*` nie committen.
 - Eigenes WLAN simulieren: `HOTSPOT=1`. https testen: `HOST_IP`, `DUCKDNS_URL`, `ACME_REPO` (Fake-acme.sh) und `HTTPS_PORT` setzen – Let's Encrypt ist im Test nicht erreichbar. Spotify: `SPOTIFY_ACCOUNTS`/`SPOTIFY_API` auf einen Fake-Server.
 - Ehrlich berichten, was getestet wurde – was nur am Pi/Fernseher/Handy prüfbar ist, so benennen.

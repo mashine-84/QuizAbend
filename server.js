@@ -5,6 +5,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const { exec, execFile } = require('child_process');
 const hue = require('./hue');   // Philips Hue (optional, Proof of Concept)
 
@@ -373,10 +374,126 @@ function newGameState() {
 
 function currentQuestion() { return state.questions[state.idx]; }
 
+// ---------- Host & PIN ----------
+// Ohne PIN: der zuerst beigetretene, verbundene Spieler ist der Gamemaster (👑) – wie bisher.
+// Mit PIN: wer die PIN eingegeben hat (oder ein gemerktes Handy hat), ist „angemeldet“ und bekommt die Krone.
+// Die Krone lässt sich übergeben (crownId). Was die PIN schützt, steht in hostCfg (Raum & Technik / Spiel leiten).
+const HOST_FILE = path.join(__dirname, 'host.json');
+let hostCfg = { pin: null, protectTech: true, protectGame: false, devices: [] };
+try { hostCfg = { ...hostCfg, ...JSON.parse(fs.readFileSync(HOST_FILE, 'utf8')) }; } catch (_) {}
+const saveHost = () => { try { fs.writeFileSync(HOST_FILE, JSON.stringify(hostCfg, null, 2)); } catch (_) {} };
+const pinSet = () => !!(hostCfg.pin && hostCfg.pin.hash);
+const hashPin = (pin, salt) => crypto.scryptSync(String(pin), salt, 32).toString('hex');
+const hashToken = t => crypto.createHash('sha256').update(String(t)).digest('hex');
+let crownId = null;              // wem die Krone gerade gehört (angemeldet oder übergeben)
+let pinFails = { n: 0, until: 0 };   // Schutz gegen Durchprobieren: 5 Fehlversuche -> 60 s Sperre
+let pinReset = null;             // { code, until }: Code zum Zurücksetzen, steht 60 s am Fernseher
+
 function vipId() {
-  // Der zuerst beigetretene, verbundene Spieler ist der Gamemaster (👑)
   const list = [...players.values()].filter(p => p.connected).sort((a, b) => a.joinedAt - b.joinedAt);
+  const c = crownId && players.get(crownId);
+  if (c && c.connected) return c.id;
+  const authed = pinSet() && list.find(p => p.authed);
+  if (authed) return authed.id;
   return list[0] ? list[0].id : null;
+}
+// Spiel leiten (starten, weiter, Einstellungen für Spiel/Fragen, Spieler): der 👑 – mit „Spiel leiten“ geschützt nur angemeldet
+const canLead = id => !!id && id === vipId() && (!pinSet() || !hostCfg.protectGame || !!(players.get(id) || {}).authed);
+// Raum & Technik (Musik, Licht, Netzwerk, System, Fragen-Quelle): ohne PIN der 👑, mit PIN nur Angemeldete
+const canTech = id => { const p = players.get(id); if (!p) return false;
+  if (!pinSet()) return id === vipId();
+  return hostCfg.protectTech ? !!p.authed : id === vipId() || !!p.authed; };
+function pinInfo(id) {
+  const p = players.get(id) || {};
+  return { set: pinSet(), protectTech: hostCfg.protectTech, protectGame: hostCfg.protectGame, locked: pinFails.until > Date.now() ? Math.ceil((pinFails.until - Date.now()) / 1000) : 0,
+    devices: p.authed ? hostCfg.devices.map(d => ({ id: d.id, name: d.name, added: d.added, last: d.last, mine: d.id === p.deviceId })) : [] };
+}
+function newDevice(p) {
+  const token = crypto.randomBytes(24).toString('hex'), id = crypto.randomBytes(4).toString('hex');
+  hostCfg.devices.push({ id, hash: hashToken(token), name: `Handy von ${p.name}`, added: Date.now(), last: Date.now() });
+  hostCfg.devices = hostCfg.devices.slice(-10);
+  p.deviceId = id;
+  return token;
+}
+function becomeHost(p, remember) {
+  p.authed = true; crownId = p.id;
+  const token = remember ? newDevice(p) : null;
+  saveHost(); broadcast();
+  return token;
+}
+function pinAction(body) {
+  const p = players.get(body.id), a = body.action;
+  if (!p) return { ok: false, text: 'Bitte erst beitreten.' };
+  const validPin = x => /^\d{4}$/.test(String(x || ''));
+  const locked = () => pinFails.until > Date.now();
+  const fail = () => { pinFails.n++; if (pinFails.n >= 5) { pinFails = { n: 0, until: Date.now() + 60000 }; } return { ok: false, text: locked() ? 'Zu viele Fehlversuche – 60 Sekunden warten.' : 'Falsche PIN.' }; };
+  if (a === 'status') return { ok: true, pin: pinInfo(p.id) };
+  if (a === 'token') {   // gemerktes Handy meldet sich an
+    const d = body.token && hostCfg.devices.find(x => x.hash === hashToken(body.token));
+    if (!d || !pinSet()) return { ok: false, forget: true };
+    p.authed = true; p.deviceId = d.id; d.last = Date.now();
+    const c = crownId && players.get(crownId);
+    if (!c || !c.connected || !c.authed) crownId = p.id;   // Krone nur übernehmen, wenn sie gerade kein Angemeldeter hat
+    saveHost(); broadcast();
+    return { ok: true };
+  }
+  if (a === 'login') {
+    if (!pinSet()) return { ok: false, text: 'Es gibt noch keine PIN.' };
+    if (locked()) return { ok: false, text: 'Zu viele Fehlversuche – kurz warten.' };
+    if (hashPin(body.pin, hostCfg.pin.salt) !== hostCfg.pin.hash) return fail();
+    pinFails.n = 0;
+    return { ok: true, token: becomeHost(p, body.remember !== false) };
+  }
+  if (a === 'set') {   // PIN festlegen (ohne PIN: der 👑) oder ändern (angemeldet)
+    if (pinSet() ? !p.authed : p.id !== vipId()) return { ok: false, text: 'Nur der Host darf die PIN festlegen.' };
+    if (!validPin(body.pin)) return { ok: false, text: 'Die PIN hat 4 Ziffern.' };
+    const salt = crypto.randomBytes(8).toString('hex');
+    hostCfg.pin = { salt, hash: hashPin(body.pin, salt) };
+    return { ok: true, token: becomeHost(p, body.remember !== false && !p.deviceId) };
+  }
+  if (a === 'remove') {   // PIN entfernen: wieder wie ohne PIN
+    if (!p.authed) return { ok: false, text: 'Nur angemeldet.' };
+    hostCfg = { ...hostCfg, pin: null, devices: [] };
+    for (const x of players.values()) { x.authed = false; x.deviceId = null; }
+    saveHost(); broadcast(); return { ok: true };
+  }
+  if (a === 'options') {
+    if (!p.authed) return { ok: false, text: 'Nur angemeldet.' };
+    if (typeof body.protectTech === 'boolean') hostCfg.protectTech = body.protectTech;
+    if (typeof body.protectGame === 'boolean') hostCfg.protectGame = body.protectGame;
+    saveHost(); broadcast(); return { ok: true, pin: pinInfo(p.id) };
+  }
+  if (a === 'forget') {   // gemerktes Handy entfernen
+    if (!p.authed) return { ok: false, text: 'Nur angemeldet.' };
+    hostCfg.devices = hostCfg.devices.filter(d => d.id !== body.device);
+    for (const x of players.values()) if (x.deviceId === body.device) { x.deviceId = null; if (x.id !== p.id) x.authed = false; }
+    saveHost(); broadcast(); return { ok: true, pin: pinInfo(p.id) };
+  }
+  if (a === 'resetstart') {   // PIN vergessen: Code für 60 s am Fernseher – wer ihn sieht, ist im Raum
+    if (!pinSet()) return { ok: false, text: 'Es gibt keine PIN.' };
+    pinReset = { code: String(crypto.randomInt(0, 10000)).padStart(4, '0'), until: Date.now() + 60000, by: p.id, fails: 0 };
+    clearTimeout(pinAction.t); pinAction.t = setTimeout(() => { pinReset = null; broadcast(); }, 60000);
+    broadcast(); return { ok: true };
+  }
+  if (a === 'resetcode') {   // Code vom Fernseher + neue PIN
+    if (!pinReset || pinReset.until < Date.now() || pinReset.by !== p.id) return { ok: false, text: 'Der Code ist abgelaufen – bitte neu anfordern.' };
+    if (String(body.code) !== pinReset.code) { if (++pinReset.fails >= 3) { pinReset = null; broadcast(); } return { ok: false, text: 'Falscher Code.' }; }
+    if (!validPin(body.pin)) return { ok: false, text: 'Die PIN hat 4 Ziffern.' };
+    pinReset = null; clearTimeout(pinAction.t);
+    const salt = crypto.randomBytes(8).toString('hex');
+    hostCfg.pin = { salt, hash: hashPin(body.pin, salt) }; hostCfg.devices = [];   // alte gemerkte Handys gelten nicht mehr
+    for (const x of players.values()) { x.authed = false; x.deviceId = null; }
+    return { ok: true, token: becomeHost(p, body.remember !== false) };
+  }
+  if (a === 'crown') {   // Krone übergeben
+    if (!canLead(p.id) && !p.authed) return { ok: false, text: 'Nur der 👑 (oder wer die PIN kennt) kann die Krone vergeben.' };   // Angemeldete können sie jederzeit zurückholen
+    const t = players.get(body.target);
+    if (!t || !t.connected) return { ok: false, text: 'Spieler ist nicht da.' };
+    if (t.id === vipId()) return { ok: true };
+    if (pinSet() && hostCfg.protectGame && !t.authed) return { ok: false, text: '„Spiel leiten“ ist mit der PIN geschützt – der andere braucht die PIN.' };
+    crownId = t.id; broadcast(); return { ok: true };
+  }
+  return { ok: false, text: 'Unbekannte Aktion' };
 }
 
 // ---------- Pub-Quiz-Modus: der Host (👑) spielt nicht mit, sondern moderiert ----------
@@ -1063,6 +1180,7 @@ function baseView() {
   const ph = state.phase;
   const v = {
     phase: ph, vip: vipId(), minPlayers: minPlayers(), maxPlayers: MAX_PLAYERS,
+    pin: { set: pinSet(), protectTech: hostCfg.protectTech, protectGame: hostCfg.protectGame, resetting: !!(pinReset && pinReset.until > Date.now()) },
     taken: [...players.values()].map(p => p.avatar),   // vergebene Emojis (auch das des Gamemasters)
     pub: pubActive() ? { host: (() => { const h = players.get(hostId()); return h ? { id: h.id, name: h.name, avatar: h.avatar, color: h.color } : null; })() } : null,
     players: ranking(), qNum: state.idx + 1, qTotal: state.questions.length,
@@ -1118,11 +1236,11 @@ function baseView() {
 }
 
 function viewFor(client, base) {
-  if (client.role === 'tv') return { ...base, join: joinInfo() };
+  if (client.role === 'tv') return { ...base, join: joinInfo(), pinReset: pinReset && pinReset.until > Date.now() ? { code: pinReset.code, until: pinReset.until } : null };
   const me = players.get(client.playerId);
   return { ...base, kicked: !me && kickedIds.has(client.playerId), me: me ? {
     id: me.id, name: me.name, color: me.color, avatar: me.avatar, score: me.score,
-    rank: rankOf(me.id), isVip: vipId() === me.id,
+    rank: rankOf(me.id), isVip: vipId() === me.id, authed: !!me.authed, canLead: canLead(me.id), canTech: canTech(me.id),
     isHost: pubActive() && hostId() === me.id, hostQ: pubActive() && hostId() === me.id ? hostSolution() : null,
     answer: state.answers[me.id] || null,
     result: state.results[me.id] || null,
@@ -1493,7 +1611,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && p === '/api/advance') {
     const body = await readBody(req);
     // Steuern darf der Fernseher (role=tv) oder der Gamemaster
-    if (body.role !== 'tv' && body.id !== vipId()) return json(res, 403, { ok: false });
+    if (body.role !== 'tv' && !canLead(body.id)) return json(res, 403, { ok: false });
     advance();
     return json(res, 200, { ok: true });
   }
@@ -1506,7 +1624,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && p === '/api/einstellungen') {
     const body = await readBody(req);
-    if (body.id !== vipId() || state.phase !== 'lobby') return json(res, 403, { ok: false });
+    if (!canLead(body.id) || state.phase !== 'lobby') return json(res, 403, { ok: false });
     const before = JSON.stringify(settings.blocks);
     settings = cleanSettings(body.settings || {});
     if (JSON.stringify(settings.blocks) !== before) pubPlan = null;   // andere Blöcke/Pakete -> Fragenplan neu ziehen
@@ -1519,7 +1637,7 @@ const server = http.createServer(async (req, res) => {
   // Fragen-Repo: eintragen/wechseln (ersetzt die alte Kopie), aktualisieren, Schlüssel erzeugen (nur 👑)
   if (req.method === 'POST' && p === '/api/fragenrepo') {
     const body = await readBody(req);
-    if (body.id !== vipId()) return json(res, 403, { ok: false });
+    if (!canTech(body.id)) return json(res, 403, { ok: false });
     if (body.action === 'set' && state.phase !== 'lobby') return json(res, 409, { ok: false, text: 'Das Fragen-Repo lässt sich nur in der Lobby wechseln.' });
     const r = body.action === 'set' ? await fragenRepo.set(body.url) : body.action === 'update' ? await fragenRepo.update()
       : body.action === 'key' ? await fragenRepo.ensureKey() : { ok: false, text: 'Unbekannte Aktion' };
@@ -1530,7 +1648,7 @@ const server = http.createServer(async (req, res) => {
   // Verlauf zurücksetzen: danach gelten alle Fragen wieder als neu (nur 👑, nur in der Lobby)
   if (req.method === 'POST' && p === '/api/verlauf') {
     const body = await readBody(req);
-    if (body.id !== vipId() || state.phase !== 'lobby') return json(res, 403, { ok: false });
+    if (!canLead(body.id) || state.phase !== 'lobby') return json(res, 403, { ok: false });
     history = {};
     try { fs.writeFileSync(HISTORY_FILE, '{}'); } catch (_) {}
     pubPlan = null;
@@ -1540,14 +1658,14 @@ const server = http.createServer(async (req, res) => {
   // Pub-Quiz: Fragenplan bearbeiten (nur 👑, nur in der Lobby)
   if (req.method === 'POST' && p === '/api/plan') {
     const body = await readBody(req);
-    if (body.id !== vipId() || state.phase !== 'lobby') return json(res, 403, { ok: false });
+    if (!canLead(body.id) || state.phase !== 'lobby') return json(res, 403, { ok: false });
     loadPacks();
     return json(res, 200, planAction(body));
   }
 
   if (req.method === 'POST' && p === '/api/host') {
     const body = await readBody(req);
-    if (body.role !== 'tv' && body.id !== vipId()) return json(res, 403, { ok: false });
+    if (body.role !== 'tv' && !canLead(body.id)) return json(res, 403, { ok: false });
     const target = players.get(body.target);
     switch (body.action) {
       case 'pause': freeze(); break;
@@ -1579,14 +1697,14 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && p === '/api/system') {
     const body = await readBody(req);
-    if (body.id !== vipId()) return json(res, 403, { ok: false });
+    if (!canTech(body.id)) return json(res, 403, { ok: false });
     return json(res, 200, await runSystem(body.action));
   }
 
   // Philips Hue einrichten (nur 👑)
   if (req.method === 'POST' && p === '/api/hue') {
     const body = await readBody(req);
-    if (body.id !== vipId()) return json(res, 403, { ok: false });
+    if (!canTech(body.id)) return json(res, 403, { ok: false });
     const a = body.action;
     let r;
     if (hotspot() && !['status', 'forget'].includes(a)) r = { ok: false, text: 'Philips Hue geht nur im Heim-WLAN – im eigenen WLAN des Pi ist die Bridge nicht erreichbar.' };
@@ -1606,7 +1724,7 @@ const server = http.createServer(async (req, res) => {
   // Sichere Adresse (https): Status, einrichten, prüfen, entfernen (nur 👑)
   if (req.method === 'POST' && p === '/api/https') {
     const body = await readBody(req);
-    if (body.id !== vipId()) return json(res, 403, { ok: false });
+    if (!canTech(body.id)) return json(res, 403, { ok: false });
     let r;
     if (body.action === 'status') r = { ok: true };
     else if (body.action === 'set') r = await zertifikat.set(body.name, body.token);
@@ -1619,7 +1737,7 @@ const server = http.createServer(async (req, res) => {
   // Spotify: Einstellungen (nur 👑)
   if (req.method === 'POST' && p === '/api/spotify') {
     const body = await readBody(req);
-    if (body.id !== vipId()) return json(res, 403, { ok: false });
+    if (!canTech(body.id)) return json(res, 403, { ok: false });
     const a = body.action;
     let r;
     if (hotspot() && !['status', 'forget'].includes(a)) r = { ok: false, text: 'Spotify geht nur im Heim-WLAN – im eigenen WLAN des Pi gibt es kein Internet.' };
@@ -1639,7 +1757,7 @@ const server = http.createServer(async (req, res) => {
   // Anmelden: vom Handy aus zu Spotify, zurück kommt Spotify auf /spotify/callback (nur über die sichere Adresse)
   if (req.method === 'GET' && p === '/spotify/login') {
     const sec = httpsReady();
-    if (url.searchParams.get('id') !== vipId() || !sec) return spotifyPage(res, false, sec ? 'Nur der 👑 kann Spotify verbinden.' : 'Erst die sichere Adresse (https) einrichten – Spotify braucht sie für die Anmeldung.', sec);
+    if (!canTech(url.searchParams.get('id')) || !sec) return spotifyPage(res, false, sec ? 'Nur der Host kann Spotify verbinden.' : 'Erst die sichere Adresse (https) einrichten – Spotify braucht sie für die Anmeldung.', sec);
     const to = spotify.loginUrl(sec + 'spotify/callback');
     if (!to) return spotifyPage(res, false, 'Erst die Client ID eintragen.', sec);
     res.writeHead(302, { Location: to, 'Cache-Control': 'no-store' });
@@ -1648,6 +1766,12 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && p === '/spotify/callback') {
     const r = await spotify.callback(Object.fromEntries(url.searchParams));
     return spotifyPage(res, r.ok, r.ok ? `Verbunden als ${r.user || 'Spotify-Nutzer'}. Wähle jetzt in den Einstellungen dein Gerät.` : r.text, httpsReady());
+  }
+
+  // Host-PIN: anmelden, festlegen, ändern, gemerkte Handys, Zurücksetzen per Code am Fernseher, Krone übergeben
+  if (req.method === 'POST' && p === '/api/pin') {
+    const body = await readBody(req);
+    return json(res, 200, pinAction(body));
   }
 
   if (req.method === 'POST' && p === '/api/leave') {

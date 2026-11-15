@@ -29,3 +29,4 @@ https.json
 # Spotify: Anmeldung (Token), Gerät
 spotify.json
 # Eigene Icons (z. B. Marken-Icons wie Spotify) – bringt der Besitzer selbst mit
+host.json

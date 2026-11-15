@@ -22,3 +22,5 @@ jobs:
         run: if [ -f pruefen.js ]; then node pruefen.js; else echo "pruefen.js fehlt – übersprungen"; fi
       - name: Rauchtest (zwei Spiele per API)
         run: node test/rauchtest.js
+      - name: Host-PIN (Rechte)
+        run: node test/pin.js

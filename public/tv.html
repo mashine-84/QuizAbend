@@ -163,6 +163,7 @@
   html.lite .estpanel.side .eresult { transition: flex-basis .8s cubic-bezier(.45,0,.2,1), opacity .45s ease .85s !important; }
   .estpanel.side .elist { flex: 1; min-width: 0; background: rgba(255,255,255,.06); border-radius: 1.4vw; padding: 1.6vh 1.2vw; justify-content: center; }
   .erow .ev { min-width: 11vw; text-align: right; }
+  .pincode { display: flex; gap: 1.4vw; justify-content: center; margin: 2vh 0; } .pincode span { width: 7vw; height: 9vw; border-radius: 1.2vw; background: #fff; color: #1b1440; display: grid; place-items: center; font-size: 6vw; font-weight: 900; }
   /* Geografie */
   .kq { flex: 1 1 0; min-height: 0; display: flex; gap: 1.4vw; position: relative; }
   .ktext.gone { opacity: 0; } .ktext { transition: opacity .45s; } html.lite .kq .ktext { transition: opacity .45s !important; }
@@ -631,7 +632,7 @@ function render() {
   if (S.phase === 'lobby' && lastPhase !== 'lobby') [blockMusic, scoresMusic, revealSound, winSound, specialSound, countdownMusic].forEach(t => { t.buf = null; }); // neu laden (falls Datei getauscht)
   if (soundOn()) [blockMusic, scoresMusic, revealSound, winSound, specialSound, countdownMusic].forEach(t => t.load());
   lastKey = key; lastPhase = S.phase;
-  frozenOverlay(); systemOverlay();
+  frozenOverlay(); systemOverlay(); pinResetOverlay();
 
   document.getElementById('status').style.display = (!KIOSK && S.phase === 'lobby') ? '' : 'none';
   if (S.phase === 'lobby') { prevScores = {}; return renderLobby(); }
@@ -918,6 +919,21 @@ function systemOverlay() {
     ov.innerHTML = `<div class="ovbox"><div class="ovicon">${sysIcon(S.system.icon)}</div><div class="ovtitle">${esc(S.system.text)}</div>${S.system.sub ? `<div class="ovsub">${esc(S.system.sub)}</div>` : ''}</div>`;
     document.body.appendChild(ov);
   } else if (!S.system && ov) ov.remove();
+}
+
+// Host-PIN vergessen: Code zum Zurücksetzen, 60 Sekunden groß am Fernseher (nur wer im Raum ist, sieht ihn)
+function pinResetOverlay() {
+  let ov = document.getElementById('pinov');
+  const r = S.pinReset;
+  if (!r) { if (ov) { clearInterval(ov.t); ov.remove(); } return; }
+  if (ov && ov.dataset.code === r.code) return;
+  if (ov) { clearInterval(ov.t); ov.remove(); }
+  ov = document.createElement('div'); ov.id = 'pinov'; ov.className = 'overlay sys'; ov.dataset.code = r.code;
+  ov.innerHTML = `<div class="ovbox"><div class="ovicon">🔑</div><div class="ovtitle">Code zum Zurücksetzen der Host-PIN</div>
+    <div class="pincode">${[...r.code].map(c => `<span>${c}</span>`).join('')}</div><div class="ovsub" id="pinleft"></div></div>`;
+  document.body.appendChild(ov);
+  const tickLeft = () => { const el = document.getElementById('pinleft'), left = Math.max(0, Math.ceil((r.until - Date.now()) / 1000)); if (el) el.textContent = `Am Handy eintippen – noch ${left} Sekunden`; if (!left) { clearInterval(ov.t); ov.remove(); } };
+  tickLeft(); ov.t = setInterval(tickLeft, 500);
 }
 
 // ---------- Videofrage: Video im Vollbild, danach die Frage ----------
