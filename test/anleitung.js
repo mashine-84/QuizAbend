@@ -1,0 +1,73 @@
+// Anleitung (anleitung.json): Inhalt, Folienauswahl, Rechte und Ausprobieren per API prüfen. Aufruf: node test/anleitung.js
+const fs = require('fs'), path = require('path'), os = require('os'), vm = require('vm'), { spawn } = require('child_process');
+const ROOT = path.join(__dirname, '..'), PORT = 3472, B = 'http://localhost:' + PORT;
+let fehler = 0; const ok = (c, t) => { console.log((c ? '  ✓ ' : '  ✗ ') + t); if (!c) fehler++; };
+
+console.log('Inhalt');
+const raw = JSON.parse(fs.readFileSync(path.join(ROOT, 'anleitung.json'), 'utf8'));
+const ids = raw.folien.map(f => f.id);
+ok(raw.folien.every(f => f.id && f.titel), 'Jede Folie hat id und titel');
+ok(new Set(ids).size === ids.length, 'Folien-IDs sind eindeutig');
+const ARTEN = ['choice', 'estimate', 'pin', 'land'], MERKMALE = ['choice', 'image', 'flash', 'estimate', 'pin', 'land', 'match', 'tf', 'audio', 'video', 'spotify', 'pub', 'special', 'pause'];
+ok(raw.folien.every(f => !f.uebung || ARTEN.includes(f.uebung.art)), 'uebung.art ist bekannt');
+ok(raw.folien.every(f => !f.nurWenn || [].concat(f.nurWenn).every(k => MERKMALE.includes(k))), 'nurWenn nennt nur bekannte Merkmale');
+ok(raw.folien.every(f => !f.wertung || ['speed', 'level'].includes(f.wertung)), 'wertung ist speed oder level');
+const ctx = {}; vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(ROOT, 'public', 'anleitung.js'), 'utf8') + ';this.anlBild = anlBild;', ctx);
+const info = { zeit: 20, spezial: 2, bloecke: 2, pause: 10, scoring: 'speed', radius: { deutschland: 25 } };
+const ohne = ids.filter(id => !ctx.anlBild(id, info).includes('<svg'));
+ok(!ohne.length, 'Jede Folie hat eine Grafik' + (ohne.length ? ' – fehlt: ' + ohne.join(', ') : ''));
+
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'qa-anl-'));
+const OHNE = new Set(['.git', 'einstellungen.json', 'verlauf.json', 'hue.json', '_repo', 'test', 'spotify.json', 'https.json', '.https', 'host.json']);
+fs.cpSync(ROOT, TMP, { recursive: true, filter: s => !OHNE.has(path.basename(s)) });
+fs.mkdirSync(path.join(TMP, 'fragen', 'Geo'), { recursive: true });
+fs.writeFileSync(path.join(TMP, 'fragen', 'Geo', 'Geo.json'), JSON.stringify({ paket: 'Geo', fragen: [
+  { frage: 'Wo liegt Köln?', karte: 'deutschland', ort: [50.94, 6.96], name: 'Köln', kategorie: 'Geo', schwierigkeit: 1 },
+  { frage: 'Hauptstadt von Frankreich?', antworten: ['Paris', 'Lyon', 'Nizza', 'Lille'], richtig: 0, kategorie: 'Geo', schwierigkeit: 1 }] }));
+const srv = spawn(process.execPath, ['server.js'], { cwd: TMP, env: { ...process.env, PORT: String(PORT), NO_BROWSER: '1' } });
+const post = (p, b) => fetch(B + p, { method: 'POST', body: JSON.stringify(b) }).then(async r => ({ status: r.status, ...(await r.json().catch(() => ({}))) }));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const views = {};
+const sse = id => fetch(B + '/events?id=' + id).then(async r => { const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '';
+  for (;;) { const { value, done } = await rd.read(); if (done) break; buf += dec.decode(value); let k; while ((k = buf.indexOf('\n\n')) >= 0) { const l = buf.slice(0, k).split('\n').find(x => x.startsWith('data: ')); buf = buf.slice(k + 2); if (l) views[id] = JSON.parse(l.slice(6)); } } }).catch(() => {});
+(async () => {
+  await sleep(1300);
+  const A = (await post('/api/join', { name: 'Anna', avatar: '🦊' })).id; sse(A); await sleep(100);
+  const Bn = (await post('/api/join', { name: 'Ben', avatar: '🐼' })).id; sse(Bn); await sleep(400);
+  console.log('Rechte und Folien');
+  ok((await post('/api/anleitung', { id: Bn, action: 'start' })).status === 403, 'Ben (nicht 👑) kann die Anleitung nicht öffnen');
+  ok((await post('/api/anleitung', { id: A, action: 'start' })).ok, 'Anna (👑) öffnet die Anleitung');
+  await sleep(300);
+  const a = views[Bn].anleitung, list = a.list.map(x => x.id);
+  ok(list[0] === 'start' && list[list.length - 1] === 'los', 'Beginnt mit „start“, endet mit „los“: ' + list.join(','));
+  ok(list.includes('pin') && list.includes('quiz') && list.includes('punkte'), 'Pin-, Quiz- und Punkte-Folie (Tempo) dabei');
+  ok(!list.includes('land') && !list.includes('punkte_level') && !list.includes('spotify') && !list.includes('pub'), 'Nicht dabei: Land, Level-Punkte, Spotify, Pub-Quiz');
+  ok(!/\{\w+\}/.test(JSON.stringify(a)), 'Alle Platzhalter ersetzt');
+  ok((await post('/api/anleitung', { id: Bn, action: 'next' })).status === 403, 'Ben kann nicht blättern');
+  ok((await post('/api/anleitung', { id: A, action: 'goto', idx: list.indexOf('quiz') })).ok, 'Anna springt zur Quizfrage');
+  ok((await post('/api/anleitung', { id: Bn, action: 'try', choice: 1 })).ok, 'Ben probiert aus (Blau)');
+  ok((await post('/api/anleitung', { id: Bn, action: 'try', choice: 2 })).ok, 'Ben ändert seinen Tipp (Üben)');
+  ok(!(await post('/api/anleitung', { id: Bn, action: 'try', choice: 7 })).ok, 'Ungültige Antwort abgelehnt');
+  await sleep(200);
+  ok(JSON.stringify(views[A].anleitung.tries) === JSON.stringify([{ id: Bn, choice: 2 }]), 'Fernseher/Handys sehen den Tipp');
+  await post('/api/anleitung', { id: A, action: 'goto', idx: list.indexOf('pin') });
+  ok(!(await post('/api/anleitung', { id: Bn, action: 'try', pos: [40.4, -3.7] })).ok, 'Pin außerhalb Deutschlands abgelehnt');
+  ok((await post('/api/anleitung', { id: Bn, action: 'try', pos: [52.52, 13.4] })).ok, 'Pin in Berlin angenommen');
+  await post('/api/anleitung', { id: A, action: 'goto', idx: 0 });
+  ok(!(await post('/api/anleitung', { id: Bn, action: 'try', choice: 1 })).ok, 'Folie ohne Übung: kein Tipp');
+  console.log('Wertung nach Schwierigkeit');
+  const pk = await fetch(B + '/api/pakete').then(r => r.json());
+  await post('/api/einstellungen', { id: A, settings: { ...pk.settings, scoring: 'level', special: { on: true, mult: 3 } } });
+  await sleep(300);
+  const l2 = views[A].anleitung.list.map(x => x.id);
+  ok(l2.includes('punkte_level') && l2.includes('pin_level') && !l2.includes('punkte') && l2.includes('spezial'), 'Level-Folien statt Tempo, Spezialfrage dabei');
+  console.log('Ende');
+  ok((await post('/api/anleitung', { id: A, action: 'stop' })).ok, 'Anna beendet die Anleitung');
+  await sleep(200);
+  ok(views[Bn].anleitung === null, 'Anleitung zu');
+  await post('/api/anleitung', { id: A, action: 'start' });
+  await post('/api/advance', { id: A }); await sleep(300);
+  ok(views[A].phase !== 'lobby' && views[A].anleitung === null, 'Spielstart schließt die Anleitung');
+  srv.kill(); fs.rmSync(TMP, { recursive: true, force: true });
+  console.log(fehler ? `\n${fehler} Fehler` : '\nAlles gut'); process.exit(fehler ? 1 : 0);
+})().catch(e => { console.log(e); srv.kill(); process.exit(1); });

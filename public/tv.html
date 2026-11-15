@@ -519,6 +519,42 @@
   @keyframes oup { from { transform: translateY(4vh); opacity: 0; } }
   @keyframes ozoom { from { transform: scale(.5); opacity: 0; } }
   html.lite *, html.lite *::before, html.lite *::after { animation: none !important; transition: none !important; box-shadow: none !important; text-shadow: none !important; }
+
+  /* Anleitung „So geht QuizAbend“ (anleitung.json, Grafiken in anleitung.js) */
+  .anl { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .anltop { display: flex; justify-content: space-between; align-items: center; font-size: 1.35vw; color: var(--muted); font-weight: 700; }
+  .anldots { display: flex; gap: .35vw; } .anldots i { width: 1.6vw; height: .45vh; min-height: 3px; border-radius: 2px; background: rgba(255,255,255,.18); } .anldots i.on { background: var(--c); }
+  .anl h2 { font-size: 3.5vw; font-weight: 900; letter-spacing: -.02em; margin-top: 1.2vh; line-height: 1.1; }
+  .anllead { font-size: 1.9vw; color: #d9d4ff; font-weight: 600; margin-top: .6vh; }
+  .anlbody { flex: 1; min-height: 0; display: grid; grid-template-columns: 46vw 1fr; gap: 3vw; align-items: center; margin-top: 2.5vh; }
+  .anlvis { height: 100%; max-height: 54vh; border-radius: 1.4vw; background: rgba(255,255,255,.04); position: relative; overflow: hidden; display: grid; place-items: center; }
+  .anlvis > svg { width: 100%; height: 100%; }
+  .anlvis svg text { font-family: "Segoe UI", system-ui, sans-serif; font-weight: 800; }
+  .anlvis .anlbig { font-size: 12vw; }
+  .anl ul { list-style: none; display: flex; flex-direction: column; gap: 1.8vh; font-size: 1.95vw; line-height: 1.3; color: #e9e6ff; font-weight: 600; }
+  .anl li { padding-left: 2.2vw; position: relative; } .anl li::before { content: ''; position: absolute; left: .3vw; top: .5em; width: .8vw; height: .8vw; border-radius: 50%; background: var(--c); }
+  .anl li b { color: #fff; font-weight: 900; }
+  .anltip { margin-top: 2.2vh; border: .18vw solid var(--c); border-radius: 1vw; padding: 1.1vh 1.4vw; font-size: 1.8vw; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 1vw; }
+  .anltip b { color: var(--c); }
+  .anlfoot { margin-top: 1.4vh; font-size: 1.2vw; color: var(--muted); display: flex; justify-content: space-between; }
+  .anl .anim { animation: anlin .5s cubic-bezier(.2,.9,.3,1) both; }
+  @keyframes anlin { from { opacity: 0; transform: translateY(2vh); } }
+  /* Ausprobieren: Live-Ergebnisse */
+  .anlq { position: absolute; top: 1.4vh; left: 1.2vw; right: 1.2vw; z-index: 2; font-size: 1.6vw; font-weight: 800; text-align: center; text-shadow: 0 .2vw .6vw rgba(0,0,0,.6); }
+  .anlch { position: absolute; inset: 7vh 1.4vw 1.6vh; display: grid; grid-template-columns: 1fr 1fr; gap: 1vw; }
+  .anlch > div { border-radius: 1vw; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1vh; font-size: 1.8vw; font-weight: 900; position: relative; }
+  .anlch > div.ziel { box-shadow: 0 0 0 .3vw #fff; }
+  .anlch .shape { font-size: 2.6vw; opacity: .9; }
+  .anlavs { display: flex; flex-wrap: wrap; justify-content: center; gap: .3vw; min-height: 3.2vw; }
+  .anlavs .vav { width: 3vw; height: 3vw; font-size: 1.8vw; border-width: .2vw; }
+  .anlest { position: absolute; inset: 7vh 1.6vw 1.6vh; display: flex; flex-direction: column; justify-content: center; gap: 1vh; }
+  .anlest .erow2 { display: flex; align-items: center; gap: 1vw; font-size: 1.9vw; font-weight: 800; background: rgba(255,255,255,.07); border-radius: .8vw; padding: .6vh .8vw; animation: anlin .4s both; }
+  .anlest .erow2 b { margin-left: auto; font-size: 2.3vw; color: var(--c); }
+  .anlest .vav { width: 3vw; height: 3vw; font-size: 1.8vw; border-width: .2vw; animation: none; }
+  .anlest .avg { text-align: center; color: var(--muted); font-size: 1.5vw; margin-top: .6vh; }
+  .anlnone { color: var(--muted); font-size: 1.7vw; text-align: center; font-weight: 700; }
+  .anlvis.map { background: #1d2c55; }
+  .anlvis.map .karte { position: absolute; inset: 0; }
 </style>
 </head>
 <body>
@@ -527,6 +563,7 @@
 <script src="/qr.js"></script>
 <script src="/icons.js"></script>
 <script src="/karte.js"></script>
+<script src="/anleitung.js"></script>
 <script>
 const SHAPES = ['▲', '◆', '●', '■'];
 const LITE = /[?&]lite=1/.test(location.search);
@@ -557,6 +594,11 @@ es.onopen = () => { document.getElementById('status').textContent = 'Leertaste =
 
 function advance() { fetch('/api/advance', { method: 'POST', body: JSON.stringify({ role: 'tv' }) }); }
 document.addEventListener('keydown', e => {
+  if (S && S.phase === 'lobby' && S.anleitung) {   // Anleitung: Leertaste/→ weiter, ← zurück, Esc beenden
+    const a = { Space: 'next', Enter: 'next', ArrowRight: 'next', ArrowLeft: 'prev', Escape: 'stop' }[e.code];
+    if (a) { e.preventDefault(); fetch('/api/anleitung', { method: 'POST', body: JSON.stringify({ role: 'tv', action: a }) }); }
+    return;
+  }
   if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); advance(); }
   if (e.key === 'f' || e.key === 'F') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); }
 });
@@ -634,8 +676,8 @@ function render() {
   lastKey = key; lastPhase = S.phase;
   frozenOverlay(); systemOverlay(); pinResetOverlay();
 
-  document.getElementById('status').style.display = (!KIOSK && S.phase === 'lobby') ? '' : 'none';
-  if (S.phase === 'lobby') { prevScores = {}; return renderLobby(); }
+  document.getElementById('status').style.display = (!KIOSK && S.phase === 'lobby' && !S.anleitung) ? '' : 'none';
+  if (S.phase === 'lobby') { prevScores = {}; if (S.anleitung) return renderAnleitung(); anlKey = ''; return renderLobby(); }
   if (S.phase === 'ident') return fresh ? renderIdent() : null;
   if (S.phase === 'opening') return fresh ? renderOpening() : null;
   if (S.phase === 'block') return fresh ? renderBlock() : null;
@@ -799,6 +841,68 @@ function renderLobby() {
         <div class="hint">${need > 0 ? `Noch <b>${need}</b> Spieler nötig …` : `${starter} startet das Spiel am Handy – oder <b>Leertaste</b> drücken`}</div>
       </div>
     </div>`;
+}
+
+// ---------- Anleitung „So geht QuizAbend“ ----------
+// Der 👑 blättert am Handy; bei Folien zum Ausprobieren zeigt der Kasten links live, was die Handys getippt haben.
+let anlKey = '';
+const ANL_FARBEN = ['Rot', 'Blau', 'Gelb', 'Grün'];
+function renderAnleitung() {
+  const a = S.anleitung, s = a.slide, key = a.idx + ':' + s.id;
+  if (key !== anlKey) {
+    anlKey = key;
+    const host = a.info.host;
+    const vis = s.uebung ? '' : anlBild(s.id, a.info) || `<div class="anlbig">📖</div>`;
+    app.innerHTML = `<div class="anl">
+      <div class="anltop"><span>📖 ${esc(s.kicker || 'So geht QuizAbend')}</span><span class="anldots">${Array.from({ length: a.total }, (_, i) => `<i class="${i <= a.idx ? 'on' : ''}"></i>`).join('')}</span></div>
+      <h2 class="anim">${anlText(s.titel)}</h2>
+      ${s.text ? `<div class="anllead anim" style="animation-delay:.08s">${anlText(s.text)}</div>` : ''}
+      <div class="anlbody">
+        <div class="anlvis anim ${s.uebung && ['pin', 'land'].includes(s.uebung.art) ? 'map' : ''}" id="anlvis" style="animation-delay:.15s">${vis}</div>
+        <ul>${(s.punkte || []).map((t, i) => `<li class="anim" style="animation-delay:${.25 + i * .12}s">${anlText(t)}</li>`).join('')}</ul>
+      </div>
+      ${s.tipp ? `<div class="anltip anim" style="animation-delay:${.3 + (s.punkte || []).length * .12}s">${s.uebung ? '📱' : '👉'} <span>${anlText(s.tipp)}</span></div>` : ''}
+      <div class="anlfoot"><span>${host ? `${a.info.pub ? '🎤' : '👑'} ${esc(host.name)} blättert am Handy` : ''}</span><span>${a.idx + 1} / ${a.total}</span></div>
+    </div>`;
+  }
+  if (s.uebung) anlLive(s.uebung, a.tries || []);
+}
+function anlLive(u, tries) {
+  const box = document.getElementById('anlvis'); if (!box) return;
+  const byId = Object.fromEntries(S.players.map(p => [p.id, p]));
+  const list = tries.filter(t => byId[t.id]);
+  const frage = `<div class="anlq">${esc(u.frage || '')}</div>`;
+  const avs = l => l.map(t => { const p = byId[t.id]; return `<span class="vav" style="--pc:${p.color}" title="${esc(p.name)}">${p.avatar}</span>`; }).join('');
+  if (u.art === 'choice') {
+    box.innerHTML = frage + `<div class="anlch">${ANL_FARBEN.map((n, i) => `<div class="c${i} ${i === 1 && list.length ? 'ziel' : ''}"><span class="shape">${SHAPES[i]}</span>${n}<span class="anlavs">${avs(list.filter(t => t.choice === i))}</span></div>`).join('')}</div>`;
+    return;
+  }
+  if (u.art === 'estimate') {
+    const sorted = list.slice().sort((x, y) => x.value - y.value), avg = list.length ? list.reduce((t, x) => t + x.value, 0) / list.length : 0;
+    box.innerHTML = frage + `<div class="anlest">${sorted.length ? sorted.slice(0, 8).map(t => { const p = byId[t.id];
+      return `<div class="erow2"><span class="vav" style="--pc:${p.color}">${p.avatar}</span>${esc(p.name)}<b>${fmt(t.value)}</b></div>`; }).join('')
+      + (sorted.length > 1 ? `<div class="avg">Ø ${fmt(Math.round(avg * 10) / 10)}</div>` : '') : '<div class="anlnone">📱 Tippt am Handy eine Zahl ein!</div>'}</div>`;
+    return;
+  }
+  // Karte (Pin oder Land)
+  loadKarte(u.karte || 'deutschland').then(m => {
+    if (!document.contains(box)) return;
+    if (!box.dataset.ready) { box.innerHTML = frage + kSvg(m, { small: true }); box.dataset.ready = '1'; }
+    const svg = box.querySelector('svg'), over = svg.querySelector('.kover');
+    kSizeSmall(svg, 6);
+    const u2 = kUnit(svg);
+    if (u.art === 'pin') {
+      over.innerHTML = list.map(t => { const p = byId[t.id]; return kPin(m, t.pos[0], t.pos[1], p.color, p.avatar, u2, 40); }).join('');
+      return;
+    }
+    const groups = {};
+    list.forEach(t => (groups[t.region] = groups[t.region] || []).push(t));
+    svg.querySelectorAll('.krg, .ksmall').forEach(el => { const g = groups[el.dataset.id];
+      el.classList.toggle('kpick', !!g); el.style.setProperty('--pc', g ? byId[g[0].id].color : ''); });
+    over.innerHTML = Object.entries(groups).map(([id, l]) => { const r = m.byId[id]; if (!r) return '';
+      return l.map((t, i) => { const p = byId[t.id];
+        return `<g transform="translate(${r.c[0] + (i - (l.length - 1) / 2) * 30 * u2},${r.c[1]}) scale(${u2})"><circle r="15" fill="#fff" stroke="${p.color}" stroke-width="3"/><text y="6" font-size="17" text-anchor="middle">${p.avatar}</text></g>`; }).join(''); }).join('');
+  }).catch(() => { box.innerHTML = '<div class="anlnone">Karte fehlt</div>'; });
 }
 
 let estLanded = 0;   // Frage, bei der die Slotmaschine schon gelandet ist
