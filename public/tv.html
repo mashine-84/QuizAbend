@@ -172,7 +172,10 @@
   html.lite .pgcol { animation: pgrow .7s cubic-bezier(.2,.8,.3,1) both !important; }
   @keyframes pgrow { from { transform: scaleY(0); opacity: 0; } }
   .pgbar { width: 70%; height: var(--h); background: var(--pc); border-radius: .8vw .8vw 0 0; transition: opacity .4s; }
-  .pgv { position: absolute; bottom: calc(var(--h) + .6vh); left: 50%; transform: translateX(-50%); font-size: 1.6vw; font-weight: 900; white-space: nowrap; font-variant-numeric: tabular-nums; z-index: 3; }
+  .pgv { position: absolute; bottom: calc(var(--h) + .6vh); left: 50%; transform: translateX(-50%); font-size: 1.6vw; font-weight: 900; white-space: nowrap; font-variant-numeric: tabular-nums; z-index: 3; display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+  .pgv .pgd { font-size: .75em; color: var(--muted); visibility: hidden; }   /* Abstand: Platz ist von Anfang an reserviert, damit nichts springt */
+  .estpanel.pegel.landed .pgv .pgd { visibility: visible; }
+  .pgv .pgd .eg { color: #8ff0b5; } .pgv .pgd .eg.mid { color: var(--c); } .pgv .pgd .eg.no { color: #ff8a8d; }
   .pgcol.under .pgbar { opacity: .55; } .pgcol.under .pgv { color: var(--muted); }
   .pgcol.best .pgbar { opacity: 1; outline: .35vw solid #fff; } .pgcol.best .pgv { color: #8ff0b5; font-size: 2vw; }
   .pgcol.out .pgbar { opacity: .3; }
@@ -186,7 +189,6 @@
   .pgf { flex: 0 1 7vw; display: flex; flex-direction: column; align-items: center; gap: .2vh; font-size: 1.3vw; min-width: 0; }
   .pgf b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pgf .vav { width: 2.8vw; height: 2.8vw; font-size: 1.6vw; border-width: .2vw; animation: none; }
-  .pgf .pgd { color: var(--muted); font-size: 1.2vw; white-space: nowrap; font-variant-numeric: tabular-nums; } .pgf .pgd .eg { color: #8ff0b5; } .pgf .pgd .eg.mid { color: var(--c); } .pgf .pgd .eg.no { color: #ff8a8d; }
   .estq:not(.noimg) .pgv { font-size: 1.2vw; } .estq:not(.noimg) .pgf { font-size: 1vw; } .estq:not(.noimg) .pgwl { font-size: 1.6vw; }
   .erow.truth .ev { margin-left: 0; }
   .erow.truth span:last-child { margin-left: auto; color: var(--d); text-transform: uppercase; font-size: 1.4vw; letter-spacing: .1em; }
@@ -1312,14 +1314,15 @@ function renderPegel(box, q, byId, unit, dunit, sign, rows) {
   box.classList.add('reveal', 'pegel');
   const guesses = q.guesses.filter(g => byId[g.id]);
   const cap = Math.abs(q.value) * 2.5;   // Ausreißer sprengen die Skala nicht
-  const top = Math.max(q.value, ...guesses.map(g => Math.min(g.value, cap))) * 1.12 || 1;
-  const h = v => Math.max(0, Math.min(100, v / top * 100));
+  const top = Math.max(q.value, ...guesses.map(g => Math.min(g.value, cap))) || 1;
+  // höchste Säule bei 72 %: darüber braucht die Beschriftung (Schätzung + Abstand) Platz, sonst wird sie oben abgeschnitten
+  const h = v => Math.max(0, Math.min(1, v / top)) * 72;
   box.innerHTML = `<div class="pg"><div class="pgplot" id="pgplot">
       ${guesses.map((g, i) => { const p = byId[g.id];
-        return `<div class="pgcol" data-id="${g.id}" style="--pc:${p.color};--h:${h(g.value)}%;animation-delay:${i * 0.12}s"><div class="pgbar"></div><span class="pgv">${fmt(g.value)}${unit}${g.value > cap ? ' ↑' : ''}</span></div>`; }).join('')}
+        return `<div class="pgcol" data-id="${g.id}" style="--pc:${p.color};--h:${h(g.value)}%;animation-delay:${i * 0.12}s"><div class="pgbar"></div><span class="pgv"><small class="pgd">&nbsp;</small><b>${fmt(g.value)}${unit}${g.value > cap ? ' ↑' : ''}</b></span></div>`; }).join('')}
       <div class="pgw" id="pgw"><span class="pgwl" id="pgwl">0${unit}</span></div></div>
     <div class="pgfoot">${guesses.map(g => { const p = byId[g.id];
-      return `<div class="pgf" data-id="${g.id}"><span class="vav" style="--pc:${p.color}">${p.avatar}</span><b>${esc(p.name)}</b><small class="pgd"></small></div>`; }).join('')}</div></div>`;
+      return `<div class="pgf" data-id="${g.id}"><span class="vav" style="--pc:${p.color}">${p.avatar}</span><b>${esc(p.name)}</b></div>`; }).join('')}</div></div>`;
   const water = document.getElementById('pgw'), label = document.getElementById('pgwl');
   const target = q.value, dec = (String(target).split('.')[1] || '').length, round = v => dec ? +v.toFixed(dec) : Math.round(v);
   const cols = [...box.querySelectorAll('.pgcol')];
@@ -1339,7 +1342,7 @@ function renderPegel(box, q, byId, unit, dunit, sign, rows) {
     // gelandet: Bewertung zeigen
     box.classList.add('landed');
     cols.forEach(c => {
-      const g = guesses.find(x => x.id === c.dataset.id), res = byId[g.id].result, f = box.querySelector(`.pgf[data-id="${g.id}"] .pgd`);
+      const g = guesses.find(x => x.id === c.dataset.id), res = byId[g.id].result, f = c.querySelector('.pgd');
       c.classList.toggle('best', !!(res && res.correct)); c.classList.toggle('out', !!(res && res.outOfRange));
       if (f) f.innerHTML = `${sign(g.value - target)}${dunit} <span class="eg ${res && res.correct ? '' : res && res.gain ? 'mid' : 'no'}">${res ? (res.correct ? '✓' : res.gain ? '≈' : '✗') : ''}</span>`;
     });
