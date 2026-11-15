@@ -102,6 +102,10 @@ function resolveImage(dir, name, sub = 'bilder', types = IMAGE_TYPES) {
   return null;
 }
 
+// Schätzfragen mit Pegel-Anzeige: Gewichte immer, Längen nur bei Höhen ("Wie hoch …", "Höhe", "Wie groß …")
+const WEIGHT_UNIT = /^(mg|g|kg|t|gramm|kilo(gramm)?|tonnen?|pfund)$/i;
+const LENGTH_UNIT = /^(mm|cm|m|km|meter|zentimeter|kilometer)$/i;
+const HEIGHT_TEXT = /(?<![\wäöüß])(hoch|hohe[nrs]?|höhe|höher|groß|große[nrs]?)(?![\wäöüß])/i;   // \b kennt kein ß
 function normalizeQuestion(q, dir, packName, packLevel) {
   if (!q || typeof q !== 'object') throw new Error('ist kein gültiger Eintrag');
   if (!q.frage) throw new Error('das Feld "frage" fehlt');
@@ -169,7 +173,12 @@ function normalizeQuestion(q, dir, packName, packLevel) {
     const year = q.jahr !== undefined ? !!q.jahr : /\bJahr\b/i.test(String(q.frage)) && Number.isInteger(value) && !q.einheit?.match?.(/^(m|km|g|kg|s|%)$/);
     let tolerance = q.toleranz !== undefined ? Number(q.toleranz) : year ? 2 : null;
     if (tolerance !== null && !(tolerance >= 0)) throw new Error('"toleranz" muss eine Zahl ab 0 sein');
-    return { ...base, kind: 'estimate', value, unit: q.einheit ? String(q.einheit) : '', year, tolerance };
+    // Auflösung am Fernseher: "pegel" (Säulen + steigender Wasserpegel) für Höhen und Gewichte, sonst Slotmaschine.
+    // Automatisch erkannt, mit "anzeige": "pegel" | "slot" fest einstellbar.
+    if (q.anzeige !== undefined && !['pegel', 'slot'].includes(q.anzeige)) throw new Error('"anzeige" muss "pegel" oder "slot" sein');
+    const unit = q.einheit ? String(q.einheit) : '';
+    const show = q.anzeige || (!year && value > 0 && (WEIGHT_UNIT.test(unit) || (LENGTH_UNIT.test(unit) && HEIGHT_TEXT.test(String(q.frage)))) ? 'pegel' : 'slot');
+    return { ...base, kind: 'estimate', value, unit, year, tolerance, show };
   }
   if (Array.isArray(q.antworten) && q.antworten.length >= 2)
     return { ...base, kind: 'choice', answers: q.antworten.slice(0, 4).map(String) };
@@ -974,7 +983,7 @@ function baseView() {
       if (q.kind === 'choice') vq.answers = q.answers;
       if (q.kind === 'match') vq.right = q.right;
       if (q.kind === 'tf') vq.statements = q.statements;
-      if (q.kind === 'estimate') { vq.unit = q.unit; vq.year = q.year; vq.tolerance = q.tolerance; }
+      if (q.kind === 'estimate') { vq.unit = q.unit; vq.year = q.year; vq.tolerance = q.tolerance; vq.show = q.show; }
     }
     if (ph === 'votes' || ph === 'reveal') {
       const byTime = Object.entries(state.answers).sort((a, b) => a[1].at - b[1].at);
