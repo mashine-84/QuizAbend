@@ -10,7 +10,7 @@ Code: [`spotify.js`](../spotify.js) (Anmeldung, Geräte, Pause/Weiter), Server-T
 
 | Phase | Spotify |
 |---|---|
-| Lobby | wird nicht angefasst – du kannst vorher hören, was du willst |
+| Lobby | wird nicht angefasst – du kannst vorher hören, was du willst. **Nach einem Spiel** („Neue Runde“) läuft die Musik, die die Siegerehrung angehalten hat, an derselben Stelle weiter; die nächste Runde pausiert sie für den Opener und setzt sie danach fort |
 | **Opener** und **Intro** („So wird gefragt“) | ⏸ Pause – das Quiz spielt seinen Opener-Jingle |
 | **Blockseite** (Block 1, Block 2 …) | ⏸ Pause – das Quiz spielt den Block-Jingle; danach geht es weiter |
 | Fragen, Auflösung, Rangliste | ▶️ läuft (zum ersten Mal: deine Playlist, sonst das, was zuletzt lief) |
