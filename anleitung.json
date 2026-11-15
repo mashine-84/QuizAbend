@@ -35,7 +35,7 @@
       "id": "quiz", "nurWenn": "choice", "kicker": "Fragearten",
       "icon": "❓", "titel": "Quizfrage",
       "text": "Vier Antworten – am Handy die gleiche Farbe tippen.",
-      "punkte": ["**Farbe und Form** sind gleich wie am Fernseher", "Getippt ist getippt – **nicht änderbar**", "Die letzten 5 Sekunden wird der Kreis **rot**"],
+      "punkte": ["**Farbe und Form** sind gleich wie am Fernseher", "Getippt ist getippt – **nicht änderbar**"],
       "tipp": "Probier's aus: Tippt am Handy auf **Blau**!",
       "uebung": { "art": "choice", "frage": "Tippe auf Blau!" }
     },
