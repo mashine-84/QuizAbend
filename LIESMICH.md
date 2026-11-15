@@ -308,7 +308,7 @@ Beispiel (Windows, Eingabeaufforderung): `set FRAGEN=15 && node server.js`
 - `public/tv.html`: Fernseher-Ansicht (Lobby, Frage, Auflösung, Rangliste, Siegerpodest)
 - `public/play.html`: Handy-Controller
 - `public/qr.js`: QR-Code-Generator (funktioniert offline)
-- `public/karte.js` und `public/karten/*.json`: Karten für Geografie-Fragen, offline. Erzeugt mit `node karten/erzeugen.js` aus `karten/quelle/`: Länder aus **Natural Earth** (gemeinfrei, über das npm-Paket `world-atlas`), Bundesländer aus **deutschlandGeoJSON** (github.com/isellsoap/deutschlandGeoJSON). Deutsche Ländernamen in `karten/namen.js`.
+- `public/karte.js` und `public/karten/*.json`: Karten für Geografie-Fragen, offline. Erzeugt mit `node karten/erzeugen.js` aus `karten/quelle/`: Länder aus **Natural Earth** (gemeinfrei, über das npm-Paket `world-atlas`, ISC), Bundesländer aus **deutschlandGeoJSON** (github.com/isellsoap/deutschlandGeoJSON, Unlicense = gemeinfrei). Deutsche Ländernamen in `karten/namen.js`.
 - `public/icons.js`: Symbole aus **Font Awesome Free** (https://fontawesome.com, Icons unter CC BY 4.0), funktioniert offline. Im Code stehen weiter Emojis; `icons.js` tauscht sie beim Anzeigen gegen die Symbole (Spieler-Avatare und Gesichter wie 🤫 bleiben Emojis). Erzeugt mit `public/icons-erzeugen.py` – neue Symbole dort eintragen.
 - `hue.js`: Philips-Hue-Steuerung (Kopplung, Bereich, Licht je Spielphase)
 - `sounds/`: Pausenmusik (`standard/` mit Erzeuger-Skript, eigene Datei daneben)
