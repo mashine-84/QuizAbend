@@ -179,6 +179,15 @@
   .ksmall.kpick { fill: var(--pc); } .ksmall.kright { fill: #2fb36d; stroke: #fff; }
   .krg.kpick { fill: var(--pc); } .krg.kwrong { opacity: .55; }
   .krg.kright { fill: #2fb36d; stroke: #fff; stroke-width: 3; }
+  /* Auflösung Land – wie .ans.win / .ans.dim bei Auswahlfragen */
+  .kland, .khit, .kavs { transition: opacity .4s, filter .4s; }
+  .kland.kdim, .khit.kdim, .kavs.kdim { opacity: .25; filter: grayscale(.7); }
+  html.lite .kland.kdim, html.lite .khit.kdim { filter: none; }   /* Pi: Filter auf der ganzen Karte ist teuer – blass reicht */
+  .kwin { transform-box: fill-box; transform-origin: center; transition: transform .4s; }
+  .kwin.on { transform: scale(1.2); }
+  .kwinrg { fill: #2fb36d; stroke: #fff; stroke-width: 4; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+  .kcheck circle { fill: #fff; } .kcheck text { font-size: 28px; font-weight: 900; fill: var(--d); }
+  .kcheck { opacity: 0; transition: opacity .4s .2s; } .kwin.on ~ g .kcheck { opacity: 1; }
   .kpin-in { animation: none; } .kpin.dim { opacity: .5; }
   .kpin.drop .kpin-in { animation: kdrop .55s cubic-bezier(.35,1.5,.55,1) both; }
   html.lite .kpin.drop .kpin-in { animation: kdrop .55s cubic-bezier(.35,1.5,.55,1) both !important; }
@@ -1145,6 +1154,7 @@ function updateMain() {
 // Frage: nur die Karte. votes: Pins fallen nacheinander / gewählte Länder färben sich. reveal: richtige Stelle, Linien, Liste.
 let geoLanded = 0;
 const GEO_FADE_MS = 550;   // Frage ausblenden, bevor die Tipps/Auflösung auf der Karte erscheinen
+const GEO_WIN_SCALE = 1.2;   // richtiges Land bei der Auflösung (Kacheln bei Auswahlfragen: 1.03 – ein Land braucht mehr, um aufzufallen)
 const GEO_LINES_S = 1.6;   // Auflösung Pin: erst Ring + Name der Stadt (sofort), danach die Linien zu den Pins
 function renderGeo(byId) {
   const q = S.question, box = document.getElementById('kbox'), side = document.getElementById('kside');
@@ -1211,11 +1221,24 @@ function renderGeo(byId) {
       el.classList.toggle('kwrong', reveal && !!g && el.dataset.id !== q.region);
     });
     const av = Object.entries(groups).map(([id, l], gi) => { const r = m.byId[id]; if (!r) return '';
-      return l.map((x, i) => { const p = byId[x.id];
-        return `<g transform="translate(${r.c[0] + (i - (l.length - 1) / 2) * 30 * u},${r.c[1]}) scale(${u})"><g class="kav" style="animation-delay:${0.3 + gi * 0.4 + i * 0.1}s !important"><circle r="15" fill="#fff" stroke="${p.color}" stroke-width="3"/><text y="6" font-size="17" text-anchor="middle">${p.avatar}</text></g></g>`; }).join(''); }).join('');
+      return `<g class="kavs ${reveal && id !== q.region ? 'kdim' : ''}">` + l.map((x, i) => { const p = byId[x.id];
+        return `<g transform="translate(${r.c[0] + (i - (l.length - 1) / 2) * 30 * u},${r.c[1] + (r.s ? 34 * u : 0)}) scale(${u})"><g class="kav" style="animation-delay:${0.3 + gi * 0.4 + i * 0.1}s !important"><circle r="15" fill="#fff" stroke="${p.color}" stroke-width="3"/><text y="6" font-size="17" text-anchor="middle">${p.avatar}</text></g></g>`; }).join('') + '</g>'; }).join('');
     const rr = m.byId[q.region];
-    const label = reveal && rr ? `<g transform="translate(${rr.c[0]},${rr.c[1] - 34 * u}) scale(${u})"><g class="klabel ok"><rect x="${-((q.name.length + 2) * 8.5 + 18) / 2}" y="-15" width="${(q.name.length + 2) * 8.5 + 18}" height="28" rx="8"/><text y="6" text-anchor="middle">${esc(q.name)} ✓</text></g></g>` : '';
-    over.innerHTML = av + label;
+    // Auflösung wie bei Auswahlfragen: das richtige Land hebt sich vergrößert mit weißem Rand und ✓ heraus,
+    // alles andere tritt zurück (blass, grau). Avatare auf dem richtigen Land bleiben obenauf.
+    let winHtml = '';
+    if (reveal && rr) {
+      const cx = (rr.b[0] + rr.b[2]) / 2, cy = (rr.b[1] + rr.b[3]) / 2, k = GEO_WIN_SCALE;
+      const shape = rr.s ? `<circle class="kwinrg" cx="${rr.c[0]}" cy="${rr.c[1]}" r="${14 * u}"/>` : `<path class="kwinrg" d="${rr.d}"/>`;
+      const bx = rr.s ? rr.c[0] + 20 * u * k : cx + (rr.b[2] - cx) * k, by = rr.s ? rr.c[1] - 20 * u * k : cy + (rr.b[1] - cy) * k;
+      winHtml = `<g class="kwin">${shape}</g><g transform="translate(${bx},${by}) scale(${u})"><g class="kcheck"><circle r="23"/><text y="9" text-anchor="middle">✓</text></g></g>`;
+    }
+    const label = reveal && rr ? `<g transform="translate(${rr.c[0]},${rr.c[1] - (rr.b[3] - rr.b[1]) * 0.6 - 20 * u}) scale(${u})"><g class="klabel ok"><rect x="${-(q.name.length * 8.5 + 18) / 2}" y="-15" width="${q.name.length * 8.5 + 18}" height="28" rx="8"/><text y="6" text-anchor="middle">${esc(q.name)}</text></g></g>` : '';
+    over.innerHTML = winHtml + av + label;
+    if (reveal) {
+      svg.querySelector('.kland').classList.add('kdim'); svg.querySelector('.khit').classList.add('kdim');
+      requestAnimationFrame(() => requestAnimationFrame(() => { const w = over.querySelector('.kwin'); if (w) w.classList.add('on'); }));
+    }
     side.innerHTML = `<div class="klist">${picks.map((x, i) => { const p = byId[x.id], ok = x.region === q.region;
       return `<div class="krow ${reveal && ok ? 'best' : ''}" style="--pc:${p.color};animation-delay:${reveal ? 0.2 + i * 0.12 : 0.3 + i * 0.4}s"><span class="vav" style="--pc:${p.color}">${p.avatar}</span><b>${esc(p.name)}</b><i>${reveal ? esc(x.n) : '🗺️ getippt'}</i>${reveal ? `<span class="eg ${ok ? '' : 'no'}">${ok ? '✓' : '✗'}</span>` : ''}</div>`; }).join('') || '<div class="khint">Niemand hat getippt 🤷</div>'}</div>`;
     if (reveal) setTimeout(() => { geoLanded = S.qNum; const c = document.getElementById('chips'); if (c) c.innerHTML = chips(); }, 600);
