@@ -76,6 +76,14 @@ async function spiel(name, ids, tv, einst, gleich) {
   const s = { ...d.settings, ...einst };
   const [st] = await post('/api/einstellungen', { id: ids[0], settings: s });
   ok(st === 200, 'Einstellungen übernommen');
+  // Bereit: ohne alle „bereit“ startet nichts
+  await post('/api/advance', { id: ids[0] }); await sleep(200);
+  ok(tv.view.phase === 'lobby', 'Ohne „bereit“ startet das Spiel nicht');
+  for (const id of ids.slice(0, -1)) await post('/api/bereit', { id });
+  await post('/api/advance', { id: ids[0] }); await sleep(200);
+  ok(tv.view.phase === 'lobby' && !tv.view.allReady, 'Einer fehlt noch – weiter warten');
+  await post('/api/bereit', { id: ids[ids.length - 1] }); await sleep(200);
+  ok(tv.view.allReady && tv.view.players.every(p => p.ready), 'Alle bereit (Haken am Fernseher)');
   await post('/api/advance', { id: ids[0] });
   const gesehen = new Set(), beantwortet = new Set();
   const start = Date.now();
@@ -127,6 +135,7 @@ async function spiel(name, ids, tv, einst, gleich) {
     await post('/api/advance', { role: 'tv' });   // Ende → zurück in die Lobby
     for (let i = 0; i < 50 && tv.view.phase !== 'lobby'; i++) await sleep(100);
     ok(tv.view.phase === 'lobby', 'Zurück in der Lobby');
+    ok(tv.view.players.every(p => !p.ready), 'Nach dem Spiel ist wieder niemand bereit');
 
     const s2 = await spiel('Spiel 2: zwei Blöcke mit Pause, zufällige Antworten', ids, tv,
       { blocks: [{ count: 3, disabled: [] }, { count: 3, disabled: [] }], pause: { on: true, minutes: 1 }, scoring: 'speed' }, false);

@@ -14,7 +14,8 @@ Lade Node.js (LTS-Version) von https://nodejs.org herunter und installiere es.
    - Oder im Terminal im Ordner: `node server.js`
 3. Der Browser öffnet die TV-Ansicht. Laptop per HDMI an den Fernseher, **F** drücken für Vollbild.
 4. Alle scannen den QR-Code mit dem Handy (selbes WLAN wie der Laptop!), geben ihren Namen ein und wählen ein Emoji. Namen und Emojis gibt es nur einmal.
-5. Wer zuerst beigetreten ist (👑), startet das Spiel am Handy, oder du drückst die **Leertaste** am Laptop.
+5. Jeder tippt am Handy **„✋ Ich bin bereit!“** – am Fernseher erscheint dann ein grüner Haken am Avatar.
+6. Sind alle bereit, startet der 👑 das Spiel am Handy, oder du drückst die **Leertaste** am Laptop. Vorher geht der Start nicht; wer nicht reagiert, nimmt der 👑 unter ⚙️ › 👥 Spieler mit ✖ aus dem Spiel. Nach jedem Spiel tippen alle wieder neu.
 
 **Steuerung am Laptop:** Leertaste/Enter = weiter (überspringt Wartezeiten) · F = Vollbild
 
