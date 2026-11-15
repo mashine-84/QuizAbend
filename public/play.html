@@ -220,6 +220,7 @@
   .repobox { background: rgba(255,255,255,.06); border-radius: 12px; padding: 10px 12px; margin: 8px 0 10px; word-break: break-all; }
   .repobox small { display: block; color: var(--muted); margin-top: 2px; word-break: normal; }
   .spot { color: #1ed760; } .center.spot h1 { color: #1ed760; }   /* Spotify-Musikfrage */
+  .bicon { width: 1em; height: 1em; object-fit: contain; vertical-align: -0.12em; display: inline-block; }
   .range { width: 100%; accent-color: #1ed760; margin: 6px 0 2px; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .hline { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; margin: 6px 0; color: var(--muted); }
@@ -415,7 +416,7 @@ function qline(ask, sub) {
     const who = names.length > 1 ? names.slice(0, -1).join(', ') + ' und ' + names[names.length - 1] : names[0] || '';
     prog = `<span class="qwho">Nur ${esc(who)} ${names.length > 1 ? 'antworten' : 'antwortet'}${S.tiebreak.round > 1 ? ` · Runde ${S.tiebreak.round}` : ''}</span>`;
   } else prog = qProgress();
-  const icon = q.tiebreak ? '⚔️' : q.label ? q.icon || '' : '❓';
+  const icon = q.tiebreak ? '⚔️' : q.iconImg ? `<img class="bicon" src="${q.iconImg}" alt="">` : q.label ? q.icon || '' : '❓';
   const type = q.tiebreak ? 'Stechen um Platz 1' : q.label ? (q.brand === 'spotify' ? `<span class="spot">${esc(q.label)}</span>` : esc(q.label)) : 'Quizfrage';
   return `<div class="qhead">
     <div class="ql1 ${S.special && !q.tiebreak ? 'three' : ''}"><span class="qcat"><span class="qico">${icon}</span>${type}</span>${ptsPill(q)}</div>
@@ -465,9 +466,10 @@ function render() {
   if (S.question && S.question.tiebreak && S.tiebreak && !S.tiebreak.ids.includes(me.id) && ['question', 'votes', 'reveal'].includes(S.phase))
     return renderInfo('⚔️', 'Stechen läuft …', `${S.players.filter(p => S.tiebreak.ids.includes(p.id)).map(p => `${p.avatar} ${esc(p.name)}`).join(' · ')} schätzen um Platz 1.<br>Schau auf den Fernseher 👀`);
   if (S.phase === 'special') return renderInfo('⭐', 'Spezialfrage!', `Diese Frage zählt <b>×${S.special.mult}</b> Punkte!<br>Schau auf den Fernseher 👀`, 'special');
-  if (S.phase === 'intro') return renderInfo(S.question.icon, S.question.label, `Kategorie: ${esc(S.question.category)}<br>Gleich geht's los – schau auf den Fernseher!`, S.question.brand === 'spotify' ? 'spot' : '');
+  const qIcon = q => q.iconImg ? `<img class="bicon" src="${q.iconImg}" alt="">` : q.icon;
+  if (S.phase === 'intro') return renderInfo(qIcon(S.question), S.question.label, `Kategorie: ${esc(S.question.category)}<br>Gleich geht's los – schau auf den Fernseher!`, S.question.brand === 'spotify' ? 'spot' : '');
   if (S.phase === 'media' && S.question.flash) return renderInfo('📸', 'Merk dir das Bild!', 'Es ist nur kurz auf dem Fernseher zu sehen – danach kommt die Frage, ohne Bild.');
-  if (S.phase === 'media' && S.question.spotify) return renderInfo('🎵', 'Hör genau hin!', (S.question.audioOpts && S.question.audioOpts.repeat > 1 ? `🔁 Du hörst ihn ${S.question.audioOpts.repeat}-mal.<br>` : '') + 'Der Song läuft über Spotify (Receiver) – danach kommt die Frage dazu.', 'spot');
+  if (S.phase === 'media' && S.question.spotify) return renderInfo(S.question.iconImg ? qIcon(S.question) : '🎵', 'Hör genau hin!', (S.question.audioOpts && S.question.audioOpts.repeat > 1 ? `🔁 Du hörst ihn ${S.question.audioOpts.repeat}-mal.<br>` : '') + 'Der Song läuft über Spotify (Receiver) – danach kommt die Frage dazu.', 'spot');
   if (S.phase === 'media') return S.question.audio
     ? renderInfo('🎧', 'Hör genau hin!', (S.question.audioOpts && S.question.audioOpts.reverse ? '⏪ Der Ausschnitt läuft rückwärts!<br>' : '') + (S.question.audioOpts && S.question.audioOpts.repeat > 1 ? `🔁 Du hörst ihn ${S.question.audioOpts.repeat}-mal.<br>` : '') + 'Der Ton kommt vom Fernseher – danach kommt die Frage dazu.')
     : renderInfo('👀', 'Schau genau hin!', 'Das Video läuft auf dem Fernseher – danach kommt die Frage dazu.');

@@ -87,6 +87,8 @@ Neben der Hintergrundmusik kann Spotify auch **Musikfragen** spielen: Ein Aussch
 3. Der Ausschnitt läuft auf dem Receiver (Fernseher: „Hör genau hin! – läuft über Spotify“ mit Fortschritt), ggf. mehrmals.
 4. Dann die Frage. Danach läuft die Hintergrundmusik dort weiter, wo sie war.
 
+**Eigenes Icon:** Statt 🎵 kann bei Spotify-Fragen ein Bild als Icon stehen (Ankündigung, Kopf, „So wird gefragt“, Handy). Dafür im **Fragen-Repo** (privat) eine Datei **`icons/spotify.svg`** (oder `.png`/`.webp`) anlegen – auf GitHub: *Add file › Upload files*, Ordner `icons`. Mit „Update holen“ kommt sie auf den Pi. Geeignet ist z. B. das offizielle Spotify-Icon aus den Spotify-Markenressourcen oder aus einem Icon-Paket. Ins öffentliche App-Repo kommen keine Marken-Icons (dort ist `icons/` nur lokal und gitignored); fehlt die Datei, bleibt 🎵.
+
 **Lautstärke:** In den Spotify-Einstellungen lässt sich eine eigene **Lautstärke bei Spotify-Fragen** einstellen (z. B. 80 %). Während der Ausschnitt läuft, stellt das Quiz sie ein, danach wieder die Lautstärke der Hintergrundmusik. Ganz links = nicht ändern. Geht nur bei Geräten, die Lautstärke über Spotify erlauben.
 
 **Gut zu wissen:**
