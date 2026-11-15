@@ -286,6 +286,14 @@
   .pcount { font-size: 64px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--c); }
 
   /* Anleitung: Fernbedienung (👑) und Ausprobieren (alle) */
+  /* Bereit in der Lobby */
+  .rbtn { background: #2fb36d; color: #fff; font-size: 24px; padding: 22px; }
+  .rdone { display: flex; align-items: center; gap: 10px; justify-content: center; background: rgba(47,179,109,.18); border: 2px solid #2fb36d; color: #8ff0b5; border-radius: 14px; padding: 14px; font-size: 20px; font-weight: 900; width: 100%; }
+  .rlist { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+  .rlist span { position: relative; font-size: 26px; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--pc); }
+  .rlist i { position: absolute; right: -3px; bottom: -3px; width: 18px; height: 18px; border-radius: 50%; background: #2fb36d; border: 2px solid #fff; font-size: 10px; color: #fff; font-style: normal; display: grid; place-items: center; font-weight: 900; }
+  .rlist span.w { opacity: .45; }
+  .btn.sm2 { font-size: 16px; padding: 10px; }
   .anlp { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
   .anlhead { display: flex; justify-content: space-between; align-items: baseline; color: var(--muted); font-size: 14px; font-weight: 700; }
   .anlp h2 { font-size: 23px; line-height: 1.15; }
@@ -494,7 +502,7 @@ function render() {
   if (S.phase === 'scores' && lastPh !== 'scores') scoresSince = Date.now();
   header();
   const me = S.me;
-  const lobbyKey = S.phase === 'lobby' ? [S.players.filter(p => p.connected).length, JSON.stringify(S.packs), ui.settings].join(',') : '';
+  const lobbyKey = S.phase === 'lobby' ? [S.players.map(p => (p.connected ? 'c' : '') + (p.ready ? 'r' : '') + p.avatar).join(''), JSON.stringify(S.packs), ui.settings].join(',') : '';
   const joinKey = me ? '' : (S.taken || S.players.map(p => p.avatar)).join('');
   const hostKey = ui.host ? [S.players.map(p => p.id + p.name + p.connected).join(','), ui.renaming].join('|') : '';
   const anl = S.phase === 'lobby' && S.anleitung, myTry = anl && me && (anl.tries || []).find(t => t.id === me.id);
@@ -603,19 +611,33 @@ function renderLobby() {
   const pin = S.pin || {};
   const banner = S.me.isVip && !pin.set ? `<div class="pinbanner"><span>🔑</span><p>Noch keine Host-PIN – jeder, der zuerst kommt, ist Host.</p><button class="btn sm" onclick="openPin('set')">Festlegen</button></div>` : '';
   const becomeHost = pin.set && !S.me.authed ? `<button class="btn ghost" onclick="openPin('login')">👑 Host werden</button>` : '';
+  // Bereit: jeder Spieler tippt einmal; gestartet wird erst, wenn alle Verbundenen bereit sind
+  const mine = S.players.find(p => p.id === S.me.id), ready = !!(mine && mine.ready);
+  const waiting = S.players.filter(p => p.connected && !p.ready);
+  const rlist = `<div class="rlist">${S.players.filter(p => p.connected).map(p => `<span class="${p.ready ? '' : 'w'}" style="--pc:${p.color}" title="${esc(p.name)}">${p.avatar}${p.ready ? '<i>✓</i>' : ''}</span>`).join('')}</div>`
+    + (waiting.length ? `<p class="small">Warte auf ${waiting.map(p => `${p.avatar} ${esc(p.name)}`).join(', ')} …</p>` : '<p class="small">Alle bereit!</p>');
+  const readyBox = gm ? rlist : ready
+    ? `<div class="rdone">✓ Du bist bereit</div>${rlist}<button class="btn ghost sm2" onclick="setReady(false)">Doch noch nicht</button>`
+    : `<button class="btn rbtn" onclick="setReady(true)">✋ Ich bin bereit!</button>`;
+  const startText = !k.questions ? 'Erst Fragenpakete wählen' : n < S.minPlayers ? `Warte auf Mitspieler (min. ${S.minPlayers})`
+    : waiting.length ? 'Noch nicht alle bereit' : 'Alle bereit – Spiel starten!';
   main.innerHTML = `${banner}<div class="center">
     <div class="big">${gm ? '🎤' : S.me.avatar}</div>
     <h1>${gm ? 'Du bist Gamemaster' : 'Du bist dabei!'}</h1>
-    <p>${gm ? 'Pub-Quiz: Du spielst nicht mit, sondern moderierst.<br>' : 'Schau auf den Fernseher.<br>'}${n} von max. ${S.maxPlayers} Spielern da.</p>
+    <p>${gm ? 'Pub-Quiz: Du spielst nicht mit, sondern moderierst.<br>' : ready ? 'Gleich geht\'s los – schau auf den Fernseher.<br>' : 'Bist du startklar?<br>'}${n} von max. ${S.maxPlayers} Spielern da.</p>
+    ${readyBox}
     ${S.me.canLead ? `
-      <button class="btn" onclick="advance()" ${canStart ? '' : 'disabled'}>${canStart ? 'Alle da – Spiel starten!' : k.questions ? `Warte auf Mitspieler (min. ${S.minPlayers})` : 'Erst Fragenpakete wählen'}</button>
+      <button class="btn" onclick="advance()" ${canStart && !waiting.length ? '' : 'disabled'}>${startText}</button>
+      ${canStart && waiting.length ? '<p class="small">Jemand reagiert nicht? Unter ⚙️ › 👥 Spieler mit ✖ aus dem Spiel nehmen.</p>' : ''}
       <button class="btn ghost" onclick="anlCall('start')">📖 Anleitung zeigen</button>
       ${gm ? '<button class="btn ghost" onclick="openPlan()">📋 Fragen planen</button>' : ''}
       <button class="btn ghost" onclick="openSettings()">⚙️ Einstellungen${k.errors ? ' · ⚠️' : ''}</button>
       <p class="small">${blocks > 1 ? `${blocks} Blöcke · ` : ''}${k.questions} Fragen${k.special && k.special.on ? ` · ⭐ Spezialfrage ×${k.special.mult}` : ''}</p>`
-      : `<p>${S.me.isVip ? 'Zum Starten brauchst du die Host-PIN.' : 'Warte, bis 👑 das Spiel startet …'}</p>${becomeHost}${S.me.canTech ? '<button class="btn ghost" onclick="openSettings()">⚙️ Raum & Technik</button>' : ''}`}
+      : `${S.me.isVip ? '<p>Zum Starten brauchst du die Host-PIN.</p>' : ready && !waiting.length ? '<p>Warte, bis 👑 das Spiel startet …</p>' : ''}${becomeHost}${S.me.canTech ? '<button class="btn ghost" onclick="openSettings()">⚙️ Raum & Technik</button>' : ''}`}
     <button class="leave" onclick="leave()">Spiel verlassen</button></div>`;
 }
+
+async function setReady(on) { if (on && navigator.vibrate) navigator.vibrate(15); await post('/api/bereit', { id: myId, ready: on }); }
 
 // ---------- Anleitung „So geht QuizAbend“ (anleitung.json): 👑 blättert, alle können ausprobieren ----------
 let anlEst = '', anlMsg = '';
@@ -1462,7 +1484,7 @@ function playersSection() {
     ? `<form class="prow2" onsubmit="saveRename(event, '${p.id}')"><span class="pav" style="--pc:${p.color}">${p.avatar}</span>
         <input id="rn" maxlength="14" value="${esc(p.name)}"><button class="btn sm">OK</button></form><div class="err" id="rnerr"></div>`
     : `<div class="prow2 ${p.connected ? '' : 'off'}"><span class="pav" style="--pc:${p.color}">${p.avatar}</span>
-        <span class="pn">${esc(p.name)}${p.id === S.vip ? ' 👑' : ''}<small>${p.id === myId ? 'du · ' : ''}${HIDE_PTS.includes(S.phase) || S.phase === 'lobby' ? '' : p.score + ' P'}${p.connected ? '' : ' · offline'}</small></span>
+        <span class="pn">${esc(p.name)}${p.id === S.vip ? ' 👑' : ''}<small>${p.id === myId ? 'du · ' : ''}${S.phase === 'lobby' ? (p.ready ? '✓ bereit' : 'noch nicht bereit') : HIDE_PTS.includes(S.phase) ? '' : p.score + ' P'}${p.connected ? '' : ' · offline'}</small></span>
         ${p.id !== S.vip && p.connected && (S.me.canLead || S.me.authed) ? `<button class="ib ${ui.confirm === 'crown' + p.id ? 'warn' : ''}" onclick="giveCrown('${p.id}')" title="${p.id === myId ? 'Krone zurückholen' : 'Krone übergeben'}">${ui.confirm === 'crown' + p.id ? (p.id === myId ? 'Holen?' : 'Übergeben?') : '👑'}</button>` : ''}
         ${S.me.canLead ? `<button class="ib" onclick="startRename('${p.id}')" title="Umbenennen">✏️</button>` : ''}
         ${p.id === myId || !S.me.canLead ? '' : `<button class="ib ${ui.confirm === 'kick' + p.id ? 'warn' : ''}" onclick="kick('${p.id}')" title="Entfernen">${ui.confirm === 'kick' + p.id ? 'Sicher?' : '✖'}</button>`}</div>`).join('')

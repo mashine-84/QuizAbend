@@ -698,7 +698,7 @@ function startGame() {
   if (pubActive()) planEnsure();
   const questions = pubActive() ? planQuestions() : buildGame();
   if (!questions.length) return false;
-  for (const p of players.values()) { p.score = 0; p.streak = 0; }
+  for (const p of players.values()) { p.score = 0; p.streak = 0; p.ready = false; }
   const pub = pubActive(), host = vipId();
   state = newGameState(); anleitung = null;
   state.pub = pub; state.hostId = pub ? host : null; state.scoring = settings.scoring;
@@ -1072,7 +1072,7 @@ function advance() {
   const q = currentQuestion();
   state.frozen = null;
   switch (state.phase) {
-    case 'lobby': if (connectedCount() >= minPlayers()) startGame(); break;
+    case 'lobby': if (connectedCount() >= minPlayers() && allReady()) startGame(); break;   // erst, wenn alle „bereit“ getippt haben
     case 'opening': nextQuestion(); break;
     case 'tiebreak': nextQuestion(); break;
     case 'block': beginQuestion(); break;
@@ -1099,6 +1099,10 @@ function advance() {
 }
 
 function connectedCount() { return [...players.values()].filter(p => p.connected && isPlayer(p)).length; }
+// Lobby: Jeder tippt „Ich bin bereit!“. Gestartet wird erst, wenn alle verbundenen Spieler bereit sind
+// (wer nicht reagiert, kann der 👑 entfernen). Nach jedem Spielstart ist wieder niemand bereit.
+const notReady = () => [...players.values()].filter(p => p.connected && isPlayer(p) && !p.ready);
+const allReady = () => !notReady().length;
 const minPlayers = () => pubActive() ? 1 : MIN_PLAYERS;
 
 function allAnswered() {
@@ -1115,7 +1119,7 @@ function ranking() {
   const list = [...players.values()].filter(isPlayer)
     .sort((a, b) => b.score - a.score || a.joinedAt - b.joinedAt)
     .map(p => ({ id: p.id, name: p.name, color: p.color, avatar: p.avatar, score: p.score, connected: p.connected, joined: p.joinedAt,
-      answered: !!state.answers[p.id], result: state.results[p.id] || null }));
+      answered: !!state.answers[p.id], result: state.results[p.id] || null, ready: !!p.ready }));
   list.forEach((p, i) => { p.place = i && p.score === list[i - 1].score ? list[i - 1].place : i + 1; });
   return list;
 }
@@ -1179,7 +1183,7 @@ function baseView() {
   const q = currentQuestion();
   const ph = state.phase;
   const v = {
-    phase: ph, vip: vipId(), minPlayers: minPlayers(), maxPlayers: MAX_PLAYERS,
+    phase: ph, vip: vipId(), minPlayers: minPlayers(), maxPlayers: MAX_PLAYERS, allReady: allReady(),
     pin: { set: pinSet(), protectTech: hostCfg.protectTech, protectGame: hostCfg.protectGame, resetting: !!(pinReset && pinReset.until > Date.now()) },
     taken: [...players.values()].map(p => p.avatar),   // vergebene Emojis (auch das des Gamemasters)
     pub: pubActive() ? { host: (() => { const h = players.get(hostId()); return h ? { id: h.id, name: h.name, avatar: h.avatar, color: h.color } : null; })() } : null,
@@ -1685,6 +1689,15 @@ const server = http.createServer(async (req, res) => {
     players.set(id, { id, name, slot, color: COLORS[slot], avatar, score: 0, streak: 0, connected: false, joinedAt: Date.now() });
     broadcast();
     return json(res, 200, { id });
+  }
+
+  if (req.method === 'POST' && p === '/api/bereit') {
+    const body = await readBody(req);
+    const pl = players.get(body.id);
+    if (!pl || state.phase !== 'lobby') return json(res, 409, { ok: false });
+    pl.ready = body.ready !== false;
+    broadcast();
+    return json(res, 200, { ok: true });
   }
 
   if (req.method === 'POST' && p === '/api/answer') {

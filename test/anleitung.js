@@ -66,6 +66,7 @@ const sse = id => fetch(B + '/events?id=' + id).then(async r => { const rd = r.b
   await sleep(200);
   ok(views[Bn].anleitung === null, 'Anleitung zu');
   await post('/api/anleitung', { id: A, action: 'start' });
+  await post('/api/bereit', { id: A }); await post('/api/bereit', { id: Bn });
   await post('/api/advance', { id: A }); await sleep(300);
   ok(views[A].phase !== 'lobby' && views[A].anleitung === null, 'Spielstart schließt die Anleitung');
   srv.kill(); fs.rmSync(TMP, { recursive: true, force: true });
