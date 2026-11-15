@@ -163,6 +163,31 @@
   html.lite .estpanel.side .eresult { transition: flex-basis .8s cubic-bezier(.45,0,.2,1), opacity .45s ease .85s !important; }
   .estpanel.side .elist { flex: 1; min-width: 0; background: rgba(255,255,255,.06); border-radius: 1.4vw; padding: 1.6vh 1.2vw; justify-content: center; }
   .erow .ev { min-width: 11vw; text-align: right; }
+  /* Schätzfrage als Pegel */
+  .estq.noimg .estpanel.pegel { width: 86vw; }
+  .estpanel.pegel { justify-content: stretch; padding: 2vh 2vw 1.4vh; }
+  .pg { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .pgplot { flex: 1; position: relative; display: flex; justify-content: space-around; align-items: flex-end; overflow: hidden; border-bottom: .3vh solid rgba(255,255,255,.35); margin-top: 4vh; min-height: 0; }
+  .pgcol { position: relative; flex: 0 1 7vw; height: 100%; display: flex; align-items: flex-end; justify-content: center; animation: pgrow .7s cubic-bezier(.2,.8,.3,1) both; transform-origin: bottom; }
+  html.lite .pgcol { animation: pgrow .7s cubic-bezier(.2,.8,.3,1) both !important; }
+  @keyframes pgrow { from { transform: scaleY(0); opacity: 0; } }
+  .pgbar { width: 70%; height: var(--h); background: var(--pc); border-radius: .8vw .8vw 0 0; transition: opacity .4s; }
+  .pgv { position: absolute; bottom: calc(var(--h) + .6vh); left: 50%; transform: translateX(-50%); font-size: 1.6vw; font-weight: 900; white-space: nowrap; font-variant-numeric: tabular-nums; z-index: 3; }
+  .pgcol.under .pgbar { opacity: .55; } .pgcol.under .pgv { color: var(--muted); }
+  .pgcol.best .pgbar { opacity: 1; outline: .35vw solid #fff; } .pgcol.best .pgv { color: #8ff0b5; font-size: 2vw; }
+  .pgcol.out .pgbar { opacity: .3; }
+  .pgw { position: absolute; inset: 0; transform: translateY(100%); background: linear-gradient(rgba(90,176,255,.42), rgba(90,176,255,.14)); border-top: .45vh solid #5ab0ff; z-index: 2; will-change: transform; }
+  .pgwl { position: absolute; right: .6vw; top: -5.2vh; background: #5ab0ff; color: #14102b; font-size: 2.2vw; font-weight: 900; padding: .1vh 1vw; border-radius: .8vw; font-variant-numeric: tabular-nums; }
+  .estpanel.pegel.landed .pgwl { background: #fff; animation: pop .4s both; }
+  html.lite .estpanel.pegel.landed .pgwl { animation: pop .4s both !important; }
+  .pgfoot { display: flex; justify-content: space-around; padding: 1vh 9vw 0 0; }
+  .pgplot { padding-right: 9vw; }   /* rechts Platz für die Pegel-Zahl, damit sie keine Säule verdeckt */
+  .estq:not(.noimg) .pgplot, .estq:not(.noimg) .pgfoot { padding-right: 6vw; }
+  .pgf { flex: 0 1 7vw; display: flex; flex-direction: column; align-items: center; gap: .2vh; font-size: 1.3vw; min-width: 0; }
+  .pgf b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pgf .vav { width: 2.8vw; height: 2.8vw; font-size: 1.6vw; border-width: .2vw; animation: none; }
+  .pgf .pgd { color: var(--muted); font-size: 1.2vw; white-space: nowrap; font-variant-numeric: tabular-nums; } .pgf .pgd .eg { color: #8ff0b5; } .pgf .pgd .eg.mid { color: var(--c); } .pgf .pgd .eg.no { color: #ff8a8d; }
+  .estq:not(.noimg) .pgv { font-size: 1.2vw; } .estq:not(.noimg) .pgf { font-size: 1vw; } .estq:not(.noimg) .pgwl { font-size: 1.6vw; }
   .erow.truth .ev { margin-left: 0; }
   .erow.truth span:last-child { margin-left: auto; color: var(--d); text-transform: uppercase; font-size: 1.4vw; letter-spacing: .1em; }
   .mlist { flex: 1; min-height: 0; display: grid; grid-auto-rows: minmax(0, var(--row)); align-content: center; gap: 1.4vh; max-height: 100%; }
@@ -1173,6 +1198,7 @@ function renderEstimate(byId) {
       <span class="vav">${p.avatar}</span><span class="en">${esc(p.name)}</span><span class="ev">${fmt(r.value)}${unit}</span><span class="ed">${final ? sign(r.value - q.value) + dunit : ''}</span>
       ${res ? `<span class="eg ${res.correct ? '' : res.gain ? 'mid' : 'no'}">${res.correct ? '✓' : res.gain ? '≈' : '✗'}</span>` : '<span class="eg"></span>'}</div>`;   // Punkte gibt's erst am Blockende
   }).join('');
+  if (q.show === 'pegel') return renderPegel(box, q, byId, unit, dunit, sign, rows);
   box.classList.add('reveal');
   // ohne Bild: Ergebnis als eigene Karte links neben der Liste. Übergang wie beim Zuordnen:
   // die Box mit den Schätzungen gleitet weich nach rechts (0,8 s), dann blendet links die Ergebnis-Karte ein
@@ -1219,32 +1245,107 @@ function sortEstimateRows(list, rows, byId, q, unit, dunit, sign, done) {
   }, EST_SORT_S * 1000 + 100);
 }
 
-// Slotmaschine: zählt von unten aufwärts an den Schätzungen vorbei zum richtigen Wert –
-// erst schnell, dann immer zäher, die letzten Zahlen bleiben fast eine Sekunde stehen
+// Slotmaschine: läuft an den Schätzungen vorbei zum richtigen Wert. Damit sie nicht vorhersagbar ist,
+// gibt es mehrere Bewegungen (zufällig, nie zweimal hintereinander dieselbe):
+//   hoch    – zählt von unten aufwärts, erst schnell, dann immer zäher
+//   runter  – dasselbe von oben herab
+//   pendel  – schießt über das Ziel hinaus und pendelt sich ein
+//   finte   – bleibt scheinbar auf einer falschen Zahl stehen … und läuft dann doch weiter
+//   ziffern – jede Ziffer dreht für sich, sie rasten von links nach rechts ein
+const SLOT_MOTIONS = ['hoch', 'runter', 'pendel', 'finte', 'ziffern'];
+let lastMotion = null;
 function slotRoll(el, q, unit, rows, done) {
+  const motion = (() => { const l = SLOT_MOTIONS.filter(m => m !== lastMotion); return l[Math.floor(Math.random() * l.length)]; })();
+  lastMotion = motion; el.dataset.motion = motion;
   const target = q.value, dec = q.year ? 0 : (String(target).split('.')[1] || '').length, stepU = Math.pow(10, -dec);
-  const below = rows.filter(r => r.value < target).map(r => target - r.value);
-  let span = Math.max(below.length ? Math.max(...below) * 1.15 : 0, q.year ? 25 : Math.abs(target) * 0.5, 10 * stepU);
-  let start = target - span;
-  if (!q.year && target >= 0) start = Math.max(0, start);
+  const minSpan = Math.max(q.year ? 25 : Math.abs(target) * 0.5, 10 * stepU);
+  const below = rows.filter(r => r.value < target).map(r => target - r.value), above = rows.filter(r => r.value > target).map(r => r.value - target);
+  const spanBelow = Math.max(below.length ? Math.max(...below) * 1.15 : 0, minSpan), spanAbove = Math.max(above.length ? Math.max(...above) * 1.15 : 0, minSpan);
   const round = v => dec ? +v.toFixed(dec) : Math.round(v);
-  const show = v => { el.textContent = fmt(v) + (q.unit ? ' ' + q.unit : ''); };
+  const noNeg = v => (!q.year && target >= 0) ? Math.max(0, v) : v;
+  const show = v => { el.textContent = (typeof v === 'string' ? v : fmt(v)) + (q.unit ? ' ' + q.unit : ''); };
+  const tick = p => { if (soundOn()) try { sfx.tone(1500 + 300 * p, ctx().currentTime + 0.005, 0.03, { type: 'triangle', gain: 0.07 }); } catch (_) {} };
+  const ease = p => 1 - Math.pow(1 - p, 4);   // stark abbremsend
   const DUR = 4500, t0 = performance.now();
-  let last = null;
+  let value, delay = p => 35 + 700 * Math.pow(p, 3), last = null, keepDir = 0, hold = null;
+  if (motion === 'runter') {
+    const start = target + spanAbove; keepDir = -1;
+    value = p => { let v = round(start - (start - target) * ease(p)); return v <= target ? round(target + stepU) : v; };
+  } else if (motion === 'pendel') {
+    const amp = Math.max(spanBelow, spanAbove) * 0.8;
+    value = p => { let v = round(noNeg(target - amp * Math.pow(1 - p, 2) * Math.cos(Math.PI * 4.5 * p))); return v === target ? round(target + stepU) : v; };
+    delay = p => 45 + 500 * Math.pow(p, 3);
+  } else if (motion === 'finte') {
+    const start = noNeg(target - spanBelow), fake = round(Math.min(target - 2 * stepU, target - Math.max(spanBelow * 0.2, 2 * stepU)));
+    value = p => p < 0.55 ? round(start + (fake - start) * ease(p / 0.55)) : p < 0.78 ? fake : (() => { let v = round(fake + (target - fake) * ((p - 0.78) / 0.22)); return v >= target ? round(target - stepU) : v; })();
+    delay = p => p < 0.55 ? 35 + 700 * Math.pow(p / 0.55, 3) : p < 0.78 ? 120 : 160;
+    hold = p => p >= 0.55 && p < 0.78;   // Stillstand: kein Ticken
+    keepDir = 1;
+  } else if (motion === 'ziffern') {
+    const final = fmt(target), pos = [...final].map((c, i) => /\d/.test(c) ? i : -1).filter(i => i >= 0);
+    // Ziffer i rastet bei lockAt[i] ein: von 30 % bis 100 % der Zeit, hinten immer zäher
+    const lockAt = pos.map((_, k) => 0.3 + 0.7 * Math.pow((k + 1) / pos.length, 1.4));
+    value = p => [...final].map((c, i) => { const k = pos.indexOf(i); return k < 0 || p >= lockAt[k] ? c : String(Math.floor(Math.random() * 10)); }).join('');
+    delay = p => 55 + 200 * Math.pow(p, 2);
+  } else {   // hoch
+    const start = noNeg(target - spanBelow); keepDir = 1;
+    value = p => { let v = round(start + (target - start) * ease(p)); return v >= target ? round(target - stepU) : v; };
+  }
   const step = () => {
     if (!document.contains(el)) return;
     const p = Math.min(1, (performance.now() - t0) / DUR);
     if (p >= 1) { show(target); el.classList.add('landed'); return done(); }
-    let v = round(start + (target - start) * (1 - Math.pow(1 - p, 4)));   // stark abbremsend
-    if (v >= target) v = round(target - stepU);                             // erst ganz am Schluss landen
-    if (last !== null && v < last) v = last;                                // nie rückwärts
-    if (v !== last) {
-      show(v); last = v;
-      if (soundOn()) try { sfx.tone(1500 + 300 * p, ctx().currentTime + 0.005, 0.03, { type: 'triangle', gain: 0.07 }); } catch (_) {}
-    }
-    setTimeout(step, 35 + 700 * Math.pow(p, 3));   // anfangs 35 ms, am Ende ~0,7 s
+    let v = value(p);
+    if (keepDir && last !== null && typeof v === 'number' && (v - last) * keepDir < 0) v = last;   // nie rückwärts
+    if (v !== last) { show(v); last = v; if (!(hold && hold(p))) tick(p); }
+    setTimeout(step, delay(p));
   };
-  show(round(start)); last = round(start);
+  last = value(0); show(last);
+  setTimeout(step, 60);
+}
+
+// ---------- Schätzfrage als Pegel (Höhen und Gewichte) ----------
+// Jede Schätzung ist eine Säule; ein Wasserpegel steigt bis zur richtigen Zahl. Säulen, die überflutet werden,
+// lagen zu niedrig; wer am nächsten am Pegel steht, leuchtet. Nur transform/opacity werden bewegt.
+const PEGEL_MS = 5200;
+function renderPegel(box, q, byId, unit, dunit, sign, rows) {
+  box.classList.add('reveal', 'pegel');
+  const guesses = q.guesses.filter(g => byId[g.id]);
+  const cap = Math.abs(q.value) * 2.5;   // Ausreißer sprengen die Skala nicht
+  const top = Math.max(q.value, ...guesses.map(g => Math.min(g.value, cap))) * 1.12 || 1;
+  const h = v => Math.max(0, Math.min(100, v / top * 100));
+  box.innerHTML = `<div class="pg"><div class="pgplot" id="pgplot">
+      ${guesses.map((g, i) => { const p = byId[g.id];
+        return `<div class="pgcol" data-id="${g.id}" style="--pc:${p.color};--h:${h(g.value)}%;animation-delay:${i * 0.12}s"><div class="pgbar"></div><span class="pgv">${fmt(g.value)}${unit}${g.value > cap ? ' ↑' : ''}</span></div>`; }).join('')}
+      <div class="pgw" id="pgw"><span class="pgwl" id="pgwl">0${unit}</span></div></div>
+    <div class="pgfoot">${guesses.map(g => { const p = byId[g.id];
+      return `<div class="pgf" data-id="${g.id}"><span class="vav" style="--pc:${p.color}">${p.avatar}</span><b>${esc(p.name)}</b><small class="pgd"></small></div>`; }).join('')}</div></div>`;
+  const water = document.getElementById('pgw'), label = document.getElementById('pgwl');
+  const target = q.value, dec = (String(target).split('.')[1] || '').length, round = v => dec ? +v.toFixed(dec) : Math.round(v);
+  const cols = [...box.querySelectorAll('.pgcol')];
+  const t0 = performance.now() + 900;   // Säulen erst wachsen lassen
+  let last = null;
+  const step = () => {
+    if (!document.contains(water)) return;
+    const p = Math.max(0, Math.min(1, (performance.now() - t0) / PEGEL_MS));
+    const e = 1 - Math.pow(1 - p, 3.5), v = p >= 1 ? target : round(target * e);
+    water.style.transform = `translateY(${100 - h(target) * e}%)`;
+    if (v !== last) {
+      label.textContent = fmt(v) + unit; last = v;
+      cols.forEach(c => { const g = guesses.find(x => x.id === c.dataset.id); c.classList.toggle('under', g.value < v); });
+      if (p > 0 && p < 1 && soundOn()) try { sfx.tone(700 + 500 * p, ctx().currentTime + 0.005, 0.03, { type: 'sine', gain: 0.06 }); } catch (_) {}
+    }
+    if (p < 1) return setTimeout(step, 35 + 500 * Math.pow(p, 3));
+    // gelandet: Bewertung zeigen
+    box.classList.add('landed');
+    cols.forEach(c => {
+      const g = guesses.find(x => x.id === c.dataset.id), res = byId[g.id].result, f = box.querySelector(`.pgf[data-id="${g.id}"] .pgd`);
+      c.classList.toggle('best', !!(res && res.correct)); c.classList.toggle('out', !!(res && res.outOfRange));
+      if (f) f.innerHTML = `${sign(g.value - target)}${dunit} <span class="eg ${res && res.correct ? '' : res && res.gain ? 'mid' : 'no'}">${res ? (res.correct ? '✓' : res.gain ? '≈' : '✗') : ''}</span>`;
+    });
+    shot(revealSound, 0.85);
+    estLanded = S.qNum; const ch = document.getElementById('chips'); if (ch) ch.innerHTML = chips();
+  };
   setTimeout(step, 60);
 }
 
