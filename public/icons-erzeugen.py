@@ -31,7 +31,7 @@ EMOJI = {
     '📦': ('solid/box-open', '#e0a878'), '🧪': ('solid/flask', '#4fd1c5'), '✨': ('solid/wand-magic-sparkles', None),
     '🏅': ('solid/medal', '#f5b014'), '👥': ('solid/users', '#ff7a9c'), '⏰': ('solid/clock', '#b9b2e6'),
     '🔥': ('solid/fire', '#ff5a3c'), '📚': ('solid/book-open', '#5ab0ff'), '📺': ('solid/tv', None), '📱': ('solid/mobile-screen', None),
-    '🍓': ('brands/raspberry-pi', '#e5484d'), '🎰': ('solid/hourglass-half', '#f5b014'), '▶️': ('solid/play', None),
+    '🍓': ('brands/raspberry-pi', '#e5484d'), '📍': ('solid/location-dot', '#e5484d'), '🗺️': ('solid/map', '#4fd1c5'), '🎰': ('solid/hourglass-half', '#f5b014'), '▶️': ('solid/play', None),
 }
 # Symbole, die nur per ic('name') im Code benutzt werden
 EXTRA = {'spotify': 'brands/spotify', 'chevron-right': 'solid/chevron-right', 'chevron-left': 'solid/chevron-left'}
@@ -64,7 +64,7 @@ function ic(name, color) {{
 (function () {{
   const keys = Object.keys(FA_EMOJI).sort((a, b) => b.length - a.length).map(k => k.replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&'));
   const RE = new RegExp('(' + keys.join('|') + ')\\uFE0F?', 'g'), TEST = new RegExp(RE.source);
-  const SKIP = {{ SCRIPT: 1, STYLE: 1, TEXTAREA: 1, OPTION: 1, TITLE: 1, INPUT: 1, svg: 1, path: 1 }};
+  const SKIP = {{ SCRIPT: 1, STYLE: 1, TEXTAREA: 1, OPTION: 1, TITLE: 1, INPUT: 1, svg: 1, path: 1, text: 1, g: 1 }};
   function swap(t) {{
     if (!TEST.test(t.nodeValue) || !t.parentNode || SKIP[t.parentNode.nodeName]) return;
     const tpl = document.createElement('template');
