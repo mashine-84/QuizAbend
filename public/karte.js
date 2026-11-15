@@ -15,6 +15,8 @@ function kDist(a, b) {   // [lat, lon] -> km (Großkreis)
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLon / 2) ** 2;
   return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
 }
+// Kreis mit r km um einen Punkt auf Breite lat -> Halbachsen [rx, ry] in Kartenkoordinaten
+const kRadius = (m, lat, km) => { const deg = km / 111.2; return [deg / Math.max(0.05, Math.cos(lat * Math.PI / 180)) * m.cos * m.k, deg * m.k]; };
 const kKm = d => d < 10 ? d.toFixed(1).replace('.', ',') + ' km' : Math.round(d).toLocaleString('de-DE') + ' km';
 
 // Karte als SVG-Text. opts.small: kleine Gebiete als Punkt (TV) bzw. Tippkreis (Handy) zeigen

@@ -1343,7 +1343,7 @@ function renderGeoQ() {
   const q = S.question, me = S.me, pin = q.kind === 'pin';
   main.innerHTML = qline() + `<div class="kcard">${esc(q.text)}</div>
     <div class="kmap" id="kmap"><div class="kload">Karte lädt …</div></div>
-    <p class="khelp">${pin ? 'Tippen setzt den Pin – nochmal tippen versetzt ihn.' : 'Tippe auf das ' + (q.map === 'deutschland' ? 'Bundesland' : 'Land') + '. Kleine Länder haben einen Kreis.'} Zoomen mit zwei Fingern oder ＋/－.</p>
+    <p class="khelp">${pin ? `Tippen setzt den Pin – nochmal tippen versetzt ihn.${q.radius ? ` <b>Richtig bis ${kKm(q.radius)} daneben.</b>` : ''}` : 'Tippe auf das ' + (q.map === 'deutschland' ? 'Bundesland' : 'Land') + '. Kleine Länder haben einen Kreis.'} Zoomen mit zwei Fingern oder ＋/－.</p>
     <button class="btn" id="kgo" onclick="sendGeo()" ${geo ? '' : 'disabled'}>${pin ? '📍 Hier ist es' : '✓ Dieses ' + (q.map === 'deutschland' ? 'Bundesland' : 'Land')}</button>`;
   const host = document.getElementById('kmap'), qn = S.qNum;
   loadKarte(q.map).then(m => {
@@ -1432,8 +1432,8 @@ function renderResult() {
   let cls, title, detail;
   if (q.kind === 'pin') {
     cls = !r.answered ? 'none' : r.correct ? 'ok' : r.gain ? 'mid' : 'bad';
-    title = !r.answered ? 'Kein Pin' : r.correct ? (r.km < 15 ? 'Volltreffer! 🎯' : 'Am nächsten dran! 🎉') : r.gain ? 'Nicht schlecht!' : 'Daneben';
-    detail = `<p>${q.name ? `<b>${esc(q.name)}</b><br>` : ''}${r.answered ? `Du lagst <b>${kKm(r.km)}</b> daneben` : ''}${r.outOfRange ? `<br><small>mehr als ${kKm(q.range)} – keine Punkte</small>` : ''}</p>`;
+    title = !r.answered ? 'Kein Pin' : r.correct ? (r.km < q.radius / 5 ? 'Volltreffer! 🎯' : 'Richtig! 🎉') : r.gain ? 'Knapp daneben' : 'Daneben';
+    detail = `<p>${q.name ? `<b>${esc(q.name)}</b><br>` : ''}${r.answered ? `Du lagst <b>${kKm(r.km)}</b> daneben` : ''}<br><small>richtig bis ${kKm(q.radius)}${r.outOfRange ? ` · ab ${kKm(q.range)} keine Punkte` : ''}</small></p>`;
   } else if (q.kind === 'land') {
     cls = !r.answered ? 'none' : r.correct ? 'ok' : 'bad';
     title = !r.answered ? 'Zu langsam!' : r.correct ? 'Richtig! 🎉' : 'Leider falsch';
