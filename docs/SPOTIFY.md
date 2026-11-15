@@ -87,6 +87,8 @@ Neben der Hintergrundmusik kann Spotify auch **Musikfragen** spielen: Ein Aussch
 3. Der Ausschnitt läuft auf dem Receiver (Fernseher: „Hör genau hin! – läuft über Spotify“ mit Fortschritt), ggf. mehrmals.
 4. Dann die Frage. Danach läuft die Hintergrundmusik dort weiter, wo sie war.
 
+**Eigenes Icon:** Statt 🎵 kann bei Spotify-Fragen ein Bild als Icon stehen (Ankündigung, Kopf, „So wird gefragt“, Handy). Dafür eine Datei **`icons/spotify.svg`** (oder `.png`/`.webp`) neben `server.js` legen – z. B. das offizielle Spotify-Icon aus den Spotify-Markenressourcen oder aus einem Icon-Paket. Der Ordner `icons/` ist nicht im Git, Marken-Icons bringt man also selbst mit; fehlt die Datei, bleibt 🎵.
+
 **Gut zu wissen:**
 - **Spoiler-Gefahr:** Das Display des Receivers und die Spotify-App auf Handys mit deinem Konto zeigen Titel und Interpret. Display dimmen oder abdecken.
 - Zwischen Befehl und Ton liegt etwa eine halbe bis eine Sekunde – der Start sitzt nicht auf die Hundertstel genau.
