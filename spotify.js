@@ -268,8 +268,11 @@ function snippet(uri, opts, stillWanted = () => true, onStart = () => {}) {
 
 // ---------- Spielphasen ----------
 // Quiz hat eigene Musik/Ton: Spotify pausieren. Sonst (während des Spiels) spielen. Lobby: nicht eingreifen.
-const PAUSE_PHASES = new Set(['ident', 'opening', 'block', 'pause', 'media', 'end']);   // block: Blockseite mit Jingle; dazu die Ankündigung vor Musik-/Filmfragen (siehe onPhase)
-const PLAY_PHASES = new Set(['intro', 'preview', 'question', 'locked', 'special', 'votes', 'reveal', 'scores', 'tiebreak']);
+// block: Blockseite mit Jingle; dazu die Ankündigung vor Musik-/Filmfragen (siehe onPhase).
+// pause: in der Blockpause läuft Spotify, nur in der letzten Minute (Countdown-Musik am Fernseher) nicht – das meldet
+// der Server als eigene Phase 'pausefinale'.
+const PAUSE_PHASES = new Set(['ident', 'opening', 'block', 'pausefinale', 'media', 'end']);
+const PLAY_PHASES = new Set(['intro', 'preview', 'question', 'locked', 'special', 'votes', 'reveal', 'scores', 'tiebreak', 'pause']);
 let gameStarted = false;
 // info.sound: in der Medien-Phase läuft Ton oder Video (beim Merkbild nicht – dann weiterspielen)
 function onPhase(phase, info = {}) {
