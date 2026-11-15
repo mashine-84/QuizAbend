@@ -620,7 +620,7 @@ function renderLobby() {
     ? `<div class="rdone">✓ Du bist bereit</div>${rlist}<button class="btn ghost sm2" onclick="setReady(false)">Doch noch nicht</button>`
     : `<button class="btn rbtn" onclick="setReady(true)">✋ Ich bin bereit!</button>`;
   const startText = !k.questions ? 'Erst Fragenpakete wählen' : n < S.minPlayers ? `Warte auf Mitspieler (min. ${S.minPlayers})`
-    : waiting.length ? `Noch nicht alle bereit (${waiting.length} ${waiting.length === 1 ? 'fehlt' : 'fehlen'})` : 'Alle bereit – Spiel starten!';
+    : waiting.length ? 'Noch nicht alle bereit' : 'Alle bereit – Spiel starten!';
   main.innerHTML = `${banner}<div class="center">
     <div class="big">${gm ? '🎤' : S.me.avatar}</div>
     <h1>${gm ? 'Du bist Gamemaster' : 'Du bist dabei!'}</h1>
