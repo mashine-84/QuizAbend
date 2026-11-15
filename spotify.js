@@ -218,6 +218,15 @@ async function pause(opts = {}) {
 const ready = () => !!(cfg.refresh && cfg.device && cfg.enabled !== false && !env.hotspot());
 
 // ---------- Spotify-Musikfrage: Ausschnitt eines Songs auf dem Gerät abspielen ----------
+// Zeit vom bestätigten Abspielbefehl bis der Ton aus dem Lautsprecher kommt (für den Balken am TV).
+// Seit das Gerät schon bei der Ankündigung angesprochen wird, startet der Ton schneller: 0,3 s.
+const SNIP_TAIL_MS = 300;
+function setQuestionVolume(v) {
+  v = Math.round(Number(v));
+  cfg.qVolume = v >= 5 && v <= 100 ? v : null;   // leer/0: Lautstärke der Hintergrundmusik beibehalten
+  save();
+  return { ok: true };
+}
 // opts: { start, dauer, repeat, gap } in Sekunden. Läuft in derselben Warteschlange wie Pause/Weiter.
 // Vorher wird die Hintergrundmusik (Playlist + Stelle) gemerkt, danach geht sie dort weiter.
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -230,6 +239,11 @@ function snippet(uri, opts, stillWanted = () => true, onStart = () => {}) {
     if (!bgSaved && st.status === 200 && st.data && st.data.item && st.data.item.uri !== uri && (st.data.is_playing || pausedByUs))
       bgSaved = { context: st.data.context && st.data.context.uri || null, item: st.data.item.uri, pos: st.data.progress_ms || 0 };
     if (st.status === 200 && st.data && st.data.is_playing) await api('PUT', '/me/player/pause');
+    // Eigene Lautstärke für Spotify-Fragen (Hintergrundmusik ist oft leiser eingestellt); danach zurück
+    const dq = `&device_id=${encodeURIComponent(id)}`;
+    const bgVol = st.status === 200 && st.data && st.data.device && Number.isFinite(st.data.device.volume_percent) ? st.data.device.volume_percent : null;
+    let volSet = false;
+    if (cfg.qVolume && bgVol !== null && cfg.qVolume !== bgVol) volSet = OK(await api('PUT', `/me/player/volume?volume_percent=${cfg.qVolume}${dq}`));
     const n = opts.repeat || 1, len = (opts.dauer || 10) * 1000, gap = (opts.gap ?? 2.5) * 1000;
     snippetPlayed = true;
     log(`Musikfrage: ${uri} ab ${opts.start || 0} s, ${len / 1000} s${n > 1 ? `, ${n}×` : ''}`);
@@ -242,7 +256,8 @@ function snippet(uri, opts, stillWanted = () => true, onStart = () => {}) {
       await api('PUT', '/me/player/pause');
       if (k < n - 1) await wait(gap);
     }
-    await wait(900);   // der Ton kommt etwa so viel später aus dem Lautsprecher – so läuft der Balken am TV zu Ende
+    await wait(SNIP_TAIL_MS);   // der Ton kommt etwas später aus dem Lautsprecher – so läuft der Balken am TV zu Ende
+    if (volSet) await api('PUT', `/me/player/volume?volume_percent=${bgVol}${dq}`);
     current = 'pause';
     if (bgSaved) pausedByUs = true;
     return { ok: true };
@@ -289,10 +304,10 @@ function onPhase(phase, info = {}) {
 
 function status() {
   return { clientId: cfg.clientId || '', connected: !!cfg.refresh, user: cfg.user || null, product: cfg.product || null, device: cfg.device || null,
-    playlist: cfg.playlist || null, enabled: cfg.enabled !== false, blocked: !!env.hotspot(), log: logLines.slice(-30) };
+    playlist: cfg.playlist || null, qVolume: cfg.qVolume || null, enabled: cfg.enabled !== false, blocked: !!env.hotspot(), log: logLines.slice(-30) };
 }
 function forget() { cfg = { clientId: cfg.clientId, enabled: true }; save(); want = current = null; log('Verbindung getrennt.'); return { ok: true }; }
 async function test(action) { return action === 'pause' ? pause({ force: true }) : play({ start: true }); }
 function start(e) { env = { ...env, ...e }; }
 
-module.exports = { start, status, setClientId, loginUrl, callback, devices, selectDevice, setPlaylist, enable, forget, test, onPhase, snippet, ready, trackUri };
+module.exports = { setQuestionVolume, start, status, setClientId, loginUrl, callback, devices, selectDevice, setPlaylist, enable, forget, test, onPhase, snippet, ready, trackUri };

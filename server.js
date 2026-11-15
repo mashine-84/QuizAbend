@@ -1490,6 +1490,7 @@ const server = http.createServer(async (req, res) => {
     else if (a === 'devices') r = await spotify.devices();
     else if (a === 'select') r = spotify.selectDevice(body.device, body.name);
     else if (a === 'playlist') r = spotify.setPlaylist(body.link);
+    else if (a === 'qvolume') r = spotify.setQuestionVolume(body.volume);
     else if (a === 'enable') r = spotify.enable(body.on);
     else if (a === 'play' || a === 'pause') r = await spotify.test(a);
     else if (a === 'forget') r = spotify.forget();
