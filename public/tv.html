@@ -949,8 +949,9 @@ function renderSpotify() {
     <div class="pbar wide spot"><i id="apbar" style="width:0%"></i></div>
     ${n > 1 ? `<div class="icat" id="arep">1. Mal von ${n}</div>` : ''}</div>`;
   // Der Balken läuft erst los, wenn der Pi meldet, dass Spotify wirklich spielt (S.question.snip, je Wiederholung),
-  // plus SPOT_LAG – so lange braucht der Ton vom Befehl bis aus dem Lautsprecher.
-  const SPOT_LAG = 0.9;
+  // plus SPOT_LAG – so lange braucht der Ton vom Befehl bis aus dem Lautsprecher (das Gerät ist seit der
+  // Ankündigung schon wach, daher nur 0,3 s; gleicher Wert wie SNIP_TAIL_MS in spotify.js).
+  const SPOT_LAG = 0.3;
   let base = null, k = 0;
   const tick = setInterval(() => {
     const b = document.getElementById('apbar');
