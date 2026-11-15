@@ -288,6 +288,7 @@
   .iicon.sc { animation: pulse 1.2s ease-in-out infinite; }
   /* Spotify-Musikfrage: Spotify-Grün als Erkennungsfarbe */
   .spot { color: #1ed760 !important; }
+  .bicon { width: 1em; height: 1em; object-fit: contain; vertical-align: -0.12em; display: inline-block; }
   .eq.spot i { background: #1ed760 !important; }
   .pbar.spot i { background: #1ed760 !important; }
   .eq { display: flex; gap: .8vw; align-items: flex-end; height: 10vh; margin-top: 2vh; }
@@ -494,10 +495,12 @@ function ptsPill() {
   return pt ? `<span class="qpts">${pt}</span>` : '';
 }
 // Großer Titel im Kopf: die Frageart (die Kategorie steht wieder in der Fragekarte)
+// Icon einer Frage/Frageart: eigenes Bild (z. B. Spotify-Icon aus icons/), sonst das Emoji
+const bicon = (q, fallback = '') => q && q.iconImg ? `<img class="bicon" src="${q.iconImg}" alt="">` : (q && q.icon) || fallback;
 function qType(q) {
   const t = (icon, text) => `<span class="qico">${icon}</span>${text}`;
   if (q.tiebreak) return t('⚔️', 'Stechen um Platz 1');
-  if (q.brand === 'spotify') return t(q.icon || '🎵', `<span class="spot">${esc(q.label)}</span>`);
+  if (q.brand === 'spotify') return t(bicon(q), `<span class="spot">${esc(q.label)}</span>`);
   return q.label ? t(q.icon || '', esc(q.label)) : t('❓', 'Quizfrage');
 }
 function qSub() {
@@ -578,7 +581,7 @@ function renderOpening() {
     <div class="os"><div class="olabel anim" style="${an('oup', .5)}">Das kommt dran</div>
       <div class="ochips ${cats.length > 10 ? 'many' : ''}">${cats.map((c, i) => `<span class="anim" style="${an('opop', .45, .3 + i * (2.4 / Math.max(cats.length, 1)))}">${esc(c)}</span>`).join('')}${more > 0 ? `<span class="anim more" style="${an('opop', .45, 2.8)}">+ ${more} weitere</span>` : ''}</div>
       <div class="osub anim" style="${an('oup', .5, 2.9)}">Reihenfolge? Wird nicht verraten 🤫</div></div>
-    <div class="os"><div class="olabel anim" style="${an('oup', .5)}">So wird gefragt</div><div class="otypes">${o.types.map((t, i) => `<span class="anim" style="${calm(.35 + i * tStep)}"><i>${t.icon}</i>${esc(t.label)}</span>`).join('')}</div>
+    <div class="os"><div class="olabel anim" style="${an('oup', .5)}">So wird gefragt</div><div class="otypes">${o.types.map((t, i) => `<span class="anim" style="${calm(.35 + i * tStep)}"><i>${bicon(t)}</i>${esc(t.label)}</span>`).join('')}</div>
       ${o.special ? `<div class="ospecial anim" style="${calm(.6 + o.types.length * tStep, .8)}">⭐ Irgendwo versteckt: eine Spezialfrage mit ×${o.special} Punkten</div>` : ''}</div>
     <div class="os"><div class="olabel anim" style="${an('oup', .4)}">Mit dabei</div>
       <div class="oplayers">${players.map((p, i) => `<span class="anim" style="--pc:${p.color};${an('opop', .45, .15 + i * .12)}"><i>${p.avatar}</i>${esc(p.name)}</span>`).join('')}</div></div>
@@ -729,7 +732,7 @@ const mrow = (i, t, right, delay) => `<div class="mrow" id="mrow${i}" style="ani
 function renderIntro() {
   const q = S.question;
   app.innerHTML = qHead(false) + `<div class="intro">
-    <div class="iicon">${q.icon || '❓'}</div><div class="ilabel ${q.brand === 'spotify' ? 'spot' : ''}">${esc(q.label)}</div>
+    <div class="iicon">${bicon(q, '❓')}</div><div class="ilabel ${q.brand === 'spotify' ? 'spot' : ''}">${esc(q.label)}</div>
     <div class="icat">${esc(q.category)}</div><div class="inum" id="inum"></div></div>`;
 }
 
@@ -934,7 +937,7 @@ function renderSpotify() {
   const q = S.question, o = q.audioOpts || {}, key = S.qNum;
   const n = o.repeat || 1, len = o.dauer || 10, GAP = o.gap || 2.5, total = n * len + (n - 1) * GAP;
   app.innerHTML = `<div class="intro">
-    <div class="iicon sc">🎵</div><div class="ilabel spot">Hör genau hin!</div>
+    <div class="iicon sc">${bicon(q, '🎵')}</div><div class="ilabel spot">Hör genau hin!</div>
     <div class="icat" id="astat">Gleich geht's los …</div>
     <div class="eq spot">${Array.from({ length: 9 }, (_, i) => `<i style="animation-delay:${i * 0.11}s"></i>`).join('')}</div>
     <div class="pbar wide spot"><i id="apbar" style="width:0%"></i></div>

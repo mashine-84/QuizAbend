@@ -363,6 +363,14 @@ function spotifyUpdate() {
   spotify.onPhase(state.phase, { sound: !!(q && (q.audio || q.video || q.spotify)) });
 }
 
+// Eigene Icons (z. B. das Spotify-Icon für Spotify-Fragen): Datei icons/<name>.svg|png|webp neben server.js
+// (nicht im Git – Marken-Icons bringt der Besitzer selbst mit). Fehlt sie, bleibt das Emoji.
+const ICON_DIR = path.join(__dirname, 'icons');
+function brandIcon(name) {
+  for (const ext of ['svg', 'png', 'webp']) if (fs.existsSync(path.join(ICON_DIR, `${name}.${ext}`))) return `/icons/${name}.${ext}`;
+  return null;
+}
+
 function prepareQuestion(q) {
   const out = { ...q };
   if (q.kind === 'choice') {
@@ -387,7 +395,7 @@ function prepareQuestion(q) {
   if (q.flash) { out.label = 'Merkbild' + suffix; out.icon = '📸'; }
   else if (q.video) { out.label = 'Seh-Test' + suffix; out.icon = '👀'; }
   else if (q.audio) { out.label = 'Soundcheck' + suffix; out.icon = '🎧'; }
-  else if (q.spotify) { out.label = 'Spotify' + suffix; out.icon = '🎵'; out.brand = 'spotify'; }
+  else if (q.spotify) { out.label = 'Spotify' + suffix; out.icon = '🎵'; out.brand = 'spotify'; out.iconImg = brandIcon('spotify'); }
   else if (q.kind === 'match') { out.label = 'Zuordnung'; out.icon = '🔗'; }
   else if (q.kind === 'tf') { out.label = 'Richtig oder falsch'; out.icon = '⚖️'; }
   else if (q.kind === 'estimate') { out.label = q.image ? 'Bilderrätsel · Schätzfrage' : 'Schätzfrage'; out.icon = q.image ? '🖼️' : '🔢'; }
@@ -532,7 +540,7 @@ function openingInfo(questions) {
     ['audio', '🎧', 'Soundcheck', q => q.audio],
     ['spotify', '🎵', 'Spotify', q => q.spotify],
   ];
-  const types = T.filter(([, , , f]) => questions.some(f)).map(([id, icon, label]) => ({ id, icon, label }));
+  const types = T.filter(([, , , f]) => questions.some(f)).map(([id, icon, label]) => ({ id, icon, label, iconImg: id === 'spotify' ? brandIcon('spotify') : null }));
   return {
     blocks: blocks.filter(Boolean), questions: questions.length, categories: cats, types,
     special: settings.special && settings.special.on ? settings.special.mult : null,
@@ -967,6 +975,7 @@ function baseView() {
     if (ph === 'media' && q.spotify && state.snip) vq.snip = { k: state.snip.k, sinceMs: Date.now() - state.snip.at };
     if (ph === 'media') { vq.video = q.video || null; vq.audio = q.audio || null; vq.spotify = !!q.spotify; vq.audioOpts = q.audioOpts || null; vq.flash = q.flash ? q.image : null; }
     if (q.brand) vq.brand = q.brand;
+    if (q.iconImg) vq.iconImg = q.iconImg;
     if (ph !== 'intro' && ph !== 'media' && q.kind === 'match') vq.left = q.left;
     if (['question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
       vq.text = q.text; vq.image = q.flash ? null : q.image;   // Merkbild: in der Frage kein Bild mehr
@@ -1011,6 +1020,8 @@ function hostSolution() {
   const q = currentQuestion();
   if (!q || !['intro', 'media', 'preview', 'question', 'locked', 'special', 'votes', 'reveal'].includes(state.phase)) return null;
   const out = { kind: q.kind, text: q.text, category: q.category, label: q.label || null, icon: q.icon || null, special: state.pubSpecial === q.uid };
+  if (q.brand) out.brand = q.brand;
+  if (q.iconImg) out.iconImg = q.iconImg;
   if (q.kind === 'choice') { out.answers = q.answers; out.correct = q.correct; }
   if (q.kind === 'estimate') { out.value = q.value; out.unit = q.unit; out.year = q.year; out.tolerance = q.tolerance; }
   if (q.kind === 'match') out.pairs = q.left.map((l, i) => [l, q.right[q.solution[i]]]);
@@ -1284,6 +1295,12 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && p === '/qr.js') return serveFile(res, 'qr.js');
   if (req.method === 'GET' && p.startsWith('/media/')) return serveMedia(req, res, p.slice(7));
   if (req.method === 'GET' && p.startsWith('/sounds/')) return serveMusic(res, p.slice(8));
+  if (req.method === 'GET' && /^\/icons\/[a-z0-9-]+\.(svg|png|webp)$/.test(p)) {
+    const f = path.join(ICON_DIR, path.basename(p));
+    if (!fs.existsSync(f)) { res.writeHead(404); return res.end(); }
+    res.writeHead(200, { 'Content-Type': { svg: 'image/svg+xml', png: 'image/png', webp: 'image/webp' }[p.split('.').pop()], 'Cache-Control': 'max-age=3600' });
+    return fs.createReadStream(f).pipe(res);
+  }
 
   if (req.method === 'GET' && p === '/events') {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
