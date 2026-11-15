@@ -354,6 +354,15 @@
   @keyframes slide { from { opacity: 0; transform: translateX(-3vw); } }
 
   /* Ende */
+  /* Siegerehrung kompakt: weniger Abstände, Hinweis mit Sicherheitsabstand zum Bildrand */
+  .board.endb { justify-content: center; padding-bottom: 5vh; }   /* unten Sicherheitsabstand: Fernseher schneiden den Rand ab */
+  .board.endb.compact { padding-top: 0; }
+  .board.endb.compact h2 { margin-bottom: 1vh; }
+  .board.endb.compact .podium { margin: 1vh 0 1.8vh; }
+  .board.endb.compact .step .who { font-size: 1.7vw; }
+  .board.endb.compact .step .who .big { font-size: 4.2vw; }
+  .board.endb.compact .step .block { padding-top: 1.2vh; font-size: 3.4vw; }
+  .board.endb .hint { margin-top: 2.2vh; }
   .podium { display: flex; align-items: flex-end; justify-content: center; gap: 2vw; margin: 2vh 0 3vh; }
   .step { width: 16vw; display: flex; flex-direction: column; align-items: center; animation: rise .9s cubic-bezier(.2,.8,.2,1) both; }
   .step .who { font-size: 2vw; font-weight: 900; margin-bottom: 1vh; text-align: center; }
@@ -537,7 +546,7 @@ function render() {
   lastKey = key; lastPhase = S.phase;
   frozenOverlay(); systemOverlay();
 
-  document.getElementById('status').style.display = (!KIOSK && (S.phase === 'lobby' || S.phase === 'end')) ? '' : 'none';
+  document.getElementById('status').style.display = (!KIOSK && S.phase === 'lobby') ? '' : 'none';
   if (S.phase === 'lobby') { prevScores = {}; return renderLobby(); }
   if (S.phase === 'ident') return fresh ? renderIdent() : null;
   if (S.phase === 'opening') return fresh ? renderOpening() : null;
@@ -943,8 +952,9 @@ function renderSpotify() {
     <div class="pbar wide spot"><i id="apbar" style="width:0%"></i></div>
     ${n > 1 ? `<div class="icat" id="arep">1. Mal von ${n}</div>` : ''}</div>`;
   // Der Balken läuft erst los, wenn der Pi meldet, dass Spotify wirklich spielt (S.question.snip, je Wiederholung),
-  // plus SPOT_LAG – so lange braucht der Ton vom Befehl bis aus dem Lautsprecher.
-  const SPOT_LAG = 0.9;
+  // plus SPOT_LAG – so lange braucht der Ton vom Befehl bis aus dem Lautsprecher (das Gerät ist seit der
+  // Ankündigung schon wach, daher nur 0,3 s; gleicher Wert wie SNIP_TAIL_MS in spotify.js).
+  const SPOT_LAG = 0.3;
   let base = null, k = 0;
   const tick = setInterval(() => {
     const b = document.getElementById('apbar');
@@ -1417,11 +1427,14 @@ const fmtScore = n => Number.isInteger(n) ? String(n) : String(n).replace('.', '
 function renderEnd() {
   shot(winSound, 0.9);
   // Plätze mit Gleichstand: gleiche Punkte = gleicher Platz und gleich hohes Treppchen
-  const P = S.players, order = [1, 0, 2], heights = { 1: '34vh', 2: '24vh', 3: '17vh' };
+  // Mit Sonderpreisen oder weiteren Plätzen wird das Podest niedriger – sonst ragt der Hinweis unten aus dem Bild
+  // (am Fernseher schneidet der Rand oft noch etwas ab)
+  const P = S.players, order = [1, 0, 2], compact = (S.awards || []).length > 0 || P.length > 3;
+  const heights = compact ? { 1: '28vh', 2: '20vh', 3: '14vh' } : { 1: '34vh', 2: '24vh', 3: '17vh' };
   const winners = P.filter(p => p.place === 1).map(p => esc(p.name));
   const title = !P.length ? 'Spiel vorbei' : winners.length > 1 ? `${winners.slice(0, -1).join(', ')} & ${winners[winners.length - 1]} gewinnen gemeinsam!` : `${winners[0]} gewinnt!`;
   app.innerHTML = topbar(`<span class="pill">Spiel vorbei</span>`) + `
-    <div class="board"><h2>🏆 ${title}</h2>
+    <div class="board endb ${compact ? 'compact' : ''}"><h2>🏆 ${title}</h2>
       <div class="podium">${order.filter(i => P[i]).map(i => `
         <div class="step" style="--pc:${P[i].color};animation-delay:${(2 - i) * 0.35}s">
           <div class="who"><div class="big">${P[i].avatar}</div>${esc(P[i].name)}</div>

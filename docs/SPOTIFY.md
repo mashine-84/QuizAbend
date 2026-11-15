@@ -89,9 +89,11 @@ Neben der Hintergrundmusik kann Spotify auch **Musikfragen** spielen: Ein Aussch
 
 **Eigenes Icon:** Statt 🎵 kann bei Spotify-Fragen ein Bild als Icon stehen (Ankündigung, Kopf, „So wird gefragt“, Handy). Dafür im **Fragen-Repo** (privat) eine Datei **`icons/spotify.svg`** (oder `.png`/`.webp`) anlegen – auf GitHub: *Add file › Upload files*, Ordner `icons`. Mit „Update holen“ kommt sie auf den Pi. Geeignet ist z. B. das offizielle Spotify-Icon aus den Spotify-Markenressourcen oder aus einem Icon-Paket. Ins öffentliche App-Repo kommen keine Marken-Icons (dort ist `icons/` nur lokal und gitignored); fehlt die Datei, bleibt 🎵.
 
+**Lautstärke:** In den Spotify-Einstellungen lässt sich eine eigene **Lautstärke bei Spotify-Fragen** einstellen (z. B. 80 %). Während der Ausschnitt läuft, stellt das Quiz sie ein, danach wieder die Lautstärke der Hintergrundmusik. Ganz links = nicht ändern. Geht nur bei Geräten, die Lautstärke über Spotify erlauben.
+
 **Gut zu wissen:**
 - **Spoiler-Gefahr:** Das Display des Receivers und die Spotify-App auf Handys mit deinem Konto zeigen Titel und Interpret. Display dimmen oder abdecken.
-- Zwischen Befehl und Ton liegt etwa eine halbe bis eine Sekunde – der Start sitzt nicht auf die Hundertstel genau.
+- Der Balken am Fernseher startet, sobald Spotify das Abspielen bestätigt, plus 0,3 s bis zum Lautsprecher (`SPOT_LAG` in `tv.html`, `SNIP_TAIL_MS` in `spotify.js`). Weil das Gerät schon bei der Ankündigung angesprochen wird, ist es dann wach und reagiert schnell.
 - **Ohne Spotify** (nicht verbunden, kein Gerät gewählt, eigenes WLAN) werden diese Fragen beim Zusammenstellen des Spiels übersprungen – es gibt keine kaputten Fragen.
 - `pruefen.js` prüft Link, Dauer und Ablageort.
 

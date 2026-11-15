@@ -219,8 +219,9 @@
   .btn.danger { background: #e5484d; color: #fff; }
   .repobox { background: rgba(255,255,255,.06); border-radius: 12px; padding: 10px 12px; margin: 8px 0 10px; word-break: break-all; }
   .repobox small { display: block; color: var(--muted); margin-top: 2px; word-break: normal; }
-  .spot { color: #1ed760; }
-  .bicon { width: 1em; height: 1em; object-fit: contain; vertical-align: -0.12em; display: inline-block; } .center.spot h1 { color: #1ed760; }   /* Spotify-Musikfrage */
+  .spot { color: #1ed760; } .center.spot h1 { color: #1ed760; }   /* Spotify-Musikfrage */
+  .bicon { width: 1em; height: 1em; object-fit: contain; vertical-align: -0.12em; display: inline-block; }
+  .range { width: 100%; accent-color: #1ed760; margin: 6px 0 2px; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .hline { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; margin: 6px 0; color: var(--muted); }
   .hline > span:first-child { width: 18px; flex: none; text-align: center; }
@@ -712,6 +713,11 @@ function spotifySection() {
         <input id="spplaylist" class="field" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Spotify-Link: Teilen › Link kopieren" value="${esc(sp.playlist ?? (st.playlist ? 'https://open.spotify.com/' + st.playlist.split(':').slice(1).join('/') : ''))}" oninput="ui.spotify.playlist = this.value">
         <button class="btn ghost sm" onclick="spotifyDo('playlist', { link: ui.spotify.playlist ?? '' })">Playlist speichern</button>
         <p class="small">Ohne Playlist spielt Spotify zum Spielstart weiter, was zuletzt lief.</p>
+        <label class="fieldlabel" for="spvol">Lautstärke bei Spotify-Fragen <small id="spvolv">${st.qVolume ? st.qVolume + ' %' : 'wie die Hintergrundmusik'}</small></label>
+        <input id="spvol" class="range" type="range" min="0" max="100" step="5" value="${st.qVolume || 0}"
+          oninput="document.getElementById('spvolv').textContent = this.value > 0 ? this.value + ' %' : 'wie die Hintergrundmusik'"
+          onchange="spotifyDo('qvolume', { volume: Number(this.value) })">
+        <p class="small">Während der Song-Ausschnitt läuft, stellt das Quiz diese Lautstärke ein und danach wieder die vorherige. Ganz links = nicht ändern.</p>
         <div class="row2"><button class="btn ghost sm" onclick="spotifyDo('play')">▶️ Test: Abspielen</button><button class="btn ghost sm" onclick="spotifyDo('pause')">⏸ Test: Pause</button></div>` : ''}
       <button class="btn danger sm" onclick="spotifyForget(this)">Spotify trennen</button>`;
   }
@@ -721,7 +727,7 @@ function spotifySection() {
 async function spotifyDo(action, extra) {
   const { data } = await post('/api/spotify', { id: myId, action, ...(extra || {}) });
   if (data.status) ui.spotify.st = data.status;
-  ui.spotify.msg = data.ok ? (action === 'play' ? { ok: true, text: 'Spielt ✓' } : action === 'pause' ? { ok: true, text: data.wasPlaying ? 'Pausiert ✓' : (data.text || 'Es lief gerade nichts.') } : action === 'playlist' ? { ok: true, text: 'Gespeichert ✓' } : null)
+  ui.spotify.msg = data.ok ? (action === 'play' ? { ok: true, text: 'Spielt ✓' } : action === 'pause' ? { ok: true, text: data.wasPlaying ? 'Pausiert ✓' : (data.text || 'Es lief gerade nichts.') } : action === 'playlist' || action === 'qvolume' ? { ok: true, text: 'Gespeichert ✓' } : null)
     : { ok: false, text: data.text || 'Hat nicht geklappt.' };
   lastKey = ''; render();
   return data;
