@@ -15,6 +15,7 @@ Deutsches Party-Quiz: Der Fernseher (`public/tv.html`) zeigt das Spiel, die Hand
 - **Hue-Bridge**: höchstens ~1 Befehl pro Sekunde für die Gruppe (`groupSend`-Warteschlange).
 - OLED-Fernseher: feste, helle Elemente vermeiden, wo es geht.
 - **Symbole:** Font Awesome Free über `public/icons.js` (erzeugt von `public/icons-erzeugen.py`). Im Code Emojis schreiben – eingetragene Emojis werden beim Anzeigen automatisch getauscht; fehlt eins, in `EMOJI` im Erzeuger eintragen und neu erzeugen. Direkt: `ic('spotify', '#1DB954')`. Avatare bleiben Emojis.
+- **Karten** (Geografie-Fragen, `kind` `pin`/`land`): `public/karte.js` (Fernseher + Handy), Daten `public/karten/*.json`, erzeugt mit `node karten/erzeugen.js` – nichts davon braucht Internet.
 - **Eigenes WLAN (Hotspot) = kein Internet:** Hue, https, Spotify (und alles, was Internet oder das Heimnetz braucht) sind dort abgeschaltet; `hotspot()` im Server.
 
 ## Spielablauf (Phasen in `server.js`)

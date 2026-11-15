@@ -132,6 +132,19 @@
   .hint { text-align: center; font-size: 14px; margin-bottom: 10px; }
   .center.top { justify-content: flex-start; padding-top: 10px; }
   /* Schätzen */
+  /* Geografie */
+  .kcard { background: #fff; color: #1b1440; border-radius: 14px; padding: 10px 14px; text-align: center; font-weight: 900; font-size: 19px; margin: 6px 0 10px; }
+  .kmap { position: relative; flex: 1; min-height: 260px; border-radius: 14px; overflow: hidden; background: #1d2c55; border: 2px solid rgba(255,255,255,.12); }
+  .kmap svg { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+  .kload { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); }
+  .kmeer { fill: #1d2c55; } .kbg { fill: #2b2855; stroke: #4a4580; stroke-width: .5; vector-effect: non-scaling-stroke; }
+  .krg { fill: #3a3570; stroke: #8b85c8; stroke-width: 1; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+  .ksmall { fill: rgba(245,176,20,.12); stroke: rgba(245,176,20,.7); stroke-width: 1.2; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; }
+  .krg.sel { fill: var(--pc); stroke: #fff; stroke-width: 2.5; } .krg.selsh { fill: rgba(0,0,0,.55); stroke: none; }
+  .ksel { fill: var(--pc); stroke: #fff; stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+  .kzoom { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .kzoom button { width: 42px; height: 42px; border-radius: 12px; border: none; background: rgba(0,0,0,.5); color: #fff; font: inherit; font-size: 22px; font-weight: 900; }
+  .khelp { font-size: 13px; color: var(--muted); text-align: center; margin: 8px 4px; }
   .est { flex: 1; display: flex; flex-direction: column; gap: 12px; }
   .display { background: #fff; color: #1b1440; border-radius: 16px; padding: 16px; text-align: center; font-size: 40px; font-weight: 900; min-height: 82px; display: flex; align-items: baseline; justify-content: center; gap: 8px; font-variant-numeric: tabular-nums; }
   .display small { font-size: 20px; color: #6a5acd; }
@@ -262,6 +275,7 @@
 <header id="hdr" style="display:none"><span class="av" id="hAv"></span><span id="hName"></span><span class="score" id="hScore">0</span><button class="hostbtn" id="hostBtn" style="display:none" onclick="openSettings()">⚙️</button></header>
 <main id="main"></main>
 <script src="/icons.js"></script>
+<script src="/karte.js"></script>
 <script>
 // ---------- Bildschirm wach halten, solange die Seite offen ist ----------
 // 1. Wake-Lock-API (nur bei https/localhost verfügbar), 2. sonst ein stummes Endlos-Video.
@@ -312,6 +326,7 @@ let serverVersion = null, lastQ = null, lastPh = null;
 let S = null, es = null, lastKey = '', joining = false, sending = false;
 let shutdown = null;                             // Ausschalten läuft: { since, goneAt, misses, timer }
 let ui = { settings: false, packs: null, edit: null, avatar: null, host: false, renaming: null, sys: null, confirm: null }; // Einstellungen (nur 👑), Emoji-Wahl
+let geo = null, geoMap = null;                 // Kartenfrage: gewählter Punkt [Breite, Länge] bzw. Gebiet
 let est = '';                                  // Schätzfrage: Eingabe
 let match = { sel: [], active: 0 };
 let tfMarks = [];                                // Richtig oder falsch: true/false/null je Aussage            // Zuordnen: sel[slot] = Index im rechten Begriff
@@ -448,7 +463,7 @@ function render() {
   const lobbyKey = S.phase === 'lobby' ? [S.players.filter(p => p.connected).length, JSON.stringify(S.packs), ui.settings].join(',') : '';
   const joinKey = me ? '' : (S.taken || S.players.map(p => p.avatar)).join('');
   const hostKey = ui.host ? [S.players.map(p => p.id + p.name + p.connected).join(','), ui.renaming].join('|') : '';
-  const key = [joinKey, hostKey, ui.host, S.frozen, JSON.stringify(S.system), S.kicked, S.phase, S.qNum, me ? me.id : '-', me && JSON.stringify(me.answer && (me.answer.choice ?? me.answer.value ?? me.answer.order)),
+  const key = [joinKey, hostKey, ui.host, S.frozen, JSON.stringify(S.system), S.kicked, S.phase, S.qNum, me ? me.id : '-', me && JSON.stringify(me.answer && (me.answer.choice ?? me.answer.value ?? me.answer.order ?? me.answer.pos ?? me.answer.region)),
     me && me.isVip, lobbyKey, S.question && S.question.step,
     me && me.isHost ? S.players.map(p => (p.answered ? 1 : 0) + (p.connected ? 'c' : '')).join('') + JSON.stringify(me.hostQ) : ''].join('|');
   if (key === lastKey) return; // nichts Relevantes geändert (Eingaben nicht zerstören)
@@ -491,9 +506,9 @@ function render() {
   if (S.phase === 'preview') return renderInfo('👀', 'Merk dir die Begriffe!', 'Gleich musst du ihnen auf dem Handy die richtigen Partner zuordnen.');
   if (S.phase === 'question') {
     if (me.answer) return renderWaiting(waitingFor(me.answer));
-    if (newQuestion) { est = ''; match = { sel: (S.question.left || []).map(() => null), active: 0 }; tfMarks = (S.question.statements || []).map(() => null); if (navigator.vibrate) navigator.vibrate([60, 40, 60]); }
+    if (newQuestion) { est = ''; geo = null; match = { sel: (S.question.left || []).map(() => null), active: 0 }; tfMarks = (S.question.statements || []).map(() => null); if (navigator.vibrate) navigator.vibrate([60, 40, 60]); }
     const k = S.question.kind;
-    return k === 'estimate' ? renderEstimate() : k === 'match' ? renderMatch() : k === 'tf' ? renderTF() : renderChoice();
+    return k === 'estimate' ? renderEstimate() : k === 'match' ? renderMatch() : k === 'tf' ? renderTF() : k === 'pin' || k === 'land' ? renderGeoQ() : renderChoice();
   }
   if (S.phase === 'votes') return renderVotes();
   if (S.phase === 'reveal') {
@@ -512,6 +527,8 @@ function render() {
 }
 
 function waitingFor(a) {
+  if (a.pos) return '<div class="big">📍</div>';
+  if (a.region) return '<div class="big">🗺️</div>';
   if (a.choice !== undefined) return chosenHtml(a.choice);
   if (a.value !== undefined) return `<div class="bigval">${fmt(a.value)}${S.question.unit ? ' ' + esc(S.question.unit) : ''}</div>`;
   if (a.marks) return '<div class="big">⚖️</div>';
@@ -950,7 +967,7 @@ function setSpecial(on) { cfg().special.on = on; saveCfg(); }
 function setMult(m) { cfg().special.mult = m; saveCfg(); }
 
 function kindIcons(k) {
-  return [k.choice && '❓', k.image && '🖼️', k.estimate && '🔢', k.match && '🔗', k.tf && '⚖️'].filter(Boolean).join(' ');
+  return [k.choice && '❓', k.image && '🖼️', k.estimate && '🔢', k.match && '🔗', k.tf && '⚖️', k.map && '🗺️'].filter(Boolean).join(' ');
 }
 const stepper = (label, value, minus, plus) =>
   `<div class="pergame"><span>${label}</span><button onclick="${minus}">−</button><b>${value}</b><button onclick="${plus}">+</button></div>`;
@@ -1187,6 +1204,7 @@ function renderModerator() {
     if (h.kind === 'choice') sol = `<div class="msol">${h.answers.map((a, i) => `<div class="${i === h.correct ? 'ok' : ''}"><span>${SHAPES[i]}</span> ${esc(a)}${i === h.correct ? ' ✓' : ''}</div>`).join('')}</div>`;
     if (h.kind === 'estimate') sol = `<div class="msol"><div class="ok">Lösung: ${fmt(h.value)}${h.unit ? ' ' + esc(h.unit) : ''}${h.tolerance !== null && h.tolerance !== undefined ? ` <small>(Punkte bis ±${fmt(h.tolerance)})</small>` : ''}</div></div>`;
     if (h.kind === 'tf') sol = `<div class="msol">${h.items.map(([t, ok], i) => `<div class="${ok ? 'ok' : 'no'}"><span>${i + 1}</span> ${esc(t)} <b>${ok ? '✓ richtig' : '✗ falsch'}</b></div>`).join('')}</div>`;
+    if (h.solution) sol = `<div class="msol"><div class="ok">Lösung: ${esc(h.solution)}</div></div>`;
     if (h.kind === 'match') sol = `<div class="msol">${h.pairs.map(([a, b], i) => `<div class="ok"><span>${i + 1}</span> ${esc(a)} → ${esc(b)}</div>`).join('')}</div>`;
   }
   const showAnswered = ['question', 'locked'].includes(ph);
@@ -1318,6 +1336,26 @@ function sendEstimate() {
   sendAnswer({ value }, waitingFor({ value }));
 }
 
+// ---------- Geografie: Karte zum Zoomen, Tippen setzt den Pin bzw. wählt das Land ----------
+function renderGeoQ() {
+  const q = S.question, me = S.me, pin = q.kind === 'pin';
+  main.innerHTML = qline() + `<div class="kcard">${esc(q.text)}</div>
+    <div class="kmap" id="kmap"><div class="kload">Karte lädt …</div></div>
+    <p class="khelp">${pin ? 'Tippen setzt den Pin – nochmal tippen versetzt ihn.' : 'Tippe auf das ' + (q.map === 'deutschland' ? 'Bundesland' : 'Land') + '. Kleine Länder haben einen Kreis.'} Zoomen mit zwei Fingern oder ＋/－.</p>
+    <button class="btn" id="kgo" onclick="sendGeo()" ${geo ? '' : 'disabled'}>${pin ? '📍 Hier ist es' : '✓ Dieses ' + (q.map === 'deutschland' ? 'Bundesland' : 'Land')}</button>`;
+  const host = document.getElementById('kmap'), qn = S.qNum;
+  loadKarte(q.map).then(m => {
+    if (!document.contains(host) || S.qNum !== qn) return;
+    geoMap = kMount(host, m, { mode: pin ? 'pin' : 'land', color: me.color, avatar: me.avatar, value: geo,
+      onPick: v => { geo = v; const b = document.getElementById('kgo'); if (b) b.disabled = !v; } });
+  }).catch(() => { host.innerHTML = '<div class="kload">Karte fehlt – bitte „Update holen“.</div>'; });
+}
+function sendGeo() {
+  if (!geo) return;
+  const q = S.question;
+  sendAnswer(q.kind === 'pin' ? { pos: geo } : { region: geo }, waitingFor(q.kind === 'pin' ? { pos: geo } : { region: geo }));
+}
+
 function renderMatch() {
   const q = S.question, used = new Set(match.sel.filter(x => x !== null));
   const complete = match.sel.every(x => x !== null);
@@ -1390,7 +1428,16 @@ function renderResult() {
   const r = S.me.result || { answered: false };
   const q = S.question;
   let cls, title, detail;
-  if (q.kind === 'estimate') {
+  if (q.kind === 'pin') {
+    cls = !r.answered ? 'none' : r.correct ? 'ok' : r.gain ? 'mid' : 'bad';
+    title = !r.answered ? 'Kein Pin' : r.correct ? (r.km < 15 ? 'Volltreffer! 🎯' : 'Am nächsten dran! 🎉') : r.gain ? 'Nicht schlecht!' : 'Daneben';
+    detail = `<p>${q.name ? `<b>${esc(q.name)}</b><br>` : ''}${r.answered ? `Du lagst <b>${kKm(r.km)}</b> daneben` : ''}${r.outOfRange ? `<br><small>mehr als ${kKm(q.range)} – keine Punkte</small>` : ''}</p>`;
+  } else if (q.kind === 'land') {
+    cls = !r.answered ? 'none' : r.correct ? 'ok' : 'bad';
+    title = !r.answered ? 'Zu langsam!' : r.correct ? 'Richtig! 🎉' : 'Leider falsch';
+    const mine = r.answered && q.picks ? (q.picks.find(x => x.id === S.me.id) || {}).n : '';
+    detail = `<p>Gesucht: <b>${esc(q.name)}</b>${mine && !r.correct ? `<br>Du: ${esc(mine)}` : ''}</p>`;
+  } else if (q.kind === 'estimate') {
     const unit = q.unit ? ' ' + esc(q.unit) : '';
     cls = !r.answered ? 'none' : r.correct ? 'ok' : r.gain ? 'mid' : 'bad';
     title = !r.answered ? 'Keine Schätzung' : r.exact ? 'Exakt! 🎯' : r.correct ? 'Am nächsten dran! 🎉' : r.gain ? 'Nicht schlecht!' : 'Daneben';

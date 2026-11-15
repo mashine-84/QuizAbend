@@ -21,7 +21,9 @@ const INTRO_MS = 3000;         // Ankündigung mit Countdown 3-2-1
 const PREVIEW_MS = 6000;       // Zuordnen: Begriffe vorab zeigen
 const VOTES_MS = 3500;         // erst zeigen, wer was gewählt hat …
 const REVEAL_MS = 5000;        // … dann die Lösung
-const ESTIMATE_REVEAL_MS = 11500; // Schätzfrage: Zahl läuft erst wie eine Slotmaschine, dann die Liste
+const ESTIMATE_REVEAL_MS = 11500;
+const MAP_REVEAL_MS = 8000;       // Karte: Ring, Linien und Liste
+const MAP_VOTES_MS = 5000;        // Karte: Pins fallen nacheinander bzw. Länder färben sich // Schätzfrage: Zahl läuft erst wie eine Slotmaschine, dann die Liste
 const MATCH_STEP_MS = 2200;    // Zuordnen: Paar für Paar auflösen
 const SCORES_MS = 15000;        // Balken bauen sich auf, dann sortieren sich alle ein
 const SCORES_EVERY = Number(process.env.RANGLISTE) || 0; // Rangliste nur am Blockende (optional zusätzlich alle X Fragen)
@@ -103,6 +105,32 @@ function resolveImage(dir, name, sub = 'bilder', types = IMAGE_TYPES) {
 }
 
 // Schätzfragen mit Pegel-Anzeige: Gewichte immer, Längen nur bei Höhen ("Wie hoch …", "Höhe", "Wie groß …")
+// ---------- Geografie: Karten (public/karten/*.json, erzeugt von karten/erzeugen.js) ----------
+const KARTEN_DIR = path.join(__dirname, 'public', 'karten');
+const KARTEN_NAMEN = require('./karten/namen.js');
+const KARTEN = {};   // name -> { regions: Map(id -> {n, c}), cos, k, lon0 }
+for (const f of (() => { try { return fs.readdirSync(KARTEN_DIR); } catch (_) { return []; } })()) {
+  if (!f.endsWith('.json')) continue;
+  try {
+    const m = JSON.parse(fs.readFileSync(path.join(KARTEN_DIR, f), 'utf8'));
+    KARTEN[m.name] = { title: m.title, regions: new Map(m.regions.map(r => [r.id, { n: r.n }])) };
+  } catch (e) { console.log('  Karte ' + f + ' nicht lesbar: ' + e.message); }
+}
+// Wie weit daneben noch Punkte gibt (km): Welt grob, Deutschland fein
+const MAP_RANGE_KM = { welt: 2500, europa: 1000, deutschland: 250 };
+const MAP_TIME_MS = Math.round(QUESTION_TIME_MS * 1.25);   // Karte zoomen und tippen dauert etwas länger
+function findRegion(map, name) {
+  const want = String(name).trim().toLowerCase(), k = KARTEN[map];
+  const alias = KARTEN_NAMEN.ALIAS[want];
+  for (const [id, r] of k.regions) if (id.toLowerCase() === want || r.n.toLowerCase() === want || id === alias) return id;
+  return null;
+}
+function kmBetween(a, b) {
+  const r = Math.PI / 180, dLat = (b[0] - a[0]) * r, dLon = (b[1] - a[1]) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
 const WEIGHT_UNIT = /^(mg|g|kg|t|gramm|kilo(gramm)?|tonnen?|pfund)$/i;
 const LENGTH_UNIT = /^(mm|cm|m|km|meter|zentimeter|kilometer)$/i;
 const HEIGHT_TEXT = /(?<![\wäöüß])(hoch|hohe[nrs]?|höhe|höher|groß|große[nrs]?)(?![\wäöüß])/i;   // \b kennt kein ß
@@ -180,9 +208,26 @@ function normalizeQuestion(q, dir, packName, packLevel) {
     const show = q.anzeige || (!year && value > 0 && (WEIGHT_UNIT.test(unit) || (LENGTH_UNIT.test(unit) && HEIGHT_TEXT.test(String(q.frage)))) ? 'pegel' : 'slot');
     return { ...base, kind: 'estimate', value, unit, year, tolerance, show };
   }
+  if (q.karte !== undefined) {
+    // Geografie: "ort": [Breite, Länge] -> Pin setzen; "land": "Österreich" -> Land/Bundesland antippen
+    const map = String(q.karte).toLowerCase();
+    if (!KARTEN[map]) throw new Error(`"karte" muss ${Object.keys(KARTEN).map(k => '"' + k + '"').join(', ') || 'eine vorhandene Karte'} sein`);
+    if (q.ort !== undefined) {
+      const o = Array.isArray(q.ort) ? q.ort.map(Number) : [];
+      if (o.length !== 2 || !(Math.abs(o[0]) <= 90) || !(Math.abs(o[1]) <= 180)) throw new Error('"ort" muss [Breite, Länge] sein, z. B. [45.76, 4.84] für Lyon');
+      if (q.toleranz !== undefined && !(Number(q.toleranz) > 0)) throw new Error('"toleranz" muss eine Entfernung in km über 0 sein');
+      return { ...base, kind: 'pin', map, target: o, name: q.name ? String(q.name) : '', range: q.toleranz !== undefined ? Number(q.toleranz) : MAP_RANGE_KM[map] || 1000 };
+    }
+    if (q.land !== undefined) {
+      const region = findRegion(map, q.land);
+      if (!region) throw new Error(`"${q.land}" gibt es auf der Karte "${map}" nicht${map === 'deutschland' ? ' (dort gibt es nur die Bundesländer)' : ''}`);
+      return { ...base, kind: 'land', map, region, name: KARTEN[map].regions.get(region).n };
+    }
+    throw new Error('Kartenfrage braucht "ort": [Breite, Länge] oder "land": "Name"');
+  }
   if (Array.isArray(q.antworten) && q.antworten.length >= 2)
     return { ...base, kind: 'choice', answers: q.antworten.slice(0, 4).map(String) };
-  throw new Error('es fehlen "antworten", "schaetzen", "zuordnen" oder "behauptungen"');
+  throw new Error('es fehlen "antworten", "schaetzen", "zuordnen", "behauptungen" oder "karte"');
 }
 
 function loadPacks() {
@@ -203,6 +248,7 @@ function loadPacks() {
     const kinds = {
       choice: questions.some(q => q.kind === 'choice' && !q.image), image: questions.some(q => q.image),
       estimate: questions.some(q => q.kind === 'estimate'), match: questions.some(q => q.kind === 'match'), tf: questions.some(q => q.kind === 'tf'),
+      map: questions.some(q => q.kind === 'pin' || q.kind === 'land'),
     };
     const levels = [1, 2, 3].map(l => questions.filter(q => q.level === l).length);
     found.push({ id: rel.replace(/\\/g, '/').replace(/\.json$/i, ''), group, name, questions, kinds, levels });
@@ -411,11 +457,13 @@ function prepareQuestion(q) {
   else if (q.video) { out.label = 'Seh-Test' + suffix; out.icon = '👀'; }
   else if (q.audio) { out.label = 'Soundcheck' + suffix; out.icon = '🎧'; }
   else if (q.spotify) { out.label = 'Spotify' + suffix; out.icon = '🎵'; out.brand = 'spotify'; }
+  else if (q.kind === 'pin') { out.label = 'Wo liegt das?'; out.icon = '📍'; }
+  else if (q.kind === 'land') { out.label = q.map === 'deutschland' ? 'Welches Bundesland?' : 'Welches Land?'; out.icon = '🗺️'; }
   else if (q.kind === 'match') { out.label = 'Zuordnung'; out.icon = '🔗'; }
   else if (q.kind === 'tf') { out.label = 'Richtig oder falsch'; out.icon = '⚖️'; }
   else if (q.kind === 'estimate') { out.label = q.image ? 'Bilderrätsel · Schätzfrage' : 'Schätzfrage'; out.icon = q.image ? '🖼️' : '🔢'; }
   else if (q.image) { out.label = 'Bilderrätsel'; out.icon = '🖼️'; }
-  out.timeMs = q.timeMs || (q.kind === 'match' ? MATCH_TIME_MS : q.kind === 'tf' ? TF_TIME_MS : QUESTION_TIME_MS);
+  out.timeMs = q.timeMs || (q.kind === 'match' ? MATCH_TIME_MS : q.kind === 'tf' ? TF_TIME_MS : q.kind === 'pin' || q.kind === 'land' ? MAP_TIME_MS : QUESTION_TIME_MS);
   return out;
 }
 
@@ -551,6 +599,8 @@ function openingInfo(questions) {
     ['estimate', '🔢', 'Schätzfragen', q => q.kind === 'estimate' && !q.image && !q.video && !q.audio && !q.spotify],
     ['match', '🔗', 'Zuordnung', q => q.kind === 'match' && !q.video && !q.audio && !q.spotify],
     ['tf', '⚖️', 'Richtig oder falsch', q => q.kind === 'tf' && !q.video && !q.audio && !q.spotify],
+    ['pin', '📍', 'Wo liegt das?', q => q.kind === 'pin'],
+    ['land', '🗺️', 'Länder auf der Karte', q => q.kind === 'land'],
     ['video', '👀', 'Seh-Test', q => q.video],
     ['audio', '🎧', 'Soundcheck', q => q.audio],
     ['spotify', '🎵', 'Spotify', q => q.spotify],
@@ -640,7 +690,7 @@ const stepCount = q => q.kind === 'match' ? q.left.length : q.kind === 'tf' ? q.
 
 function showAnswers() {
   if (stepCount(currentQuestion())) reveal();
-  else setPhase('votes', VOTES_MS, reveal);
+  else setPhase('votes', ['pin', 'land'].includes(currentQuestion().kind) ? MAP_VOTES_MS : VOTES_MS, reveal);
 }
 
 // ---------- Auszeichnungen bei der Siegerehrung: Statistik je Spieler während des Spiels ----------
@@ -652,7 +702,7 @@ function recordStats() {
     const st = state.stats[p.id] || (state.stats[p.id] = { times: [], streak: 0, best: 0, late: 0, est: null });
     const a = state.answers[p.id], r = state.results[p.id], ok = !!(r && r.correct);
     const left = a ? Math.max(0, state.answerEnds - a.at) : 0;
-    if (a && ok && q.kind !== 'estimate') st.times.push(q.timeMs - left);
+    if (a && ok && q.kind !== 'estimate' && q.kind !== 'pin') st.times.push(q.timeMs - left);
     st.streak = ok ? st.streak + 1 : 0; st.best = Math.max(st.best, st.streak);
     if (a && ok && left <= 3000) st.late++;
     if (a && q.kind === 'estimate') {
@@ -710,6 +760,25 @@ function scoreQuestion() {
       p.score += gain;
       state.results[p.id] = { gain, correct: closest, exact: diff === 0, answered: true, value: a.value, outOfRange: !inRange(diff) };
     }
+  } else if (q.kind === 'pin') {
+    // Wie eine Schätzfrage: je näher, desto mehr (bis 800), der Nächste +200. Ab "range" km gibt es nichts.
+    const dists = list.map(p => state.answers[p.id]).filter(Boolean).map(a => kmBetween(a.pos, q.target)).filter(d => d <= q.range);
+    const best = dists.length ? Math.min(...dists) : null;
+    for (const p of list) {
+      const a = state.answers[p.id];
+      if (!a) { streakBonus(p, false); state.results[p.id] = { gain: 0, correct: false, answered: false }; continue; }
+      const d = kmBetween(a.pos, q.target), closest = best !== null && d === best;
+      const gain = round10(800 * Math.max(0, 1 - d / q.range)) + (closest ? 200 : 0) + streakBonus(p, closest);
+      p.score += gain;
+      state.results[p.id] = { gain, correct: closest, answered: true, km: Math.round(d * 10) / 10, outOfRange: d > q.range };
+    }
+  } else if (q.kind === 'land') {
+    for (const p of list) {
+      const a = state.answers[p.id], ok = !!a && a.region === q.region;
+      const gain = ok ? round10(500 + 500 * speed(a)) + streakBonus(p, true) : (streakBonus(p, false), 0);
+      p.score += gain;
+      state.results[p.id] = { gain, correct: ok, answered: !!a, region: a ? a.region : null };
+    }
   } else if (q.kind === 'match') {
     for (const p of list) {
       const a = state.answers[p.id];
@@ -755,6 +824,23 @@ function scoreByLevel(q) {
       const gain = closest ? lv : 0;
       p.score += gain;
       state.results[p.id] = { gain, correct: closest, exact: diff === 0, answered: true, value: a.value, outOfRange: !inRange(diff) };
+    }
+  } else if (q.kind === 'pin') {
+    // Wer am nächsten dran ist (innerhalb von "range" km), bekommt die Punkte der Schwierigkeit
+    const dists = list.map(p => state.answers[p.id]).filter(Boolean).map(a => kmBetween(a.pos, q.target)).filter(d => d <= q.range);
+    const best = dists.length ? Math.min(...dists) : null;
+    for (const p of list) {
+      const a = state.answers[p.id];
+      if (!a) { state.results[p.id] = { gain: 0, correct: false, answered: false }; continue; }
+      const d = kmBetween(a.pos, q.target), closest = best !== null && d === best, gain = closest ? lv : 0;
+      p.score += gain;
+      state.results[p.id] = { gain, correct: closest, answered: true, km: Math.round(d * 10) / 10, outOfRange: d > q.range };
+    }
+  } else if (q.kind === 'land') {
+    for (const p of list) {
+      const a = state.answers[p.id], ok = !!a && a.region === q.region, gain = ok ? lv : 0;
+      p.score += gain;
+      state.results[p.id] = { gain, correct: ok, answered: !!a, region: a ? a.region : null };
     }
   } else if (q.kind === 'match') {
     for (const p of list) {
@@ -802,7 +888,7 @@ function reveal() {
       else setPhase('reveal', MATCH_STEP_MS, stepOn);
     };
     setPhase('reveal', 1200, stepOn);
-  } else setPhase('reveal', state.pub ? 0 : q.kind === 'estimate' ? ESTIMATE_REVEAL_MS : REVEAL_MS, state.pub ? null : afterReveal);
+  } else setPhase('reveal', state.pub ? 0 : q.kind === 'estimate' ? ESTIMATE_REVEAL_MS : q.kind === 'pin' || q.kind === 'land' ? MAP_REVEAL_MS : REVEAL_MS, state.pub ? null : afterReveal);
 }
 
 function afterReveal() {
@@ -997,6 +1083,8 @@ function baseView() {
       if (q.kind === 'match') vq.right = q.right;
       if (q.kind === 'tf') vq.statements = q.statements;
       if (q.kind === 'estimate') { vq.unit = q.unit; vq.year = q.year; vq.tolerance = q.tolerance; vq.show = q.show; }
+      if (q.kind === 'pin' || q.kind === 'land') vq.map = q.map;
+      if (q.kind === 'pin') vq.range = q.range;
     }
     if (ph === 'votes' || ph === 'reveal') {
       const byTime = Object.entries(state.answers).sort((a, b) => a[1].at - b[1].at);
@@ -1006,10 +1094,14 @@ function baseView() {
       }
       if (q.kind === 'estimate')
         vq.guesses = byTime.map(([id, a]) => ({ id, value: a.value })).sort((a, b) => a.value - b.value);
+      if (q.kind === 'pin') vq.pins = byTime.map(([id, a]) => ({ id, pos: a.pos }));
+      if (q.kind === 'land') vq.picks = byTime.map(([id, a]) => ({ id, region: a.region, n: KARTEN[q.map].regions.get(a.region).n }));
     }
     if (ph === 'reveal') {
       if (q.kind === 'choice') vq.correct = q.correct;
       if (q.kind === 'estimate') vq.value = q.value;
+      if (q.kind === 'pin') { vq.target = q.target; vq.name = q.name; }
+      if (q.kind === 'land') { vq.region = q.region; vq.name = q.name; }
       if (q.kind === 'match') { vq.solution = q.solution.slice(0, state.step); vq.step = state.step; }
       if (q.kind === 'tf') { vq.truths = q.truths.slice(0, state.step); vq.step = state.step; }
     }
@@ -1037,6 +1129,8 @@ function hostSolution() {
   if (q.brand) out.brand = q.brand;
   if (q.kind === 'choice') { out.answers = q.answers; out.correct = q.correct; }
   if (q.kind === 'estimate') { out.value = q.value; out.unit = q.unit; out.year = q.year; out.tolerance = q.tolerance; }
+  if (q.kind === 'pin') { out.solution = (q.name || 'Ort') + ` (${q.target[0].toFixed(2)}, ${q.target[1].toFixed(2)})`; }
+  if (q.kind === 'land') out.solution = q.name;
   if (q.kind === 'match') out.pairs = q.left.map((l, i) => [l, q.right[q.solution[i]]]);
   if (q.kind === 'tf') out.items = q.statements.map((t, i) => [t, q.truths[i]]);
   const next = state.questions[state.idx + 1];
@@ -1208,7 +1302,7 @@ function json(res, code, obj) {
   res.end(JSON.stringify(obj));
 }
 
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
+const MIME = { '.json': 'application/json; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
 
 function serveFile(res, file) {
   const full = path.join(__dirname, 'public', file);
@@ -1269,6 +1363,11 @@ function validAnswer(q, body) {
     const value = Number(String(body.value).replace(',', '.'));
     return body.value !== '' && isFinite(value) && Math.abs(value) < 1e12 ? { value } : null;
   }
+  if (q.kind === 'pin') {
+    const pos = Array.isArray(body.pos) ? body.pos.map(Number) : [];
+    return pos.length === 2 && Math.abs(pos[0]) <= 90 && Math.abs(pos[1]) <= 360 ? { pos: [pos[0], ((pos[1] + 540) % 360) - 180] } : null;
+  }
+  if (q.kind === 'land') return typeof body.region === 'string' && KARTEN[q.map].regions.has(body.region) ? { region: body.region } : null;
   if (q.kind === 'match') {
     const order = body.order, n = q.left.length;
     const ok = Array.isArray(order) && order.length === n && new Set(order).size === n && order.every(x => Number.isInteger(x) && x >= 0 && x < n);
@@ -1307,6 +1406,8 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && p === '/tv') return serveFile(res, 'tv.html');
   if (req.method === 'GET' && p === '/qr.js') return serveFile(res, 'qr.js');
   if (req.method === 'GET' && p === '/icons.js') return serveFile(res, 'icons.js');
+  if (req.method === 'GET' && p === '/karte.js') return serveFile(res, 'karte.js');
+  if (req.method === 'GET' && /^\/karten\/[a-z]+\.json$/.test(p) && KARTEN[p.slice(8, -5)]) return serveFile(res, 'karten/' + p.slice(8));
   if (req.method === 'GET' && p.startsWith('/media/')) return serveMedia(req, res, p.slice(7));
   if (req.method === 'GET' && p.startsWith('/sounds/')) return serveMusic(res, p.slice(8));
 

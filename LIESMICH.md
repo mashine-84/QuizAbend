@@ -174,6 +174,7 @@ Eine Paketdatei sieht so aus, und die Frageart ergibt sich aus den Feldern:
 | 🎵 Spotify | zusätzlich `"spotify": "https://open.spotify.com/track/…"` (Song › Teilen › Link kopieren). Der Ausschnitt läuft auf dem Spotify-Gerät (z. B. Receiver), die Hintergrundmusik pausiert und geht danach an derselben Stelle weiter. `"start"` und `"dauer"` (Standard 10, höchstens 30 Sekunden), `"wiederholen"` und `"pause"` wie beim Soundcheck; nicht rückwärts. Am Fernseher als **Spotify** (grün) gekennzeichnet. Diese Fragen kommen ins Paket `Musik/Spotify.json` und werden nur gespielt, wenn Spotify verbunden ist (nicht im eigenen WLAN). Mehr: [docs/SPOTIFY.md](docs/SPOTIFY.md) |
 | Zuordnung | `"zuordnen": {"Begriff": "Partner", ...}` mit 2 bis 6 Paaren. Die Reihenfolge wird im Spiel gemischt. |
 | ⚖️ Richtig oder falsch | `"behauptungen": [["Aussage", true], ["Aussage", false], ...]` mit 2 bis 5 Aussagen, `true` = stimmt, `false` = stimmt nicht. Die Reihenfolge wird im Spiel gemischt. Standardzeit 30 Sekunden. |
+| 🗺️ Karte | `"karte": "europa"` (oder `"welt"`, `"deutschland"`) und **entweder** `"ort": [45.76, 4.84], "name": "Lyon"` (Breite, Länge – am Handy einen **Pin setzen**, am Fernseher fallen die Pins der Spieler auf die Karte, Punkte nach Entfernung wie bei Schätzfragen; volle Punkte gibt es bis zum Ziel, nichts mehr ab 2500 km (Welt), 1000 km (Europa) bzw. 250 km (Deutschland), mit `"toleranz": 300` (km) einstellbar) **oder** `"land": "Österreich"` (am Handy das **Land antippen**, auf der Deutschland-Karte ein **Bundesland**, z. B. `"land": "Sachsen"`; deutscher oder englischer Name). Koordinaten z. B. aus Wikipedia (rechts oben im Artikel). Standardzeit 25 Sekunden. |
 
 **Gute Fragen schreiben:** Regeln (Schwierigkeit, Länge, falsche Antworten, Stichtage …) stehen in `REGELN.md` im Fragen-Repo. Mit `node pruefen.js` (im Fragen-Repo oder hier) prüfst du alle Fragendateien auf Fehler und Hinweise.
 
@@ -307,6 +308,7 @@ Beispiel (Windows, Eingabeaufforderung): `set FRAGEN=15 && node server.js`
 - `public/tv.html`: Fernseher-Ansicht (Lobby, Frage, Auflösung, Rangliste, Siegerpodest)
 - `public/play.html`: Handy-Controller
 - `public/qr.js`: QR-Code-Generator (funktioniert offline)
+- `public/karte.js` und `public/karten/*.json`: Karten für Geografie-Fragen, offline. Erzeugt mit `node karten/erzeugen.js` aus `karten/quelle/`: Länder aus **Natural Earth** (gemeinfrei, über das npm-Paket `world-atlas`), Bundesländer aus **deutschlandGeoJSON** (github.com/isellsoap/deutschlandGeoJSON). Deutsche Ländernamen in `karten/namen.js`.
 - `public/icons.js`: Symbole aus **Font Awesome Free** (https://fontawesome.com, Icons unter CC BY 4.0), funktioniert offline. Im Code stehen weiter Emojis; `icons.js` tauscht sie beim Anzeigen gegen die Symbole (Spieler-Avatare und Gesichter wie 🤫 bleiben Emojis). Erzeugt mit `public/icons-erzeugen.py` – neue Symbole dort eintragen.
 - `hue.js`: Philips-Hue-Steuerung (Kopplung, Bereich, Licht je Spielphase)
 - `sounds/`: Pausenmusik (`standard/` mit Erzeuger-Skript, eigene Datei daneben)
