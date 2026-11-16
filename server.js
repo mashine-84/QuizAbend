@@ -300,6 +300,9 @@ let settings = { blocks: [{ count: DEFAULT_PER_GAME, disabled: [] }], special: {
 try {
   const raw = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
   if (Array.isArray(raw.blocks)) settings.blocks = raw.blocks;
+  // Testpakete lagen früher unter „Allgemein“ (mischte sich mit „Allgemein“ aus dem Fragen-Repo) – abgewählte bleiben abgewählt
+  const MOVED = { 'Allgemein/Soundcheck-Test': 'Test Fragen/Soundcheck-Test', 'Allgemein/Videotest': 'Test Fragen/Videotest' };
+  for (const b of settings.blocks) if (b && Array.isArray(b.disabled)) b.disabled = b.disabled.map(id => MOVED[id] || id);
   else if (raw.disabled) settings.blocks = [{ count: raw.perGame || DEFAULT_PER_GAME, disabled: raw.disabled }]; // alte Version
   if (raw.special) settings.special = raw.special;
   if (raw.sound) settings.sound = raw.sound;

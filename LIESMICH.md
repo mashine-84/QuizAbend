@@ -214,7 +214,7 @@ Achte auf die Kommas zwischen den Einträgen. Neue oder geänderte Dateien ersch
   {"audio": "song.mp3", "start": 45, "dauer": 12, "rueckwaerts": true, "frage": "Welcher Song lief rückwärts?", "antworten": ["…", "…", "…", "…"]}
   ```
   Das Quiz schneidet den Ausschnitt selbst zu und dreht ihn um, die Datei bleibt unverändert. Verwende nur Musik, die du privat nutzen darfst.
-- **Testen:** Die Pakete **Allgemein → Seh-Test (Testvideo)** und **Allgemein → Soundcheck (Test)** enthalten selbst erzeugte Testclips (Zahlen-Video, zwei Volkslied-Melodien, eine davon rückwärts). Damit siehst bzw. hörst du sofort, ob Bild und Ton laufen. Für normale Spiele kannst du sie abwählen.
+- **Testen:** Die Pakete **Test Fragen → Seh-Test (Testvideo)** und **Test Fragen → Soundcheck (Test)** enthalten selbst erzeugte Testclips (Zahlen-Video, zwei Volkslied-Melodien, eine davon rückwärts). Damit siehst bzw. hörst du sofort, ob Bild und Ton laufen. Für normale Spiele kannst du sie abwählen.
 
 ## Eigene Musik und Jingles
 Alle Stücke sind selbst erzeugt, frei nutzbar und klingen einheitlich (A-Dur, 128 BPM, gleiche Klänge). Sie liegen in `sounds/standard/`:
