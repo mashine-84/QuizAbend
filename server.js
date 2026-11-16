@@ -185,6 +185,8 @@ function normalizeQuestion(q, dir, packName, packLevel) {
   if (q.audio || q.spotify) {
     if (q.audio) base.audio = resolveImage(dir, String(q.audio), 'audio', AUDIO_TYPES);
     if (q.audio && !base.audio) throw new Error(`Audio "${q.audio}" nicht gefunden (mp3/m4a/ogg/wav in den Ordner "audio" neben der Datei legen)`);
+    // Quellenangabe zum Ton (Aufnahme, Lizenz) – steht beim Soundcheck klein unten rechts; bei CC BY Pflicht
+    if (q.tonnachweis && q.audio) base.audioCredit = String(q.tonnachweis).replace(/\s+/g, ' ').trim().slice(0, 120);
     const start = Number(q.start ?? 0), dauer = q.dauer === undefined ? (q.spotify ? 10 : null) : Number(q.dauer);   // Spotify: Standard 10 s
     if (q.spotify && !(dauer <= 30)) throw new Error('"dauer" darf bei Spotify-Fragen höchstens 30 Sekunden sein');
     if (!(start >= 0) || (dauer !== null && !(dauer > 0))) throw new Error('"start" und "dauer" müssen Sekunden (Zahlen) sein');
@@ -1224,7 +1226,7 @@ function baseView() {
     // … außer bei Punkten nach Schwierigkeit: dann steht oben, was die Frage bringt (Zuordnen: 1 Punkt je Paar)
     if ((state.scoring || settings.scoring) === 'level') { vq.points = stepCount(q) ? 1 : (q.level || 1); vq.perPair = q.kind === 'match'; vq.perItem = q.kind === 'tf'; }
     if (ph === 'media' && q.spotify && state.snip) vq.snip = { k: state.snip.k, sinceMs: Date.now() - state.snip.at };
-    if (ph === 'media') { vq.video = q.video || null; vq.audio = q.audio || null; vq.spotify = !!q.spotify; vq.audioOpts = q.audioOpts || null; vq.flash = q.flash ? q.image : null; vq.credit = q.flash ? q.credit || null : null; }
+    if (ph === 'media') { vq.video = q.video || null; vq.audio = q.audio || null; vq.spotify = !!q.spotify; vq.audioOpts = q.audioOpts || null; vq.audioCredit = q.audioCredit || null; vq.flash = q.flash ? q.image : null; vq.credit = q.flash ? q.credit || null : null; }
     if (q.brand) vq.brand = q.brand;
     if (ph !== 'intro' && ph !== 'media' && q.kind === 'match') vq.left = q.left;
     if (['question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
