@@ -123,6 +123,8 @@
   .qcard.compact .qtext { font-size: 2.8vw; }
   .imgq { flex: 1; display: grid; grid-template-columns: 1.4fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 1.6vw; min-height: 0; }
   .imgbox { background: rgba(255,255,255,.06); border-radius: 1.4vw; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 0; animation: pop .5s both; }
+  .imgbox { position: relative; }
+  .credit { position: absolute; right: .6vw; bottom: .5vh; max-width: 90%; font-size: .95vw; font-weight: 600; color: rgba(255,255,255,.85); background: rgba(0,0,0,.55); padding: .2vh .6vw; border-radius: .5vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .imgbox img { max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: contain; display: block; }
   .answers.col { grid-template-columns: 1fr; grid-template-rows: none; grid-auto-rows: minmax(0, var(--row)); gap: 1.4vh; min-height: 0; }
   .answers.col .vav { width: 3vw; height: 3vw; font-size: 1.8vw; }
@@ -378,6 +380,7 @@
   .vwrap video { width: 100%; height: 100%; object-fit: contain; background: #000; }
   .vwrap.flash img { width: 100%; height: 100%; object-fit: contain; }
   .vwrap .fhint { position: absolute; top: 2.4vh; left: 50%; transform: translateX(-50%); background: rgba(20,16,43,.85); color: #fff; font-weight: 900; font-size: 2vw; padding: .6vh 1.6vw; border-radius: 99px; }
+  .vwrap .credit { bottom: 2.2vh; }
   .vwrap .fbar { position: absolute; left: 0; right: 0; bottom: 0; height: 1.2vh; background: rgba(255,255,255,.15); }
   .vwrap .fbar i { display: block; height: 100%; width: 100%; background: var(--c); }
   .vhint { position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%); background: rgba(0,0,0,.75); color: #fff; padding: 1vh 2vw; border-radius: 99px; font-size: 1.6vw; font-weight: 700; z-index: 41; }
@@ -1085,7 +1088,7 @@ function pinResetOverlay() {
 function videoMsg(event, extra) { fetch('/api/media', { method: 'POST', body: JSON.stringify({ role: 'tv', event, ...extra }) }); }
 // Merkbild: Bild im Vollbild, unten ein Balken, der die verbleibende Zeit zeigt – danach verschwindet es
 function renderFlash() {
-  app.innerHTML = `<div class="vwrap flash"><img src="${S.question.flash}" alt="">
+  app.innerHTML = `<div class="vwrap flash"><img src="${S.question.flash}" alt="">${S.question.credit ? `<div class="credit">${esc(S.question.credit)}</div>` : ''}
     <div class="fhint">📸 Merk dir das Bild!</div><div class="fbar"><i id="fbar"></i></div></div>`;
 }
 
@@ -1233,7 +1236,7 @@ function renderPreview() {
 function renderMain() {
   const q = S.question;
   const head = `<div class="qcard ${q.image || q.kind === 'match' || q.kind === 'tf' || q.map ? 'compact' : ''}"><div class="cat">${esc(q.category)}</div><div class="qtext">${esc(q.text)}</div></div>`;
-  const img = q.image ? `<div class="imgbox"><img src="${q.image}" alt=""></div>` : '';
+  const img = q.image ? `<div class="imgbox"><img src="${q.image}" alt="">${q.credit ? `<div class="credit">${esc(q.credit)}</div>` : ''}</div>` : '';   // Quellenangabe klein im Bild
   let body = '';
   if (q.kind === 'choice') {
     const tiles = q.answers.map((a, i) => `<div class="ans c${i}" style="animation:pop .4s ${i * 0.08}s both"><span class="shape">${SHAPES[i]}</span><span class="atext">${esc(a)}</span><span class="voters"></span></div>`).join('');
