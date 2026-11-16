@@ -160,6 +160,8 @@ function normalizeQuestion(q, dir, packName, packLevel) {
   if (q.bild) {
     base.image = resolveImage(dir, String(q.bild));
     if (!base.image) throw new Error(`Bild "${q.bild}" nicht gefunden (in den Ordner "bilder" neben der Datei legen)`);
+    // Quellenangabe (Fotograf, Lizenz) – steht klein am Bild; bei CC BY Pflicht
+    if (q.bildnachweis) base.credit = String(q.bildnachweis).replace(/\s+/g, ' ').trim().slice(0, 120);
   }
   if (q.merken !== undefined && q.merken !== false) {
     // Merkbild: das Bild erst nur kurz im Vollbild zeigen, die Frage kommt danach ohne Bild
@@ -1222,11 +1224,12 @@ function baseView() {
     // … außer bei Punkten nach Schwierigkeit: dann steht oben, was die Frage bringt (Zuordnen: 1 Punkt je Paar)
     if ((state.scoring || settings.scoring) === 'level') { vq.points = stepCount(q) ? 1 : (q.level || 1); vq.perPair = q.kind === 'match'; vq.perItem = q.kind === 'tf'; }
     if (ph === 'media' && q.spotify && state.snip) vq.snip = { k: state.snip.k, sinceMs: Date.now() - state.snip.at };
-    if (ph === 'media') { vq.video = q.video || null; vq.audio = q.audio || null; vq.spotify = !!q.spotify; vq.audioOpts = q.audioOpts || null; vq.flash = q.flash ? q.image : null; }
+    if (ph === 'media') { vq.video = q.video || null; vq.audio = q.audio || null; vq.spotify = !!q.spotify; vq.audioOpts = q.audioOpts || null; vq.flash = q.flash ? q.image : null; vq.credit = q.flash ? q.credit || null : null; }
     if (q.brand) vq.brand = q.brand;
     if (ph !== 'intro' && ph !== 'media' && q.kind === 'match') vq.left = q.left;
     if (['question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
       vq.text = q.text; vq.image = q.flash ? null : q.image;   // Merkbild: in der Frage kein Bild mehr
+      if (q.credit && (vq.image || ph === 'reveal')) vq.credit = q.credit;
       if (q.kind === 'choice') vq.answers = q.answers;
       if (q.kind === 'match') vq.right = q.right;
       if (q.kind === 'tf') vq.statements = q.statements;
