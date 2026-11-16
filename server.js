@@ -24,6 +24,8 @@ const VOTES_MS = 3500;         // erst zeigen, wer was gewählt hat …
 const REVEAL_MS = 5000;        // … dann die Lösung
 const ESTIMATE_REVEAL_MS = 11500;
 const MAP_REVEAL_MS = 8000;       // Karte: Ring, Linien und Liste
+const INFO_MS = 6000;             // Frage mit "info": so viel länger bleibt die Auflösung stehen (zum Lesen)
+const INFO_MAX = 200;             // Zeichen
 const MAP_VOTES_MS = 5000;        // Karte: Pins fallen nacheinander bzw. Länder färben sich // Schätzfrage: Zahl läuft erst wie eine Slotmaschine, dann die Liste
 const MATCH_STEP_MS = 2200;    // Zuordnen: Paar für Paar auflösen
 const SCORES_MS = 15000;        // Balken bauen sich auf, dann sortieren sich alle ein
@@ -148,6 +150,13 @@ function normalizeQuestion(q, dir, packName, packLevel) {
   const level = Number(q.schwierigkeit ?? packLevel ?? 1);
   if (![1, 2, 3].includes(level)) throw new Error('"schwierigkeit" muss 1, 2 oder 3 sein');
   const base = { category: q.kategorie || packName, text: String(q.frage), level, timeMs: Number(q.zeit) > 0 ? Number(q.zeit) * 1000 : null, image: null };
+  // "info": ein Satz zur Geschichte hinter der Antwort – erscheint bei der Auflösung („💡 Übrigens …“)
+  if (q.info !== undefined) {
+    const info = String(q.info).replace(/\s+/g, ' ').trim();
+    if (!info) throw new Error('"info" ist leer');
+    if (info.length > INFO_MAX) throw new Error(`"info" ist zu lang (${info.length} Zeichen, höchstens ${INFO_MAX})`);
+    base.info = info;
+  }
   if (q.bild) {
     base.image = resolveImage(dir, String(q.bild));
     if (!base.image) throw new Error(`Bild "${q.bild}" nicht gefunden (in den Ordner "bilder" neben der Datei legen)`);
@@ -1014,11 +1023,11 @@ function reveal() {
     state.step = 0;
     const stepOn = () => {
       state.step++;
-      if (state.step >= stepCount(q)) setPhase('reveal', state.pub ? 0 : REVEAL_MS + 1500, afterReveal);   // + Zeit für Kasten-Ausblenden und Avatare
+      if (state.step >= stepCount(q)) setPhase('reveal', state.pub ? 0 : REVEAL_MS + 1500 + (q.info ? INFO_MS : 0), afterReveal);   // + Zeit für Kasten-Ausblenden und Avatare
       else setPhase('reveal', MATCH_STEP_MS, stepOn);
     };
     setPhase('reveal', 1200, stepOn);
-  } else setPhase('reveal', state.pub ? 0 : q.kind === 'estimate' ? ESTIMATE_REVEAL_MS : q.kind === 'pin' || q.kind === 'land' ? MAP_REVEAL_MS : REVEAL_MS, state.pub ? null : afterReveal);
+  } else setPhase('reveal', state.pub ? 0 : (q.kind === 'estimate' ? ESTIMATE_REVEAL_MS : q.kind === 'pin' || q.kind === 'land' ? MAP_REVEAL_MS : REVEAL_MS) + (q.info ? INFO_MS : 0), state.pub ? null : afterReveal);
 }
 
 function afterReveal() {
@@ -1089,7 +1098,7 @@ function advance() {
     case 'special': showAnswers(); break;
     case 'votes': reveal(); break;
     case 'reveal':
-      if (stepCount(q) && state.step < stepCount(q)) { state.step = stepCount(q); setPhase('reveal', state.pub ? 0 : REVEAL_MS, state.pub ? null : afterReveal); }
+      if (stepCount(q) && state.step < stepCount(q)) { state.step = stepCount(q); setPhase('reveal', state.pub ? 0 : REVEAL_MS + (q.info ? INFO_MS : 0), state.pub ? null : afterReveal); }
       else afterReveal();
       break;
     case 'scores': afterScores(); break;
@@ -1240,6 +1249,7 @@ function baseView() {
       if (q.kind === 'land') { vq.region = q.region; vq.name = q.name; }
       if (q.kind === 'match') { vq.solution = q.solution.slice(0, state.step); vq.step = state.step; }
       if (q.kind === 'tf') { vq.truths = q.truths.slice(0, state.step); vq.step = state.step; }
+      if (q.info && (!stepCount(q) || state.step >= stepCount(q))) vq.info = q.info;   // erst, wenn alles aufgedeckt ist
     }
   }
   return v;
@@ -1373,6 +1383,7 @@ function hostSolution() {
   if (q.kind === 'tf') out.items = q.statements.map((t, i) => [t, q.truths[i]]);
   const next = state.questions[state.idx + 1];
   out.isLast = !next; out.blockEnd = !!next && next.block !== q.block;
+  if (q.info) out.info = q.info;   // Gamemaster kann es vorlesen
   return out;
 }
 
