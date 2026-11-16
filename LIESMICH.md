@@ -199,6 +199,7 @@ Optional bei jeder Frage:
 - `"schwierigkeit": 1`, `2` oder `3` für leicht, mittel oder schwer (ohne Angabe gilt 1). Gilt sie für ein ganzes Paket, kannst du `"schwierigkeit": 2` auch oben neben `"paket"` schreiben.
 - `"kategorie": "Flaggen"`, sonst gilt der Paketname.
 - `"bildnachweis": "Foto: Max Muster, CC BY-SA 4.0 (Wikimedia Commons)"` – Quellenangabe zum Bild; steht klein unten rechts im Bild (bei CC-BY-Lizenzen Pflicht).
+- `"tonnachweis": "Ton: Max Muster, CC BY-NC-SA 4.0 (Tierstimmenarchiv Berlin)"` – Quellenangabe zum Ton bei Soundcheck-Fragen (`"audio"`); steht während des Abspielens klein unten rechts.
 - `"info": "Nintendo begann 1889 mit Spielkarten."` – ein, höchstens zwei Sätze zur Geschichte hinter der Antwort (höchstens 200 Zeichen). Erscheint nach der Auflösung am Fernseher als **„💡 Übrigens …“** und am Handy unter dem Ergebnis; die Auflösung bleibt dafür 6 Sekunden länger stehen. Im Pub-Quiz sieht der Gamemaster es zum Vorlesen.
 - `"zeit": 30` in Sekunden.
 Achte auf die Kommas zwischen den Einträgen. Neue oder geänderte Dateien erscheinen beim nächsten Öffnen der Paketauswahl.
