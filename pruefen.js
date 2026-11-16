@@ -5,6 +5,16 @@
 // ✗ Fehler: muss behoben werden (Exit-Code 1) · ⚠ Hinweis: bitte prüfen, darf aber bleiben, wenn es Absicht ist.
 // Kein Paket nötig – nur Node.js.
 const fs = require('fs'), path = require('path');
+// Ländernamen aus den Karten des Quiz (wenn auffindbar): QuizAbend/public/karten/*.json
+const KARTEN = {};
+for (const dir of [path.join(__dirname, '..', 'QuizAbend', 'public', 'karten'), path.join(__dirname, '..', 'quizabend', 'public', 'karten'), path.join(__dirname, '..', '..', 'public', 'karten')]) {
+  try {
+    for (const f of fs.readdirSync(dir)) if (f.endsWith('.json') && !KARTEN[f.slice(0, -5)]) {
+      const m = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+      KARTEN[m.name] = new Set(m.regions.flatMap(r => [r.id.toLowerCase(), r.n.toLowerCase()]));
+    }
+  } catch (_) {}
+}
 // im QuizAbend-Repo: fragen/ (inkl. Kopie des Fragen-Repos unter fragen/_repo) – im Fragen-Repo selbst: dessen Hauptordner
 const DIR = fs.existsSync(path.join(__dirname, 'fragen')) ? path.join(__dirname, 'fragen') : __dirname;
 const filter = process.argv[2] || '';
@@ -15,6 +25,7 @@ const LIMIT = {
   antwort: [45, 80],
   aussage: [90, 140],
   paar: [40, 70],
+  info: [140, 200],       // „💡 Übrigens“ bei der Auflösung
 };
 // Wörter, die oft auf veraltende Fakten hindeuten (dann lieber Stichtag in die Frage: „Stand 2025“)
 const ZEITWORT = /\b(aktuell\w*|derzeit\w*|zurzeit|momentan\w*|heute|heutig\w*|neueste\w*|jüngste\w*|amtierend\w*)\b/i;
@@ -44,6 +55,17 @@ for (const file of files.sort()) {
   const list = Array.isArray(raw) ? raw : raw && raw.fragen;
   if (!Array.isArray(list)) { console.log(`\n${rel}\n  ✗ es fehlt die Liste "fragen"`); errors++; continue; }
   if (!Array.isArray(raw) && !raw.paket) warn('Datei', 'kein "paket"-Name (dann gilt der Dateiname)');
+  // Aktuelles/Jahresrückblick: "stand" (JJJJ-MM-TT) ist Pflicht; älter als 2 Monate → neu erzeugen (REGELN.md, Jahresrückblick)
+  const stand = !Array.isArray(raw) && raw.stand;
+  if (/^Aktuelles[\\/]/.test(rel) && !stand) err('Datei', 'Pakete unter „Aktuelles“ brauchen "stand": "JJJJ-MM-TT" (Tag der Erstellung)');
+  if (stand) {
+    const t = Date.parse(stand + 'T00:00:00Z');
+    if (!/^\d{4}-\d\d-\d\d$/.test(stand) || isNaN(t)) err('Datei', `"stand" muss ein Datum JJJJ-MM-TT sein, nicht „${stand}“`);
+    else {
+      const tage = Math.floor((Date.now() - t) / 864e5);
+      if (tage > 61) warn('Datei', `⏰ Stand ${stand} ist ${tage} Tage alt (über 2 Monate) – Fragen neu erzeugen: nur Ereignisse der letzten 12 Monate (REGELN.md, Jahresrückblick)`);
+    }
+  }
   let tfTrue = 0, tfAll = 0;
 
   list.forEach((q, i) => {
@@ -51,8 +73,8 @@ for (const file of files.sort()) {
     const where = `#${i + 1}${q && q.frage ? ' „' + String(q.frage).slice(0, 45) + (len(q.frage) > 45 ? '…' : '') + '“' : ''}`;
     if (!q || typeof q !== 'object') return err(where, 'ist kein gültiger Eintrag');
     if (!q.frage) return err(where, 'das Feld "frage" fehlt');
-    const types = ['antworten', 'schaetzen', 'zuordnen', 'behauptungen'].filter(k => q[k] !== undefined);
-    if (types.length !== 1) return err(where, types.length ? `mehrere Fragearten gleichzeitig (${types.join(', ')})` : 'es fehlt "antworten", "schaetzen", "zuordnen" oder "behauptungen"');
+    const types = ['antworten', 'schaetzen', 'zuordnen', 'behauptungen', 'karte'].filter(k => q[k] !== undefined);
+    if (types.length !== 1) return err(where, types.length ? `mehrere Fragearten gleichzeitig (${types.join(', ')})` : 'es fehlt "antworten", "schaetzen", "zuordnen", "behauptungen" oder "karte"');
 
     // allgemein
     if (q.schwierigkeit === undefined && !(raw && raw.schwierigkeit)) warn(where, 'keine "schwierigkeit" (1, 2 oder 3) – zählt dann als 1');
@@ -60,8 +82,15 @@ for (const file of files.sort()) {
     const fl = len(q.frage);
     if (fl > LIMIT.frage[1]) err(where, `Frage zu lang (${fl} Zeichen, max. ${LIMIT.frage[1]})`);
     else if (fl > LIMIT.frage[0]) warn(where, `Frage lang (${fl} Zeichen) – kürzer liest sich am Fernseher besser`);
+    // "info": ein Satz zur Geschichte hinter der Antwort (erscheint bei der Auflösung)
+    if (q.info !== undefined) {
+      const il = typeof q.info === 'string' ? len(q.info.trim()) : 0;
+      if (!il) err(where, '"info" muss ein Text sein');
+      else if (il > LIMIT.info[1]) err(where, `"info" zu lang (${il} Zeichen, max. ${LIMIT.info[1]})`);
+      else if (il > LIMIT.info[0]) warn(where, `"info" lang (${il} Zeichen) – ein, höchstens zwei kurze Sätze lesen sich am Fernseher besser`);
+    }
     if (ZEITWORT.test(q.frage) && !/\b(19|20)\d\d\b/.test(q.frage)) warn(where, `„${q.frage.match(ZEITWORT)[0]}“ – veraltet die Antwort? Dann Stichtag in die Frage („Stand 2025“)`);
-    const key = norm(q.frage) + '|' + norm(JSON.stringify(q.antworten || q.schaetzen || q.zuordnen || q.behauptungen)) + '|' + (q.spotify || q.audio || q.video || q.bild || '');
+    const key = norm(q.frage) + '|' + norm(JSON.stringify(q.antworten || q.schaetzen || q.zuordnen || q.behauptungen || [q.karte, q.ort, q.land])) + '|' + (q.spotify || q.audio || q.video || q.bild || '');
     if (seen.has(key)) err(where, `doppelt – gleiche Frage steht schon in ${seen.get(key)}`); else seen.set(key, `${rel} #${i + 1}`);
     for (const [field, [sub, ext]] of Object.entries(MEDIA)) {
       if (!q[field]) continue;
@@ -69,7 +98,30 @@ for (const file of files.sort()) {
       if (!ext.test(name)) err(where, `"${field}": Dateityp von „${name}“ wird nicht unterstützt`);
       else if (![path.join(d, name), path.join(d, sub, name)].some(f => fs.existsSync(f))) err(where, `"${field}": „${name}“ nicht gefunden (in den Ordner „${sub}“ neben der Datei legen)`);
     }
-    if (q.merken !== undefined && !q.bild) err(where, '"merken" braucht ein "bild"');
+    if (q.merken !== undefined && !q.bild && !q.bildquelle) err(where, '"merken" braucht ein "bild"');
+    // Bilder aus freien Quellen: "bildquelle" → GitHub Actions („Bilder holen“) lädt das Bild und trägt "bild" + "bildnachweis" ein
+    if (q.bildquelle !== undefined) {
+      const bq = q.bildquelle, keys = bq && typeof bq === 'object' ? Object.keys(bq) : [];
+      if (keys.length !== 1 || !['commons', 'artic'].includes(keys[0]))
+        err(where, '"bildquelle" braucht genau eins von "commons" (Wikimedia Commons) oder "artic" (Art Institute of Chicago)');
+      if (!q.bild) warn(where, '"bildquelle" ohne "bild" – wird beim Push von GitHub Actions („Bilder holen“) geholt');
+      else if (!q.bildnachweis) err(where, '"bildnachweis" fehlt (trägt „Bilder holen“ automatisch ein)');
+    }
+    if (q.bildnachweis !== undefined && (typeof q.bildnachweis !== 'string' || len(q.bildnachweis) > 100)) err(where, '"bildnachweis" muss ein Text bis 100 Zeichen sein');
+    // Töne aus Archiven: "tonquelle" → GitHub Actions („Bilder holen“) lädt den Ton und trägt "audio" + "tonnachweis" ein
+    if (q.tonquelle !== undefined) {
+      const tq = q.tonquelle, keys = tq && typeof tq === 'object' ? Object.keys(tq).filter(k => k !== 'urheber') : [];
+      if (keys.length !== 1 || !['tierstimmen', 'bbc', 'commons'].includes(keys[0]))
+        err(where, '"tonquelle" braucht genau eins von "tierstimmen" (Tierstimmenarchiv Berlin), "bbc" (BBC Sound Effects) oder "commons"');
+      if (tq && tq.tierstimmen && !tq.urheber) err(where, '"tonquelle" mit "tierstimmen" braucht "urheber" (steht in der Deutschen Digitalen Bibliothek)');
+      if (!q.audio) warn(where, '"tonquelle" ohne "audio" – wird beim Push von GitHub Actions („Bilder holen“) geholt');
+      else if (!q.tonnachweis) err(where, '"tonnachweis" fehlt (trägt „Bilder holen“ automatisch ein)');
+      if (q.dauer === undefined) warn(where, '"tonquelle": "dauer" setzen (Archivaufnahmen sind meist länger als nötig, 5–10 Sekunden reichen)');
+    }
+    if (q.tonnachweis !== undefined) {
+      if (typeof q.tonnachweis !== 'string' || len(q.tonnachweis) > 100) err(where, '"tonnachweis" muss ein Text bis 100 Zeichen sein');
+      if (!q.audio && !q.tonquelle) err(where, '"tonnachweis" gehört zu einer Frage mit "audio"');
+    }
     // Spotify-Musikfrage: Song-Link, Ausschnitt läuft auf dem Spotify-Gerät
     if (q.spotify !== undefined) {
       if (!/(?:open\.spotify\.com\/(?:intl-\w+\/)?track\/|spotify:track:)[A-Za-z0-9]{22}/.test(String(q.spotify))) err(where, '"spotify" muss ein Link zu einem Song sein (Spotify: Song › Teilen › Link kopieren)');
@@ -93,8 +145,35 @@ for (const file of files.sort()) {
     if (q.schaetzen !== undefined) {
       const v = Number(String(q.schaetzen).replace(',', '.'));
       if (!isFinite(v)) err(where, '"schaetzen" muss eine Zahl sein');
-      const year = q.jahr !== undefined ? !!q.jahr : /\bJahr\b/i.test(q.frage);
+      // wie im Spiel: „Jahr“ in der Frage + ganze Zahl (und keine Einheit wie m/kg) = Jahreszahl
+      const year = q.jahr !== undefined ? !!q.jahr : /\bJahr\b/i.test(q.frage) && Number.isInteger(v) && !/^(m|km|g|kg|s|%)$/.test(q.einheit || '');
       if (!year && !q.einheit && !/^wie viele\b/i.test(q.frage)) warn(where, 'keine "einheit" – bei Schätzfragen hilft z. B. „m“, „km“, „Stück“');
+      // Toleranz (±) nur, wenn angegeben (kein Standard, auch nicht bei Jahreszahlen). Aktuell nur bei Jahreszahlen üblich;
+      // Ereignisse der letzten 50 Jahre bekommen höchstens ±2 (kleiner geht, macht's schwerer)
+      if (q.toleranz !== undefined && q.toleranz !== false) {
+        if (!(typeof q.toleranz === 'number' && q.toleranz >= 0)) err(where, '"toleranz" muss eine Zahl ab 0 sein');
+        else if (!year) warn(where, '"toleranz" bei einer Schätzfrage ohne Jahreszahl – aktuell nur bei Jahreszahlen vorgesehen');
+        else if (q.toleranz > 2 && !/v\.\s*Chr/i.test(q.frage) && v >= new Date().getFullYear() - 50)
+          warn(where, `Ereignis der letzten 50 Jahre (${v}) – hier höchstens ±2 (weniger macht es schwerer)`);
+      }
+    }
+    if (q.karte !== undefined) {
+      // Geografie: "ort": [Breite, Länge] (Pin setzen) oder "land": Name (Land/Bundesland antippen)
+      const map = String(q.karte).toLowerCase();
+      if (!['welt', 'europa', 'deutschland'].includes(map)) err(where, '"karte" muss "welt", "europa" oder "deutschland" sein');
+      if ((q.ort !== undefined) === (q.land !== undefined)) err(where, 'Kartenfrage braucht genau eins: "ort": [Breite, Länge] oder "land": "Name"');
+      if (q.ort !== undefined) {
+        const o = Array.isArray(q.ort) ? q.ort.map(Number) : [];
+        if (o.length !== 2 || !(Math.abs(o[0]) <= 90) || !(Math.abs(o[1]) <= 180)) err(where, '"ort" muss [Breite, Länge] sein, z. B. [45.76, 4.84]');
+        else {
+          if (!q.name) warn(where, 'kein "name" – er steht bei der Auflösung am Ring auf der Karte');
+          const box = { europa: [-24, 34, 44, 71], deutschland: [5.3, 47.2, 15.6, 55.1] }[map];
+          if (box && !(o[1] >= box[0] && o[1] <= box[2] && o[0] >= box[1] && o[0] <= box[3])) err(where, `"ort" liegt außerhalb der Karte „${map}“ – Breite und Länge vertauscht?`);
+        }
+        if (q.toleranz !== undefined && !(Number(q.toleranz) > 0)) err(where, '"toleranz" muss eine Entfernung in km über 0 sein');
+        if (q.radius !== undefined && !(Number(q.radius) > 0)) err(where, '"radius" muss eine Entfernung in km über 0 sein (bis dahin zählt der Pin als richtig)');
+      }
+      if (q.land !== undefined && KARTEN[map] && !KARTEN[map].has(String(q.land).toLowerCase())) err(where, `„${q.land}“ gibt es auf der Karte „${map}“ nicht (Namen wie in der Karte, z. B. „Nordmazedonien“, „Moldau“)`);
     }
     if (q.zuordnen !== undefined) {
       const pairs = Array.isArray(q.zuordnen) ? q.zuordnen : Object.entries(q.zuordnen);
