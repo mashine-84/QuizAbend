@@ -404,13 +404,6 @@
   .sp-mult { display: inline-block; margin-top: 2vh; font-size: 4vw; font-weight: 900; color: #1b1440; background: var(--c); border-radius: 99px; padding: .5vh 3vw; }
   html.lite .special { background: #14102b; }
   /* „💡 Übrigens“ (Feld "info"): nach der Auflösung über dem Bild, damit es alle lesen */
-  .ubrig { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(20,16,43,.6); }
-  .ubrig-card { max-width: 70vw; background: #1d1645; border: .25vw solid var(--c); border-radius: 1.6vw; padding: 3vh 3vw; box-shadow: 0 1.2vh 0 rgba(0,0,0,.35); }
-  .ubrig-kick { color: var(--c); font-size: 1.7vw; font-weight: 900; letter-spacing: .02em; margin-bottom: 1.2vh; }
-  .ubrig-text { font-size: 2.7vw; font-weight: 800; line-height: 1.3; }
-  .ubrig, html.lite .ubrig { animation: ubrigFade .5s ease-out both !important; }
-  .ubrig-card, html.lite .ubrig-card { animation: ubrigUp .6s cubic-bezier(.2,1.2,.4,1) both !important; }
-  @keyframes ubrigFade { from { opacity: 0; } } @keyframes ubrigUp { from { opacity: 0; transform: translateY(4vh) scale(.96); } }
   /* Spezialfrage auch im schonenden Modus (Pi) animiert: nur transform/opacity, eigene GPU-Ebenen */
   .burst { will-change: transform; }
   .sp-mult { animation: spop .5s .45s cubic-bezier(.2,1.6,.4,1) both; } @keyframes spop { from { transform: scale(.2); opacity: 0; } }
@@ -789,7 +782,7 @@ function render() {
   if (S.phase === 'lobby' && lastPhase !== 'lobby') [blockMusic, scoresMusic, revealSound, winSound, specialSound, riskSound, countdownMusic].forEach(t => { t.buf = null; }); // neu laden (falls Datei getauscht)
   if (soundOn()) [blockMusic, scoresMusic, revealSound, winSound, specialSound, riskSound, countdownMusic].forEach(t => t.load());
   lastKey = key; lastPhase = S.phase;
-  frozenOverlay(); systemOverlay(); pinResetOverlay(); infoUpdate();
+  frozenOverlay(); systemOverlay(); pinResetOverlay();
 
   document.getElementById('status').style.display = (!KIOSK && S.phase === 'lobby' && !S.anleitung) ? '' : 'none';
   if (S.phase === 'lobby') { prevScores = {}; if (S.anleitung) return renderAnleitung(); anlKey = ''; return renderLobby(); }
@@ -1040,35 +1033,15 @@ function anlLive(u, tries) {
 
 let estLanded = 0;   // Frage, bei der die Slotmaschine schon gelandet ist
 // Auflösung fertig (Paare/Aussagen aufgedeckt, Zahl gelandet, Karte steht)? Erst dann Ergebnisse und „Übrigens“ zeigen.
-function revealSettled(q) { return !hideResultFor(q); }
 function hideResultFor(q) {
   return (q.kind === 'match' && S.phase === 'reveal' && q.step < (q.left || []).length)
     || (q.kind === 'tf' && S.phase === 'reveal' && q.step < (q.statements || []).length)
     || (q.kind === 'estimate' && S.phase === 'reveal' && estLanded !== S.qNum)
     || (q.map && S.phase === 'reveal' && geoLanded !== S.qNum);   // Karte: erst wenn Ring und Linien stehen   // Schätzfrage: erst wenn die Zahl steht
 }
-// „💡 Übrigens …“: kurz nachdem die Auflösung steht, bis zum Ende der Auflösung
-const INFO_DELAY_MS = 1500;
-function infoUpdate() {
-  const q = S && S.question, ov = document.getElementById('ubrig');
-  const want = S && S.phase === 'reveal' && q && q.info && revealSettled(q) ? S.qNum + ':' + q.info : '';
-  if (ov && ov.dataset.key !== want) { ov.remove(); }
-  if (!want || document.getElementById('ubrig') || infoUpdate.pending === want) return;
-  infoUpdate.pending = want;
-  setTimeout(() => {
-    infoUpdate.pending = '';
-    const q2 = S.question;
-    if (!(S.phase === 'reveal' && q2 && q2.info && S.qNum + ':' + q2.info === want && revealSettled(q2)) || document.getElementById('ubrig')) return;
-    const d = document.createElement('div');
-    d.id = 'ubrig'; d.className = 'ubrig'; d.dataset.key = want;
-    d.innerHTML = `<div class="ubrig-card"><div class="ubrig-kick">💡 Übrigens</div><div class="ubrig-text">${esc(q2.info)}</div></div>`;
-    document.body.appendChild(d);
-  }, q.kind === 'match' ? INFO_DELAY_MS + 2000 : INFO_DELAY_MS);   // Zuordnung: erst noch Kasten ausblenden und Avatare
-}
 function chips() {
   const q = S.question || {};
   const hideResult = hideResultFor(q);
-  setTimeout(infoUpdate);
   // Wer gerade nicht verbunden ist (Handy im Standby), bleibt sichtbar – mit 💤
   const tb = q.tiebreak && S.tiebreak ? S.tiebreak.ids : null;   // Stechen: nur die Punktgleichen
   return S.players.filter(p => !tb || tb.includes(p.id)).map(p => {
