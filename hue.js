@@ -196,6 +196,7 @@ function restore() {
 
 // ---------- Spielphasen -> Licht ----------
 const VIOLET = '#6a3cff', DEEP = '#3b2bd6', GOLD = '#f5b014';
+const REVEAL_HOLD_MS = 3200;   // so lange leuchtet die Antwortfarbe, dann dimmt es zurück
 // Lampenfarben der Antworten A–D: kräftigere Töne als die Kacheln, damit sie auch als Licht eindeutig sind
 // und sich von Grundstimmung (Violett/Blau-Lila), Spezialfrage (Gold) und Risikofrage (Rot) abheben
 const ANSWER = ['#ff4a1c', '#1e9bff', '#ffc21a', '#3fd12e'];
@@ -231,7 +232,11 @@ async function onPhase(phase, info = {}) {
   // Opener „Vier Kacheln“: grob im Takt – mehr als ~1 Befehl pro Sekunde verträgt die Bridge nicht.
   // 1,25 s: Gold-Blitz (das „?“ erscheint bei 1,41 s, Lampen reagieren etwas verzögert), 2,35 s: sanft ins ruhige Violett.
   // Auflösung: nach dem Aufblitzen (gut 1 s – die Bridge verträgt ~1 Befehl pro Sekunde) in derselben Farbe etwas dunkler
-  if (phase === 'reveal') seqTimers.push(setTimeout(() => apply({ color: info.correct != null ? ANSWER[info.correct] : ANSWER[3], bri: 70, ms: 800 }), 1100));
+  // nach gut 3 s langsam zurück ins gedimmte Frage-Licht – die Auflösung kann lange stehen („Übrigens“, Pub-Quiz)
+  if (phase === 'reveal') {
+    seqTimers.push(setTimeout(() => apply({ color: info.correct != null ? ANSWER[info.correct] : ANSWER[3], bri: 70, ms: 800 }), 1100));
+    seqTimers.push(setTimeout(() => apply({ color: DEEP, bri: 22, ms: 2500 }), REVEAL_HOLD_MS));
+  }
   if (phase === 'ident') {
     seqTimers.push(setTimeout(() => apply({ color: GOLD, bri: 100, ms: 100 }), 1250));
     seqTimers.push(setTimeout(() => apply({ color: VIOLET, bri: 35, ms: 1500 }), 2350));
