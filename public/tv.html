@@ -240,6 +240,24 @@
   .krow i { margin-left: auto; font-style: normal; color: var(--muted); font-size: 1.3vw; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .krow .eg { color: #8ff0b5; width: 1.6vw; text-align: right; } .krow .eg.mid { color: var(--c); } .krow .eg.no { color: #ff8a8d; }
   .krow.best { background: rgba(47,179,109,.45); } .krow.best i { color: #fff; }
+  /* Liste rechts wie bei der Schätzfrage: oben der Kasten „Richtig“, darunter die Spieler in einem Kasten (kPanel) */
+  .kside { justify-content: stretch; }
+  .kside > .khint { margin: auto 0; }
+  .kres { flex: none; background: rgba(255,255,255,.06); border-radius: 1.4vw; padding: 2.2vh 1vw; display: flex; flex-direction: column; align-items: center; gap: .4vh; text-align: center; animation: pop .4s both; }
+  html.lite .kres { animation: pop .4s both !important; }
+  .kres .lbl { font-size: 1.3vw; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+  .kres .big { font-size: 3.8vw; font-weight: 900; color: var(--c); line-height: 1.1; overflow-wrap: anywhere; }
+  .kres .big.s { font-size: 2.8vw; } .kres .big.xs { font-size: 2.1vw; }
+  .kres small { color: var(--muted); font-size: 1.1vw; font-weight: 700; }
+  .klist.kpanel { flex: 1 1 0; min-height: 0; background: rgba(255,255,255,.06); border-radius: 1.4vw; padding: 1.6vh 1vw; justify-content: center; overflow: hidden; }
+  .kpanel .krow { border-left: 0; font-size: 1.5vw; font-weight: 800; padding: .6vh 1.1vw .6vh .5vw; }
+  .kpanel .krow .vav { width: 2.7vw; height: 2.7vw; font-size: 1.5vw; }
+  .kpanel .krow i { color: #fff; font-size: 1.4vw; font-weight: 800; }
+  .kpanel .krow .eg { width: 2vw; }
+  .kpanel .krow.khead { background: none; font-size: 1.05vw; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; padding-top: 0; padding-bottom: 0; animation: none; }
+  .kpanel .krow.khead i { color: var(--muted); font-size: 1.05vw; }
+  .kpanel .krow.khead .vav { visibility: hidden; height: 0; }
+  .kpanel.many { gap: .5vh; } .kpanel.many .krow { font-size: 1.3vw; padding-top: .2vh; padding-bottom: .2vh; } .kpanel.many .krow .vav { width: 2.2vw; height: 2.2vw; font-size: 1.2vw; }
   /* Schätzfrage als Pegel */
   .estq.noimg .estpanel.pegel { width: 86vw; }
   .estpanel.pegel { justify-content: stretch; padding: 2vh 2vw 1.4vh; }
@@ -1413,6 +1431,17 @@ let geoLanded = 0;
 const GEO_FADE_MS = 550;   // Frage ausblenden, bevor die Tipps/Auflösung auf der Karte erscheinen
 const GEO_WIN_SCALE = 1.2;   // richtiges Land bei der Auflösung (Kacheln bei Auswahlfragen: 1.03 – ein Land braucht mehr, um aufzufallen)
 const GEO_LINES_S = 1.6;   // Auflösung Pin: erst Ring + Name der Stadt (sofort), danach die Linien zu den Pins
+// Liste rechts im Stil der Schätzfrage: Kasten mit Spalten-Kopf, bei der Auflösung oben „Richtig: <Ort>“
+function kPanel(side, q) {
+  const list = side.querySelector('.klist'); if (!list) return;
+  const reveal = S.phase === 'reveal', n = list.querySelectorAll('.krow').length;
+  list.classList.add('kpanel'); list.classList.toggle('many', n > 5);
+  if (n) list.insertAdjacentHTML('afterbegin', `<div class="krow khead"><span class="vav"></span><b>Spieler</b><i>${reveal ? (q.kind === 'pin' ? 'Abstand' : 'Getippt') : ''}</i></div>`);
+  if (reveal && q.name) {
+    const L = q.name.length, sz = L > 18 ? 'xs' : L > 11 ? 's' : '';
+    side.insertAdjacentHTML('afterbegin', `<div class="kres"><span class="lbl">Richtig</span><span class="big ${sz}">${esc(q.name)}</span>${q.kind === 'pin' && q.radius ? `<small>Treffer bis ${kKm(q.radius)}</small>` : ''}</div>`);
+  }
+}
 function renderGeo(byId) {
   const q = S.question, box = document.getElementById('kbox'), side = document.getElementById('kside');
   if (!box) return;
@@ -1449,6 +1478,7 @@ function renderGeo(byId) {
         pins.forEach((_, i) => setTimeout(() => { if (S.phase === 'votes') snapSound(); }, (0.3 + i * 0.45 + 0.45) * 1000));
         side.innerHTML = `<div class="klist">${pins.map((x, i) => { const p = byId[x.id];
           return `<div class="krow" style="--pc:${p.color};animation-delay:${0.3 + i * 0.45}s"><span class="vav" style="--pc:${p.color}">${p.avatar}</span><b>${esc(p.name)}</b><i>📍 gesetzt</i></div>`; }).join('') || '<div class="khint">Niemand hat getippt 🤷</div>'}</div>`;
+        kPanel(side, q);
         return;
       }
       // Auflösung: Ring an der richtigen Stelle, gestrichelte Linien zu jedem Pin, Liste nach Entfernung
@@ -1477,6 +1507,7 @@ function renderGeo(byId) {
       side.innerHTML = `<div class="klist">${rows.map((x, i) => { const p = byId[x.id], r = p.result || {};
         return `<div class="krow ${r.correct ? 'best' : ''}" style="--pc:${p.color};animation-delay:${GEO_LINES_S + 0.2 + i * 0.3}s !important"><span class="vav" style="--pc:${p.color}">${p.avatar}</span><b>${esc(p.name)}</b><i>${kKm(x.km)}</i><span class="eg ${r.correct ? '' : r.gain ? 'mid' : 'no'}">${r.correct ? '✓' : r.gain ? '≈' : '✗'}</span></div>`; }).join('') || '<div class="khint">Niemand hat getippt 🤷</div>'}</div>`;
       setTimeout(() => { geoLanded = S.qNum; const c = document.getElementById('chips'); if (c) c.innerHTML = chips(); }, (GEO_LINES_S + rows.length * 0.3) * 1000);
+      kPanel(side, q);
       return;
     }
     // Land: gewählte Gebiete in der Farbe des ersten, der es gewählt hat; Avatare auf dem Gebiet
@@ -1510,6 +1541,7 @@ function renderGeo(byId) {
     }
     side.innerHTML = `<div class="klist">${picks.map((x, i) => { const p = byId[x.id], ok = x.region === q.region;
       return `<div class="krow ${reveal && ok ? 'best' : ''}" style="--pc:${p.color};animation-delay:${reveal ? 0.2 + i * 0.12 : 0.3 + i * 0.4}s"><span class="vav" style="--pc:${p.color}">${p.avatar}</span><b>${esc(p.name)}</b><i>${reveal ? esc(x.n) : '🗺️ getippt'}</i>${reveal ? `<span class="eg ${ok ? '' : 'no'}">${ok ? '✓' : '✗'}</span>` : ''}</div>`; }).join('') || '<div class="khint">Niemand hat getippt 🤷</div>'}</div>`;
+    kPanel(side, q);
     if (reveal) setTimeout(() => { geoLanded = S.qNum; const c = document.getElementById('chips'); if (c) c.innerHTML = chips(); }, 600);
     };
     // Zur Auflösung: erst die Frage oben links ausblenden (sie liegt über der Karte), dann zoomen und auflösen
