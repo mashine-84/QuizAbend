@@ -44,6 +44,7 @@ const MIN_PLAYERS = 2;
 
 const FRAGEN_DIR = path.join(__dirname, 'fragen');
 const fragenRepo = require('./fragenrepo');   // Fragen-Repo (eigenes Git-Repo, Kopie unter fragen/_repo)
+const meldungen = require('./meldungen');   // „⚑ Stimmt was nicht?“ – gemeldete Fragen (meldungen.json)
 const { pickNext } = require('./fragenmix');   // Abwechslung bei den Fragearten (Reihenfolge im Spiel)
 const zertifikat = require('./zertifikat');   // sichere Adresse (https) im Heim-WLAN: DuckDNS + Let's Encrypt
 const spotify = require('./spotify');         // Spotify Connect: Hintergrundmusik passend zum Spiel, Spotify-Musikfragen
@@ -366,7 +367,8 @@ function packList() {
   const all = packs.flatMap(p => p.questions);
   const played = all.filter(q => history[q.uid]).length;
   const tech = techPacks.map(p => ({ id: p.id, name: p.name, count: p.questions.filter(usable).length, total: p.questions.length }));
-  return { groups, errors: packErrors, settings, summary: packSummary(), system: systemInfo(), history: { played, total: all.length }, repo: fragenRepo.status(), tech };
+  return { groups, errors: packErrors, settings, summary: packSummary(), system: systemInfo(), history: { played, total: all.length }, repo: fragenRepo.status(), tech,
+    meldungen: meldungen.count() };
 }
 
 // Wahrscheinlichkeit der Schwierigkeitsstufen für Frage g (0-basiert) von total
@@ -1321,6 +1323,9 @@ function baseView() {
   return v;
 }
 
+// Fragen melden: bei der Auflösung (und der Rangliste direkt danach) für die gerade gespielte Frage
+const meldbar = () => ['reveal', 'scores'].includes(state.phase) && !!currentQuestion() && !!currentQuestion().uid;
+
 function viewFor(client, base) {
   if (client.role === 'tv') return { ...base, join: joinInfo(), pinReset: pinReset && pinReset.until > Date.now() ? { code: pinReset.code, until: pinReset.until } : null };
   const me = players.get(client.playerId);
@@ -1331,6 +1336,7 @@ function viewFor(client, base) {
     answer: state.answers[me.id] || null,
     skipped: !!(state.skipped || {})[me.id],
     result: state.results[me.id] || null,
+    gemeldet: meldbar() ? meldungen.mine(currentQuestion().uid, me.name) : null,
   } : null };
 }
 
@@ -1864,6 +1870,31 @@ const server = http.createServer(async (req, res) => {
     try { fs.writeFileSync(HISTORY_FILE, '{}'); } catch (_) {}
     pubPlan = null;
     return json(res, 200, packList());
+  }
+
+  // Frage melden („⚑ Stimmt was nicht?“): jeder Spieler, für die gerade aufgelöste Frage
+  if (req.method === 'POST' && p === '/api/melden') {
+    const body = await readBody(req), me = players.get(body.id);
+    if (!me || !meldbar()) return json(res, 409, { ok: false });
+    const q = currentQuestion();
+    const ok = body.grund === null ? (meldungen.removeOne(q.uid, me.name), true) : meldungen.add(q, String(body.grund), me.name, fragenRepo.status().commit);
+    if (ok && body.grund) console.log(`  ⚑ Frage gemeldet (${body.grund}) von ${me.name}: ${q.uid}`);
+    broadcast();
+    return json(res, ok ? 200 : 400, { ok });
+  }
+  // Gemeldete Fragen ansehen, herunterladen, löschen (wer das Spiel leiten darf)
+  if (req.method === 'GET' && (p === '/api/meldungen' || p === '/api/meldungen.txt')) {
+    if (!canLead(url.searchParams.get('id'))) return json(res, 403, { ok: false });
+    if (p === '/api/meldungen') return json(res, 200, { ok: true, gruende: meldungen.GRUENDE, liste: meldungen.grouped() });
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store',
+      'Content-Disposition': `attachment; filename="fragen-meldungen-${new Date().toISOString().slice(0, 10)}.txt"` });
+    return res.end(meldungen.text());
+  }
+  if (req.method === 'POST' && p === '/api/meldungen') {
+    const body = await readBody(req);
+    if (!canLead(body.id)) return json(res, 403, { ok: false });
+    meldungen.remove(body.uid ? String(body.uid) : null);   // eine Frage oder alle
+    return json(res, 200, { ok: true, gruende: meldungen.GRUENDE, liste: meldungen.grouped() });
   }
 
   // Technik-Test starten (⚙️ › 🛠️ System, nur in der Lobby): packs = Liste von Paket-IDs, sonst alle

@@ -214,6 +214,18 @@
   .live .lh small { color: var(--muted); font-weight: 700; }
   .btn.sm2 { font-size: 16px; padding: 12px; }
   .fs { background: rgba(255,255,255,.07); border: none; font: inherit; text-align: left; border-radius: 12px; padding: 12px 14px; color: #fff; font-weight: 700; display: flex; justify-content: space-between; gap: 10px; cursor: pointer; width: 100%; }
+  .melden { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 6; background: rgba(20,22,34,.92); border: 1px solid rgba(255,255,255,.14); color: #cfd3e6; border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .melden.host { bottom: 86px; }
+  .melden.done { color: #8ff0b5; display: flex; gap: 10px; align-items: center; }
+  .melden.done button, .melden .mclose { background: none; border: none; color: var(--muted); font: inherit; font-size: 12px; text-decoration: underline; padding: 0; }
+  .melden.open { border-radius: 16px; white-space: normal; width: calc(100% - 28px); max-width: 420px; padding: 12px; text-align: center; }
+  .mchips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 10px 0 8px; }
+  .mchips button { background: rgba(255,255,255,.09); border: none; color: #fff; font: inherit; font-size: 14px; font-weight: 700; padding: 9px 12px; border-radius: 999px; }
+  .meldung { background: rgba(255,255,255,.06); border-radius: 12px; padding: 10px 12px; margin: 8px 0; display: flex; flex-direction: column; gap: 4px; text-align: left; }
+  .meldung small { color: var(--muted); }
+  .meldung .mtop { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .meldung .mgr { display: flex; flex-wrap: wrap; gap: 6px; }
+  .meldung .mgr span { background: rgba(255,255,255,.09); border-radius: 999px; padding: 3px 9px; font-size: 13px; font-weight: 700; }
   .fs small { margin-left: auto; opacity: .6; font-weight: 500; white-space: nowrap; }
   .fs span:last-child { color: var(--muted); font-weight: 900; }
   .stline { display: flex; gap: 8px; align-items: center; font-size: 14px; color: #8ff0b5; font-weight: 700; margin: 2px 0; }
@@ -286,6 +298,8 @@
   .histline { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(255,255,255,.06); border-radius: 12px; padding: 10px 12px; margin-top: 10px; font-size: 15px; }
   .histline .mini { font: inherit; font-size: 14px; font-weight: 800; color: #fff; background: rgba(255,255,255,.12); border: 0; border-radius: 10px; padding: 8px 12px; flex: none; }
   .histline .mini.danger { background: #e5484d; }
+  .meldung .mini { font: inherit; font-size: 13px; font-weight: 800; color: #fff; background: rgba(255,255,255,.12); border: 0; border-radius: 10px; padding: 6px 10px; flex: none; }
+  a.btn { display: block; box-sizing: border-box; text-align: center; text-decoration: none; margin: 6px 0 4px; }
   .sysb { max-width: none; }
   .sysout { background: rgba(47,179,109,.25); border-radius: 12px; padding: 10px 12px; font-size: 14px; white-space: pre-wrap; }
   .sysout.bad { background: rgba(229,72,77,.25); }
@@ -521,7 +535,7 @@ function render() {
   // Anleitung: neu zeichnen bei neuer Folie und eigener Antwort (nicht bei der Karte – Zoom bleibt erhalten)
   const anlKey = anl ? [anl.idx, anl.total, anl.slide.id, anl.slide.uebung && !['pin', 'land'].includes(anl.slide.uebung.art) && myTry ? JSON.stringify(myTry) : ''].join(':') : '';
   const key = [anlKey, joinKey, hostKey, ui.host, S.frozen, JSON.stringify(S.system), S.kicked, S.phase, S.qNum, me ? me.id : '-', me && me.skipped, me && JSON.stringify(me.answer && (me.answer.choice ?? me.answer.value ?? me.answer.order ?? me.answer.pos ?? me.answer.region)),
-    me && me.isVip, me && me.canLead, me && me.canTech, me && me.authed, JSON.stringify(S.pin), lobbyKey, S.question && S.question.step,
+    me && me.isVip, me && me.gemeldet, ui.meldenOffen === S.qNum, me && me.canLead, me && me.canTech, me && me.authed, JSON.stringify(S.pin), lobbyKey, S.question && S.question.step,
     me && me.isHost ? S.players.map(p => (p.answered ? 1 : 0) + (p.connected ? 'c' : '')).join('') + JSON.stringify(me.hostQ) : ''].join('|');
   if (key === lastKey) return; // nichts Relevantes geändert (Eingaben nicht zerstören)
   const newQuestion = lastQ !== S.qNum || lastPh !== 'question';
@@ -536,7 +550,7 @@ function render() {
   if (S.frozen) return renderFrozen();
   if (S.phase === 'lobby') return S.anleitung ? renderAnleitung() : renderLobby();
   if (S.phase === 'pause') return renderPause();
-  if (me.isHost) return renderModerator();
+  if (me.isHost) { renderModerator(); return meldenAnhaengen(); }
   if (S.phase === 'locked') return renderInfo('🔒', me.answer ? 'Eingeloggt!' : 'Zeit ist um!', 'Der Gamemaster löst gleich auf – schau auf den Fernseher.');
   if (S.phase === 'ident') return renderInfo('🎬', 'QuizAbend', 'Schau auf den Fernseher 👀');
   if (S.phase === 'opening') {
@@ -581,9 +595,10 @@ function render() {
         return renderInfo('🎰', 'Gleich wissen wir es …', 'Schau auf den Fernseher 👀');
       }
     }
-    return S.question.kind === 'match' ? renderMatchResult() : S.question.kind === 'tf' ? renderTFResult() : renderResult();
+    S.question.kind === 'match' ? renderMatchResult() : S.question.kind === 'tf' ? renderTFResult() : renderResult();
+    return meldenAnhaengen();
   }
-  if (S.phase === 'scores') return renderRank(false);
+  if (S.phase === 'scores') { renderRank(false); return meldenAnhaengen(); }
   if (S.phase === 'end') return renderRank(true);
 }
 
@@ -701,7 +716,7 @@ function renderAnleitung() {
 
 // ---------- Einstellungen für den Gamemaster ----------
 async function openSettings() {
-  ui.settings = true; ui.edit = null; ui.section = null; ui.sub = null; ui.planOpen = false; ui.pick = null; ui.renaming = null; lastKey = '';
+  ui.settings = true; ui.edit = null; ui.section = null; ui.sub = null; ui.planOpen = false; ui.pick = null; ui.renaming = null; ui.meld = null; lastKey = '';
   main.innerHTML = '<div class="center"><p>Lade Einstellungen …</p></div>';
   ui.packs = await fetch('/api/pakete').then(r => r.json()).catch(() => null);
   ui.hue = { st: (await hueCall('status')) || null };
@@ -719,6 +734,33 @@ async function resetHistory(btn) {
   if (ok) ui.packs = data;
   lastKey = ''; render();
 }
+// Gemeldete Fragen („⚑ Stimmt was nicht?“): Liste je Frage, als Textdatei herunterladen (für Claude), löschen
+async function meldungenLaden(data) {
+  ui.meld = data || await fetch('/api/meldungen?id=' + encodeURIComponent(myId)).then(r => r.json()).catch(() => ({ ok: false }));
+  lastKey = ''; render();
+}
+async function meldungenLoeschen(btn, uid) {
+  if (!uid && !btn.dataset.sure) { btn.dataset.sure = '1'; btn.textContent = 'Wirklich alle löschen?'; btn.classList.add('danger'); return; }
+  const { data } = await post('/api/meldungen', { id: myId, uid: uid || null });
+  ui.packs.meldungen = data && data.liste ? data.liste.length : 0;
+  meldungenLaden(data);
+}
+function meldungenSection() {
+  if (!ui.meld) { meldungenLaden(); return '<p class="small">Lade …</p>'; }
+  if (!ui.meld.ok) return '<p class="small">Die Meldungen sieht nur, wer das Spiel leiten darf.</p>';
+  const L = ui.meld.liste || [], G = ui.meld.gruende || {};
+  if (!L.length) return `<p class="small">Noch nichts gemeldet. Bei jeder Auflösung (und in der Rangliste danach) kann jeder am Handy auf „⚑ Stimmt was nicht?“ tippen und einen Grund wählen.</p>`;
+  return `<p class="small">Lade die Liste herunter und gib sie Claude – damit werden die Fragen im Fragen-Repo verbessert. Danach hier löschen.</p>
+    <a class="btn" href="/api/meldungen.txt?id=${encodeURIComponent(myId)}" download>📄 Als Textdatei herunterladen</a>
+    ${L.map(x => `<div class="meldung">
+      <div class="mtop"><small>${esc(x.paket || x.datei)} · Frage ${x.nr}</small><button class="mini" onclick="meldungenLoeschen(this, '${esc(x.uid)}')">Erledigt</button></div>
+      <b>${esc(x.frage)}</b>
+      <small>Lösung: ${esc(x.loesung)}</small>
+      <div class="mgr">${Object.entries(x.gruende).map(([k, n]) => `<span title="${esc(n.join(', '))}">${esc(G[k] || k)}${n.length > 1 ? ` ×${n.length}` : ''}</span>`).join('')}</div>
+      <small>von ${esc([...new Set(x.spieler)].join(', '))}</small></div>`).join('')}
+    <button class="btn ghost" onclick="meldungenLoeschen(this)">Alle löschen</button>`;
+}
+
 // Technik-Test: Testfragen für jede Frageart und Kombination (Ordner fragen/Technik-Test), nie im normalen Spiel
 function techSection(d) {
   const t = d.tech || [];
@@ -1218,6 +1260,8 @@ function settingsSection(id, d) {
     <p class="small">Insgesamt ${sum.questions} Fragen. Leichte Fragen kommen zuerst, schwere werden mit jeder Frage wahrscheinlicher.</p>
     ${d.history ? `<div class="histline"><span>🔁 Schon gespielt: <b>${d.history.played}</b> von ${d.history.total} Fragen</span>${d.history.played ? `<button class="mini" onclick="resetHistory(this)">Zurücksetzen</button>` : ''}</div>
     <p class="small">Neue Spiele nehmen zuerst Fragen, die noch nicht dran waren – sind alle durch, die, die am längsten her sind.</p>` : ''}
+    <h3>⚑ Gemeldete Fragen</h3>
+    ${more(d.meldungen ? `${d.meldungen} ${d.meldungen === 1 ? 'Frage' : 'Fragen'} gemeldet` : 'Noch keine Meldungen', 'meldungen')}
     ${c.pub && c.pub.on ? `<h3>📋 Pub-Quiz</h3><button class="fs" onclick="openPlan()"><span>Fragen vorab planen</span><span>›</span></button>` : ''}
     ${d.errors.length ? `<div class="errors"><b>⚠️ Fehler in Fragendateien</b>${d.errors.map(e => `<div><code>${esc(e.file)}</code><br>${esc(e.error)}</div>`).join('')}</div>` : ''}
     <p class="small">Woher die Fragen kommen (Fragen-Repo), steht unter 🛠️ System.</p>`;
@@ -1266,6 +1310,7 @@ function settingsSub(sub, d) {
   if (sub === 'hue') return hueSection() || '<p class="small">Nicht verfügbar.</p>';
   if (sub === 'https') return httpsSection();
   if (sub === 'repo') return repoSection(d);
+  if (sub === 'meldungen') return meldungenSection();
   return '';
 }
 // ---------- Pub-Quiz: Fragen planen (nur in der Lobby) ----------
@@ -1388,7 +1433,7 @@ const SECTIONS = [
 ];
 // Darf ich den Bereich öffnen? Spiel/Fragen/Spieler: wer das Spiel leitet; Technik: mit PIN nur Angemeldete; PIN-Kachel: immer
 const secAllowed = x => x.open || (x.group === 'technik' ? S.me.canTech : S.me.canLead || (x.id === 'spieler' && S.me.authed));
-const SUBS = { spotify: ['musik', ic('spotify', '#1DB954') + ' Spotify'], hue: ['musik', '💡 Philips Hue'], https: ['netz', '🔒 Sichere Adresse'], repo: ['system', '📚 Fragen-Quelle'] };
+const SUBS = { spotify: ['musik', ic('spotify', '#1DB954') + ' Spotify'], hue: ['musik', '💡 Philips Hue'], https: ['netz', '🔒 Sichere Adresse'], repo: ['system', '📚 Fragen-Quelle'], meldungen: ['fragen', '⚑ Gemeldete Fragen'] };
 function showSection(id, sub) { if (id === 'pin') pinCall('status').then(r => { ui.pinInfo = r.pin; lastKey = ''; render(); }); ui.section = id; ui.sub = sub || null; ui.renaming = null; lastKey = ''; render(); window.scrollTo(0, 0); }
 function settingsBack() { if (ui.sub) ui.sub = null; else ui.section = null; ui.renaming = null; lastKey = ''; render(); window.scrollTo(0, 0); }
 
@@ -1676,6 +1721,26 @@ function renderVotes() {
     ${a ? waitingFor(a) : '<div class="big">⏰</div>'}
     <h1>${a ? 'Zeit ist um!' : 'Keine Antwort'}</h1>
     <p>Schau auf den Fernseher 👀<br>Gleich kommt die Auflösung …</p></div>`;
+}
+
+// ---------- „⚑ Stimmt was nicht?“: Frage bei der Auflösung melden (Liste für den Host unter ⚙️ › 📚 Fragen) ----------
+const MELDEGRUENDE = [['falsch', '❌', 'Antwort falsch'], ['unklar', '❓', 'Frage unklar'], ['leicht', '😴', 'Zu leicht'], ['schwer', '🤯', 'Zu schwer'], ['technik', '🔇', 'Bild/Ton kaputt']];
+function meldenAnhaengen() {
+  if (!['reveal', 'scores'].includes(S.phase) || !S.me) return;
+  const g = S.me.gemeldet, cls = `melden${S.me.isHost ? ' host' : ''}`;
+  let html;
+  if (g) { const m = MELDEGRUENDE.find(x => x[0] === g) || ['', '⚑', g];
+    html = `<div class="${cls} done">⚑ Gemeldet: ${m[1]} ${m[2]} <button onclick="melden(null)">Zurücknehmen</button></div>`; }
+  else if (ui.meldenOffen === S.qNum) html = `<div class="${cls} open"><b>Was stimmt nicht${S.phase === 'scores' ? ' mit der letzten Frage' : ''}?</b>
+    <div class="mchips">${MELDEGRUENDE.map(([k, e, t]) => `<button onclick="melden('${k}')">${e} ${t}</button>`).join('')}</div>
+    <button class="mclose" onclick="ui.meldenOffen = null; lastKey = ''; render()">Abbrechen</button></div>`;
+  else html = `<button class="${cls} mbtn2" onclick="ui.meldenOffen = S.qNum; lastKey = ''; render()">⚑ ${S.phase === 'scores' ? 'Letzte Frage melden' : 'Stimmt was nicht?'}</button>`;
+  main.insertAdjacentHTML('beforeend', html);
+}
+async function melden(grund) {
+  if (navigator.vibrate) navigator.vibrate(15);
+  await post('/api/melden', { id: myId, grund });
+  ui.meldenOffen = null; lastKey = ''; render();
 }
 
 function renderResult() {

@@ -32,3 +32,5 @@ jobs:
         run: node code-pruefung/fragenmix.js
       - name: Technik-Test (alle Testfragen)
         run: node code-pruefung/techniktest.js
+      - name: Fragen melden (Meldungen, Liste, Textdatei)
+        run: node code-pruefung/meldungen.js
