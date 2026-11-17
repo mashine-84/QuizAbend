@@ -134,6 +134,13 @@
   .qcard.compact { padding: 2.2vh 3vw; }
   .qcard.compact .qtext { font-size: 2.8vw; }
   .imgq { flex: 1; display: grid; grid-template-columns: 1.4fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 1.6vw; min-height: 0; }
+  /* Richtig oder falsch / Zuordnung mit Bild: Bild links schmaler, Liste rechts */
+  .qwrap > .imgq.side { flex: 1 1 0; grid-template-columns: .8fr 1.2fr; }
+  .imgq.side > .tflist, .imgq.side > .mbody { min-height: 0; min-width: 0; }
+  .imgq.side .tfrow { font-size: calc(var(--rowfont) * .8); }
+  .imgq.mimg > .mbody { display: flex; gap: 1.6vw; align-items: stretch; }
+  .imgq.mimg .mbody .mpool { width: 15vw; }
+  .imgq.mimg .mbody .mpiece { font-size: 1.5vw; }
   .imgbox { background: rgba(255,255,255,.06); border-radius: 1.4vw; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 0; animation: pop .5s both; }
   .imgbox { position: relative; }
   .credit { position: absolute; right: .6vw; bottom: .5vh; max-width: 90%; font-size: .95vw; font-weight: 600; color: rgba(255,255,255,.85); background: rgba(0,0,0,.55); padding: .2vh .6vw; border-radius: .5vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -230,6 +237,11 @@
   .klabel rect { fill: #fff; } .klabel text { font-size: 17px; font-weight: 900; fill: #1b1440; }
   .klabel.ok rect { fill: #2fb36d; } .klabel.ok text { fill: #fff; }
   .kav { animation: pop .4s both; } html.lite .kav { animation: pop .4s both !important; }
+  .kcol { flex: 0 0 25vw; display: flex; flex-direction: column; gap: 1.4vh; min-width: 0; min-height: 0; }
+  .kcol .imgbox { flex: 0 1 auto; max-height: 46%; transition: max-height .6s; }
+  .kcol .imgbox img { height: auto; max-height: 100%; }
+  .kq.kafter .kcol .imgbox { max-height: 22%; }
+  .kcol .kside { flex: 1 1 0; min-height: 0; }
   .kside { flex: 0 0 25vw; display: flex; flex-direction: column; justify-content: center; gap: 1.2vh; min-width: 0; }
   .khint { font-size: 2vw; font-weight: 900; text-align: center; } .khint small { display: block; font-size: 1.3vw; color: var(--muted); margin-top: .8vh; font-weight: 700; }
   .klist { display: flex; flex-direction: column; gap: 1vh; }
@@ -1336,15 +1348,18 @@ function renderMain() {
       <div class="esthint">${q.year ? '📅 Jahreszahl am Handy eingeben!' : '🔢 Schätzt am Handy!'}${q.unit && !q.year ? `<small>Antwort in ${esc(q.unit)}</small>` : ''}${tolText(q) ? `<small>${tolText(q)}</small>` : ''}</div></div></div>`;
   } else if (q.map) {
     // Geografie: Karte groß, rechts die Liste (wer hat getippt, später Entfernung bzw. Land)
-    body = `<div class="kq"><div class="kbox" id="kbox"><div class="kload">Karte lädt …</div></div><div class="ktext"><small>${esc(q.category)}</small>${esc(q.text)}</div><div class="kside" id="kside"></div></div>`;
+    // mit Bild: Bild rechts über der Liste (klein, sobald Tipps/Auflösung kommen)
+    body = `<div class="kq"><div class="kbox" id="kbox"><div class="kload">Karte lädt …</div></div><div class="ktext"><small>${esc(q.category)}</small>${esc(q.text)}</div>${q.image ? `<div class="kcol">${img}<div class="kside" id="kside"></div></div>` : '<div class="kside" id="kside"></div>'}</div>`;
   } else if (q.kind === 'tf') {
     // Richtig oder falsch: Aussagen untereinander, rechts das Urteil (erst „?“, bei der Auflösung RICHTIG/FALSCH)
     body = `<div class="tflist n${q.statements.length} ${sizeCls(q.statements)}">${q.statements.map((t, i) => `<div class="tfrow" id="tf${i}" style="animation-delay:${i * 0.12}s">
       <span class="mnum">${i + 1}</span><span class="tftext">${esc(t)}</span><span class="tfright"><span class="voters"></span><span class="tfv" id="tfv${i}">?</span></span></div>`).join('')}</div>`;
+    if (q.image) body = `<div class="imgq side">${img}${body}</div>`;   // mit Bild: Bild links, Aussagen rechts
   } else if (q.kind === 'match') {
     // Antworten als eigene Spalte rechts (immer gemischt, nie in Lösungsreihenfolge – das sorgt der Server)
     body = `<div class="mbody"><div class="mlist n${q.left.length} ${sizeCls(q.left)}">${q.left.map((t, i) => mrow(i, t, '<span class="qm">?</span>')).join('')}</div>
       <div class="mpool">${q.right.map((t, j) => `<span class="mpiece ${t.length > 22 ? 'xl' : t.length > 14 ? 'l' : ''}" data-j="${j}" style="animation-delay:${0.2 + j * 0.08}s">${esc(t)}</span>`).join('')}</div></div>`;
+    if (q.image) body = `<div class="imgq side mimg">${img}${body}</div>`;   // mit Bild: Bild links, Zuordnung rechts
   }
   app.innerHTML = qHead(true) + `<div class="qwrap ${S.phase === 'question' ? 'fade' : ''}">${q.map ? '' : head}${body}</div>`;
   updateMain();
@@ -1423,6 +1438,7 @@ function renderGeo(byId) {
     kSizeSmall(svg, 6);
     if (box.dataset.phase === S.phase) return;
     box.dataset.phase = S.phase;
+    const kq = box.closest('.kq'); if (kq) kq.classList.toggle('kafter', S.phase === 'votes' || S.phase === 'reveal');   // Bild rechts verkleinern, Platz für die Liste
     const go = () => {
     // Ausschnitt: in der Frage die ganze Karte; danach auf die Tipps (und bei der Auflösung die Lösung) zoomen
     if (S.phase === 'votes' || S.phase === 'reveal') {
