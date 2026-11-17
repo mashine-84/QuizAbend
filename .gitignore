@@ -30,3 +30,5 @@ https.json
 spotify.json
 # Eigene Icons (z. B. Marken-Icons wie Spotify) – bringt der Besitzer selbst mit
 host.json
+# Gemeldete Fragen (Spieler am Handy)
+meldungen.json

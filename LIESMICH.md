@@ -108,6 +108,7 @@ Der 👑-Spieler tippt in der Lobby auf **⚙️ Einstellungen**, im Spiel oben 
 
 **📚 Fragen**
 - **Anzahl Blöcke** (1 bis 6). Antippen eines Blocks öffnet seine Einstellungen: wie viele Fragen er hat und welche Pakete er nutzt. Pakete lassen sich einzeln oder als ganze Hauptkategorie an- und abhaken. Neben jedem Paket steht, wie viele leichte, mittlere und schwere Fragen es enthält.
+- **⚑ Gemeldete Fragen:** Bei jeder Auflösung (und in der Rangliste danach für die letzte Frage) kann jeder am Handy auf „⚑ Stimmt was nicht?“ tippen und einen Grund wählen: Antwort falsch, Frage unklar, zu leicht, zu schwer oder Bild/Ton kaputt (zurücknehmen geht auch). Hier siehst du alle Meldungen je Frage mit Lösung und Namen, lädst sie als Textdatei herunter (für Claude, der damit die Fragen im Fragen-Repo verbessert) und löschst erledigte. Gespeichert in `meldungen.json`.
 - **🔁 Schon gespielt:** Der Pi merkt sich in `verlauf.json`, welche Fragen schon gespielt wurden. Neue Spiele nehmen zuerst Fragen, die noch nicht dran waren; sind alle durch, die, die am längsten her sind. Hier steht, wie viele schon gespielt wurden, und der Verlauf lässt sich zurücksetzen.
 - Im Pub-Quiz-Modus: **Fragen vorab planen**.
 - Fehler in Fragendateien, zum Beispiel ein fehlendes Komma, erscheinen hier mit Dateiname und Zeile.
