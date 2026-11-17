@@ -40,10 +40,10 @@
     {
       "id": "quiz", "nurWenn": "choice", "kicker": "Fragearten",
       "icon": "❓", "titel": "Quizfrage",
-      "text": "Vier Antworten – am Handy die gleiche Farbe tippen.",
-      "punkte": ["**Farbe und Form** sind gleich wie am Fernseher", "Getippt ist getippt – **nicht änderbar**"],
-      "tipp": "Probier's aus: Tippt am Handy auf **Blau**!",
-      "uebung": { "art": "choice", "frage": "Tippe auf Blau!" }
+      "text": "Vier Antworten A bis D – am Handy denselben Buchstaben tippen.",
+      "punkte": ["**Buchstabe und Farbe** sind gleich wie am Fernseher", "Getippt ist getippt – **nicht änderbar**"],
+      "tipp": "Probier's aus: Tippt am Handy auf **B**!",
+      "uebung": { "art": "choice", "frage": "Tippe auf B!" }
     },
     {
       "id": "bild", "nurWenn": "image", "kicker": "Fragearten",

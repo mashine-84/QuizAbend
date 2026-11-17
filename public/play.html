@@ -30,11 +30,12 @@
   .big { font-size: 72px; line-height: 1; }
   .sdnum { font-weight: 800; font-variant-numeric: tabular-nums; }
   .grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 12px; }
-  .ans { border: none; border-radius: 18px; color: #fff; font: inherit; font-weight: 800; font-size: 21px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 10px; box-shadow: 0 6px 0 rgba(0,0,0,.3); cursor: pointer; text-shadow: 0 1px 2px rgba(0,0,0,.25); }
-  .ans .shape { font-size: 46px; line-height: 1; }
-  .ans .shape svg { width: 42px; height: 42px; display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
+  .ans { border: 3px solid var(--k); background: var(--kd); border-radius: 18px; color: #fff; font: inherit; font-weight: 800; font-size: 21px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 10px; box-shadow: 0 6px 0 rgba(0,0,0,.3); cursor: pointer; }
+  .ans .shape { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 12px; background: var(--k); color: var(--kt); font-size: 28px; font-weight: 900; line-height: 1; }
   .ans:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
-  .c0 { background: var(--a); } .c1 { background: var(--b); } .c2 { background: var(--c); } .c3 { background: var(--d); }
+  /* Antwortfarben (A–D): dunkle Kachel, farbiger Rand, Buchstabe – bewusst kein Kahoot-Look; --k Akzent, --kd Kachel, --kt Schrift auf Akzent */
+  .c0 { --k: #ec6a4c; --kd: #2c1a1a; --kt: #3a120a; } .c1 { --k: #4aa3f0; --kd: #14223a; --kt: #062a4d; }
+  .c2 { --k: #e6b23a; --kd: #2a2414; --kt: #3a2a05; } .c3 { --k: #79b84a; --kd: #1a2617; --kt: #1b3309; }
   .ptsbadge { display: inline-block; color: var(--c); border: 2px solid var(--c); border-radius: 99px; padding: 0 8px; margin-right: 8px; font-weight: 900; }
   .qhead { border-bottom: 1px solid rgba(255,255,255,.12); padding-bottom: 14px; margin-bottom: 16px; }
   .ql1 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -64,8 +65,7 @@
   .qask { text-align: center; margin-bottom: 16px; }
   .qask h2 { font-size: 24px; font-weight: 900; color: #fff; margin: 0; letter-spacing: -0.01em; line-height: 1.15; }
   .qask p { color: var(--muted); font-size: 15px; font-weight: 600; margin: 6px 0 0; line-height: 1.35; }
-  .chosen { width: 130px; height: 130px; border-radius: 26px; display: grid; place-items: center; font-size: 70px; color: #fff; box-shadow: 0 6px 0 rgba(0,0,0,.3); }
-  .chosen svg { width: 66px; height: 66px; display: block; }
+  .chosen { width: 130px; height: 130px; border-radius: 26px; display: grid; place-items: center; font-size: 76px; font-weight: 900; color: var(--k); background: var(--kd); border: 4px solid var(--k); box-shadow: 0 6px 0 rgba(0,0,0,.3); }
   .res { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px; animation: pop .4s cubic-bezier(.2,1.5,.4,1) both; }
   .res.ok { background: #2fb36d; } .res.bad { background: #e5484d; } .res.none { background: #3b3363; }
   .res h1 { font-size: 40px; } .res p { color: rgba(255,255,255,.9); font-size: 20px; font-weight: 700; }
@@ -365,7 +365,7 @@ function keepAwakeSoon() {
 }
 // nach dem Zurückkehren in die App (Tab-Wechsel, Sperrbildschirm) wieder anfordern
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
-const SHAPES = ['▲', '◆', '●', '■'];
+const SHAPES = ['A', 'B', 'C', 'D'];   // Antworten heißen A–D (Buchstabe in der Kachel)
 const main = document.getElementById('main');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmtPts = n => Number.isInteger(n) ? String(n) : String(n).replace('.', ',');   // halbe Punkte aus dem Stechen: 2,5
@@ -428,14 +428,8 @@ function sendAnswer(payload, waitingHtml) {
 }
 // Formen als SVG statt Schriftzeichen: ▲◆●■ sitzen je nach Schrift unterschiedlich hoch (meist zu tief).
 // Im SVG liegt jede Form exakt in der Mitte (Dreieck optisch: Schwerpunkt mittig).
-const SHAPE_SVG = [
-  '<polygon points="50,10 94,84 6,84"/>',
-  '<polygon points="50,6 94,50 50,94 6,50"/>',
-  '<circle cx="50" cy="50" r="42"/>',
-  '<rect x="12" y="12" width="76" height="76" rx="4"/>',
-];
-const shapeSvg = (i, cls) => `<svg class="${cls || ''}" viewBox="0 0 100 100" fill="currentColor" aria-label="${SHAPES[i]}">${SHAPE_SVG[i]}</svg>`;
-const chosenHtml = i => `<div class="chosen c${i}">${shapeSvg(i)}</div>`;
+const shapeSvg = i => SHAPES[i];   // früher Formen (▲◆●■), jetzt Buchstaben A–D
+const chosenHtml = i => `<div class="chosen c${i}">${SHAPES[i]}</div>`;
 
 function advance() { post('/api/advance', { id: myId }); }
 // Risikofrage: bewusst aussetzen
@@ -671,7 +665,7 @@ async function anlTry(body) {
   if (await anlCall('try', body)) { anlMsg = '✓ Gesendet – schau auf den Fernseher!'; if (navigator.vibrate) navigator.vibrate(15); }
   const el = document.getElementById('anlok'); if (el) el.textContent = anlMsg;
 }
-const ANL_FARBEN = ['Rot', 'Blau', 'Gelb', 'Grün'];
+const ANL_FARBEN = ['Koralle', 'Blau', 'Senf', 'Grün'];
 const anlText = s => esc(s || '').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
 function renderAnleitung() {
   const a = S.anleitung, s = a.slide, u = s.uebung, me = S.me, lead = me.canLead;
@@ -1687,7 +1681,7 @@ function renderResult() {
   } else {
     cls = !r.answered ? 'none' : r.correct ? 'ok' : 'bad';
     title = !r.answered ? (r.risk ? 'Ausgesetzt – kein Risiko' : 'Zu langsam!') : r.correct ? 'Richtig! 🎉' : r.risk ? 'Falsch – das kostet Punkte 💥' : 'Leider falsch';
-    detail = r.correct ? '' : `<p>Richtig war: ${SHAPES[q.correct]} ${esc(q.answers[q.correct])}</p>`;
+    detail = r.correct ? '' : `<p>Richtig war: ${SHAPES[q.correct]} · ${esc(q.answers[q.correct])}</p>`;
   }
   main.innerHTML = `<div class="res ${cls}"><h1>${title}</h1>${detail}
     ${infoBox(q)}${LATER}</div>`;
