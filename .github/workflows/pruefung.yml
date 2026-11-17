@@ -18,6 +18,8 @@ jobs:
           node-version: 20
       - name: Syntax (Server, Fernseher, Handy)
         run: node code-pruefung/syntax.js
+      - name: Ewige Bestenliste (Eintragen, Name, Zurücksetzen)
+        run: node code-pruefung/bestenliste.js
       - name: Fragen im App-Repo (Testpakete)
         run: if [ -f pruefen.js ]; then node pruefen.js; else echo "pruefen.js fehlt – übersprungen"; fi
       - name: Rauchtest (zwei Spiele per API)

@@ -46,6 +46,7 @@
   .slot.on { border: none; background: var(--pc); color: #fff; font-weight: 800; font-size: 2vw; box-shadow: 0 .6vh 0 rgba(0,0,0,.25); }
   .slot .av { font-size: 2.8vw; }
   .slot .crown { margin-left: auto; font-size: 1.7vw; }
+  .slot .ew { font-size: 1.15vw; font-weight: 800; background: rgba(0,0,0,.25); border-radius: 99px; padding: .3vh .6vw; white-space: nowrap; }
   .slot.off { opacity: .45; }
   /* Bereit: grüner Haken am Avatar; noch nicht bereit: blasser, mit Hinweis */
   .slot.on { position: relative; }
@@ -904,6 +905,11 @@ function identTick() {
   if (!S.frozen) openerMusic.play(t, left);
 }
 
+// 🏆 Ewige Bestenliste: Siege über alle Spieleabende neben dem Namen (Spieler über den Namen wiedererkannt)
+function ewigBadge(name) {
+  const e = S.bestenliste && S.bestenliste.liste.find(x => x.name.toLowerCase() === String(name).trim().toLowerCase());
+  return e && e.siege ? `<span class="ew">🏆 ${e.siege}</span>` : '';
+}
 function renderLobby() {
   if (soundOn()) { introMusic.load(); openerMusic.load(); }   // Intro-Musik und Opener schon mal laden
   const slots = [];
@@ -911,7 +917,7 @@ function renderLobby() {
     const p = S.players[i];
     if (p) {
       const isNew = !seen.has(p.id); seen.add(p.id);
-      slots.push(`<div class="slot on ${isNew ? 'pop' : ''} ${p.connected ? '' : 'off'} ${p.ready ? '' : 'wait'}" style="--pc:${p.color}"><span class="av">${p.avatar}</span>${esc(p.name)}${p.id === S.vip ? '<span class="crown">👑</span>' : ''}${p.ready ? '<span class="rdy">✓</span>' : '<span class="zz">noch nicht bereit</span>'}</div>`);
+      slots.push(`<div class="slot on ${isNew ? 'pop' : ''} ${p.connected ? '' : 'off'} ${p.ready ? '' : 'wait'}" style="--pc:${p.color}"><span class="av">${p.avatar}</span>${esc(p.name)}${ewigBadge(p.name)}${p.id === S.vip ? '<span class="crown">👑</span>' : ''}${p.ready ? '<span class="rdy">✓</span>' : '<span class="zz">noch nicht bereit</span>'}</div>`);
     } else slots.push(`<div class="slot">Platz frei</div>`);
   }
   const n = S.players.filter(p => p.connected).length;

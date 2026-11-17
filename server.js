@@ -46,6 +46,7 @@ const FRAGEN_DIR = path.join(__dirname, 'fragen');
 const fragenRepo = require('./fragenrepo');   // Fragen-Repo (eigenes Git-Repo, Kopie unter fragen/_repo)
 const meldungen = require('./meldungen');   // „⚑ Stimmt was nicht?“ – gemeldete Fragen (meldungen.json)
 const { pickNext } = require('./fragenmix');   // Abwechslung bei den Fragearten (Reihenfolge im Spiel)
+const bestenliste = require('./bestenliste');   // 🏆 Ewige Bestenliste (bestenliste.json)
 const zertifikat = require('./zertifikat');   // sichere Adresse (https) im Heim-WLAN: DuckDNS + Let's Encrypt
 const spotify = require('./spotify');         // Spotify Connect: Hintergrundmusik passend zum Spiel, Spotify-Musikfragen
 const HTTPS_PORT = Number(process.env.HTTPS_PORT) || 443;
@@ -533,6 +534,7 @@ function setPhase(phase, ms, next) {
   state.frozen = null;
   state.next = next || null;
   state.phase = phase;
+  if (phase === 'end') bestenlisteEintragen();
   state.phaseMs = ms || 0;
   state.phaseEnds = ms ? Date.now() + ms : 0;
   if (ms && next) timer = setTimeout(next, ms);
@@ -916,6 +918,19 @@ function computeAwards() {
   return out;
 }
 
+// Ewige Bestenliste: jedes fertig gespielte Spiel einmal eintragen (nicht der Technik-Test)
+function bestenlisteEintragen() {
+  if (state.tech || state.bestenliste) return;
+  state.bestenliste = true;
+  // „⏹ Spiel beenden“ mittendrin: zählt erst, wenn mindestens die Hälfte der Fragen gespielt ist
+  if (state.idx + 1 < Math.ceil(state.questions.filter(q => !q.tiebreak).length / 2)) return console.log('  🏆 Bestenliste: Spiel zu früh beendet – zählt nicht');
+  const r = ranking(), byId = Object.fromEntries(r.map(p => [p.id, p]));
+  const serien = Object.fromEntries(r.map(p => [p.name, (state.stats[p.id] || {}).best || 0]));
+  const awards = computeAwards().filter(a => byId[a.id]).map(a => ({ name: byId[a.id].name, title: a.title, icon: a.icon }));
+  if (bestenliste.eintragen(r.map(p => ({ name: p.name, avatar: p.avatar, place: p.place })), awards, serien))
+    console.log(`  🏆 Bestenliste: Spiel eingetragen (Sieg: ${r.filter(p => p.place === 1).map(p => p.name).join(', ')})`);
+}
+
 function streakBonus(p, ok) {
   p.streak = ok ? (p.streak || 0) + 1 : 0;
   return ok ? Math.min(p.streak - 1, 3) * 50 : 0;
@@ -1279,6 +1294,7 @@ function baseView() {
     // Stechen um Platz 1: wer darf antworten (nur in der Ansage und während der Stechen-Frage)
     tiebreak: state.tiebreak && (ph === 'tiebreak' || (q && q.tiebreak)) ? { ids: state.tiebreak.ids, round: state.tiebreak.round } : null,
     awards: ph === 'end' ? computeAwards() : null,   // Sonderpreise bei der Siegerehrung
+    bestenliste: ['lobby', 'end'].includes(ph) ? bestenliste.info() : null,   // 🏆 Ewige Bestenliste (Lobby, Siegerehrung)
     anleitung: anleitungView(),
   };
   if (q && ['risk', 'intro', 'media', 'preview', 'question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
@@ -1903,6 +1919,16 @@ const server = http.createServer(async (req, res) => {
     if (!canTech(body.id) || state.phase !== 'lobby') return json(res, 403, { ok: false });
     const ids = Array.isArray(body.packs) ? body.packs.map(String) : null;
     return json(res, 200, { ok: startTechTest(ids) });
+  }
+
+  // Ewige Bestenliste zurücksetzen (wer das Spiel leiten darf, nur in der Lobby)
+  if (req.method === 'POST' && p === '/api/bestenliste') {
+    const body = await readBody(req);
+    if (!canLead(body.id) || state.phase !== 'lobby') return json(res, 403, { ok: false });
+    bestenliste.reset();
+    console.log('  🏆 Bestenliste zurückgesetzt');
+    broadcast();
+    return json(res, 200, { ok: true });
   }
 
   // Pub-Quiz: Fragenplan bearbeiten (nur 👑, nur in der Lobby)
