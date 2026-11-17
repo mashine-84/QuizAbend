@@ -271,7 +271,7 @@ function snippet(uri, opts, stillWanted = () => true, onStart = () => {}) {
 // block: Blockseite mit Jingle; dazu die Ankündigung vor Musik-/Filmfragen (siehe onPhase).
 // pause: in der Blockpause läuft Spotify, nur in der letzten Minute (Countdown-Musik am Fernseher) nicht – das meldet
 // der Server als eigene Phase 'pausefinale'.
-const PAUSE_PHASES = new Set(['ident', 'opening', 'block', 'pausefinale', 'media', 'end']);
+const PAUSE_PHASES = new Set(['ident', 'opening', 'block', 'risk', 'pausefinale', 'media', 'end']);
 const PLAY_PHASES = new Set(['intro', 'preview', 'question', 'locked', 'special', 'votes', 'reveal', 'scores', 'tiebreak', 'pause']);
 let gameStarted = false;
 // info.sound: in der Medien-Phase läuft Ton oder Video (beim Merkbild nicht – dann weiterspielen)

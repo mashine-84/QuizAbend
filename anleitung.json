@@ -32,6 +32,12 @@
       "punkte": ["Jede Frage könnte es sein", "Je später im Spiel, desto wahrscheinlicher", "Danach siehst du **„Spezialfrage!“** am Fernseher"]
     },
     {
+      "id": "risiko", "nurWenn": "risk", "kicker": "So geht QuizAbend",
+      "titel": "⚠️ Die Risikofrage",
+      "text": "Einmal im Spiel heult der **rote Alarm**: Jetzt kommt die Risikofrage. Du entscheidest, ob du antwortest.",
+      "punkte": ["Richtig: Punkte wie immer", "Falsch: **genauso viele Punkte weg**", "Nicht antworten: nichts passiert", "Kommt meist spät – nie im ersten Drittel"]
+    },
+    {
       "id": "quiz", "nurWenn": "choice", "kicker": "Fragearten",
       "icon": "❓", "titel": "Quizfrage",
       "text": "Vier Antworten – am Handy die gleiche Farbe tippen.",

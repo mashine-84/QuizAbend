@@ -44,6 +44,10 @@
   .qico { font-size: .9em; line-height: 1; }
   .qpts { color: var(--c); border-color: var(--c); padding: 3px 11px; }
   .qpts.sp { background: var(--c); color: #1b1440; }
+  .qpts.rk { background: #c4001d; border-color: #ff3347; color: #fff; }
+  .center.risk h1 { color: #ff4757; font-size: 40px; letter-spacing: .03em; }
+  .center.risk .big .fa { --fc: #ff3347 !important; }
+  .rkhint { color: #ff8a96; font-weight: 800; }
   .qptsg { display: flex; gap: 6px; }
   .ql1.three .qcat, .ql1.three .qpts { font-size: 14px; }   /* drei Teile (Spezialfrage): etwas kleiner, damit alles in eine Zeile passt */
   .ql1.three .qpts { padding: 3px 9px; }
@@ -439,7 +443,7 @@ function leave() {
 }
 
 // Punkte gibt's erst am Blockende – während der Fragen bleiben sie verborgen
-const HIDE_PTS = ['intro', 'media', 'preview', 'question', 'special', 'votes', 'reveal'];
+const HIDE_PTS = ['risk', 'intro', 'media', 'preview', 'question', 'special', 'votes', 'reveal'];
 let shownScore = 0, scoresSince = 0;
 let lastEstQ = 0, estRevealAt = 0;
 const EST_WAIT_MS = 7350;   // TV: 1,35 s Übergang + 4,5 s Slotmaschine + 1,4 s Einsortieren
@@ -482,6 +486,7 @@ function ptsPill(q) {
   if (!q || q.tiebreak) return '';
   const pt = ptsText(q);
   if (S.special) return `<span class="qptsg"><span class="qpts sp">⭐ Spezialfrage</span><span class="qpts">${pt || 'Punkte'} ×${S.special.mult}</span></span>`;
+  if (S.risk) return `<span class="qpts rk">⚠️ Risikofrage</span>`;
   return pt ? `<span class="qpts">${pt}</span>` : '';
 }
 // Kopf bei den Fragen (wie am Fernseher angeglichen): Frageart links, Punkte rechts, darunter der Fortschritt.
@@ -547,6 +552,7 @@ function render() {
   // Stechen: Wer nicht punktgleich ist, schaut nur zu
   if (S.question && S.question.tiebreak && S.tiebreak && !S.tiebreak.ids.includes(me.id) && ['question', 'votes', 'reveal'].includes(S.phase))
     return renderInfo('⚔️', 'Stechen läuft …', `${S.players.filter(p => S.tiebreak.ids.includes(p.id)).map(p => `${p.avatar} ${esc(p.name)}`).join(' · ')} schätzen um Platz 1.<br>Schau auf den Fernseher 👀`);
+  if (S.phase === 'risk') return renderInfo(ic('triangle-exclamation'), 'Risikofrage!', `Richtig: <b>+ Punkte</b><br>Falsch: <b>dieselben Punkte weg</b><br>Nicht antworten: nichts passiert<br>Schau auf den Fernseher 👀`, 'risk');
   if (S.phase === 'special') return renderInfo('⭐', 'Spezialfrage!', `Diese Frage zählt <b>×${S.special.mult}</b> Punkte!<br>Schau auf den Fernseher 👀`, 'special');
   const qIcon = q => q.brand === 'spotify' ? ic('spotify', '#1DB954') : q.icon;
   if (S.phase === 'intro') return renderInfo(qIcon(S.question), S.question.label, `Kategorie: ${esc(S.question.category)}<br>Gleich geht's los – schau auf den Fernseher!`, S.question.brand === 'spotify' ? 'spot' : '');
@@ -637,7 +643,7 @@ function renderLobby() {
       <button class="btn ghost" onclick="anlCall('start')">📖 Anleitung zeigen</button>
       ${gm ? '<button class="btn ghost" onclick="openPlan()">📋 Fragen planen</button>' : ''}
       <button class="btn ghost" onclick="openSettings()">⚙️ Einstellungen${k.errors ? ' · ⚠️' : ''}</button>
-      <p class="small">${blocks > 1 ? `${blocks} Blöcke · ` : ''}${k.questions} Fragen${k.special && k.special.on ? ` · ⭐ Spezialfrage ×${k.special.mult}` : ''}</p>`
+      <p class="small">${blocks > 1 ? `${blocks} Blöcke · ` : ''}${k.questions} Fragen${k.special && k.special.on ? ` · ⭐ Spezialfrage ×${k.special.mult}` : ''}${k.risk && k.risk.on ? ' · ⚠️ Risikofrage' : ''}</p>`
       : `${S.me.isVip ? '<p>Zum Starten brauchst du die Host-PIN.</p>' : ready && !waiting.length ? '<p>Warte, bis 👑 das Spiel startet …</p>' : ''}${becomeHost}${S.me.canTech ? '<button class="btn ghost" onclick="openSettings()">⚙️ Raum & Technik</button>' : ''}`}
     <button class="leave" onclick="leave()">Spiel verlassen</button></div>`;
 }
@@ -1146,7 +1152,7 @@ function tileStatus(d) {
   const pin = S.pin || {};
   return {
     pin: pin.set ? `${ok('PIN festgelegt')}${S.me.authed ? ' · du bist angemeldet' : ''}` : `<span class="warn">⚠️ Keine PIN – wer zuerst kommt, darf alles</span>`,
-    spiel: `${c.pub && c.pub.on ? '🍻 Pub-Quiz' : 'Normal'} · ${(c.scoring || 'speed') === 'level' ? 'Schwierigkeit' : 'Schnelligkeit'}<br>${c.special.on ? `Spezialfrage ×${c.special.mult}` : 'Keine Spezialfrage'}${c.pause.on && blocks > 1 ? ` · Pause ${c.pause.minutes ? c.pause.minutes + ' min' : '∞'}` : ''}`,
+    spiel: `${c.pub && c.pub.on ? '🍻 Pub-Quiz' : 'Normal'} · ${(c.scoring || 'speed') === 'level' ? 'Schwierigkeit' : 'Schnelligkeit'}<br>${c.special.on ? `Spezialfrage ×${c.special.mult}` : 'Keine Spezialfrage'}${c.risk && c.risk.on ? ' · Risikofrage' : ''}${c.pause.on && blocks > 1 ? ` · Pause ${c.pause.minutes ? c.pause.minutes + ' min' : '∞'}` : ''}`,
     fragen: `${blocks} ${blocks === 1 ? 'Block' : 'Blöcke'} · ${sum.questions} Fragen<br>${d.errors.length ? warn('Fehler in Fragendateien') : r.error ? warn('Fragen-Repo: Fehler') : r.url ? ok('Fragen-Repo geladen') : off('Nur Testfragen')}`,
     spieler: `${n} ${n === 1 ? 'Spieler' : 'Spieler'}${vip ? ` · 👑 ${esc(vip.name)}` : ''}`,
     musik: `${sp ? (sp.blocked ? off('Spotify: nur im Heim-WLAN') : sp.connected ? (sp.device ? (sp.enabled ? ok('Spotify · ' + esc(sp.device.name)) : off('Spotify aus')) : warn('Spotify: Gerät wählen')) : off('Spotify nicht verbunden')) : ''}<br>${hue ? (hue.blocked ? off('Hue: nur im Heim-WLAN') : hue.paired ? (hue.enabled !== false ? ok('Hue') : off('Hue aus')) : off('Hue nicht eingerichtet')) : ''}`,
@@ -1170,6 +1176,9 @@ function settingsSection(id, d) {
     <label class="switch"><input type="checkbox" ${c.special.on ? 'checked' : ''} onchange="setSpecial(this.checked)"><span>Eine geheime Spezialfrage pro Spiel</span></label>
     ${c.special.on ? `<div class="seg">${[2, 3, 4].map(m => `<button class="${c.special.mult === m ? 'on' : ''}" onclick="setMult(${m})">×${m}</button>`).join('')}</div>
       <p class="small">Erst nach dem Antworten wird verraten, dass es die Spezialfrage war. Die Punkte zählen dann ×${c.special.mult}.</p>` : ''}
+    <h3>⚠️ Risikofrage</h3>
+    <label class="switch"><input type="checkbox" ${c.risk && c.risk.on ? 'checked' : ''} onchange="cfg().risk = { on: this.checked }; saveCfg()"><span>Eine Risikofrage pro Spiel</span></label>
+    ${c.risk && c.risk.on ? '<p class="small">Wird mit rotem Alarm angekündigt. Richtig = Punkte, falsch = genauso viele Punkte weg, nicht antworten = nichts passiert. Nur Auswahl- und Länderfragen ab ★★, kommt meist spät im Spiel – nie im ersten Drittel.</p>' : ''}
     <h3>🍺 Pause zwischen den Blöcken</h3>
     <label class="switch"><input type="checkbox" ${c.pause.on ? 'checked' : ''} onchange="cfg().pause.on = this.checked; saveCfg()"><span>Pausen-Bildschirm</span></label>
     ${c.pause.on ? stepper('Dauer in Minuten', c.pause.minutes || '∞', `setPause(-1)`, `setPause(1)`) + `<p class="small">${c.pause.minutes ? `Nach ${c.pause.minutes} Minuten geht es automatisch weiter.` : 'Die Pause läuft, bis du sie am Handy beendest.'} Du kannst sie jederzeit beenden oder verlängern.</p>` : ''}`;
@@ -1301,6 +1310,7 @@ function modAction() {
   if (ph === 'opening') return ['⏭ Intro überspringen', 'ghost'];
   if (ph === 'tiebreak') return ['⏭ Weiter zur Stechen-Frage', 'ghost'];
   if (ph === 'block') return ['⏭ Weiter zur Frage', 'ghost'];
+  if (ph === 'risk') return ['⏭ Alarm überspringen', 'ghost'];
   if (ph === 'intro' || ph === 'media' || ph === 'preview') return ['⏭ Überspringen', 'ghost'];
   if (ph === 'question') return ['⏹ Antworten jetzt schließen', 'ghost'];
   if (ph === 'locked') return ['🔍 Frage auflösen', ''];
@@ -1315,7 +1325,7 @@ function modAction() {
   return null;
 }
 const MOD_STATUS = {
-  ident: 'Opener läuft auf dem Fernseher', opening: 'Intro läuft auf dem Fernseher', tiebreak: 'Gleichstand auf Platz 1 – gleich kommt das Stechen (Schätzfrage)', block: 'Block-Ansage', intro: 'Ansage der Frageart', media: 'Video/Audio/Merkbild läuft', preview: 'Vorschau der Begriffe',
+  ident: 'Opener läuft auf dem Fernseher', opening: 'Intro läuft auf dem Fernseher', tiebreak: 'Gleichstand auf Platz 1 – gleich kommt das Stechen (Schätzfrage)', block: 'Block-Ansage', risk: 'Alarm: Risikofrage!', intro: 'Ansage der Frageart', media: 'Video/Audio/Merkbild läuft', preview: 'Vorschau der Begriffe',
   question: 'Die Spieler antworten – nach Ablauf der Zeit löst du auf', locked: 'Zeit ist um – jetzt auflösen', special: 'Spezialfrage wird enthüllt', votes: 'Die Stimmen werden gezeigt',
   reveal: 'Auflösung', scores: 'Zwischenstand wird gezeigt', end: 'Spiel vorbei',
 };
@@ -1335,7 +1345,7 @@ function renderModerator() {
   main.innerHTML = `<div class="mod">
     ${S.question && h ? qline() : ''}
     <div class="mstatus">${esc(MOD_STATUS[ph] || '')}</div>
-    ${h ? `<div class="mq">${h.special ? '<div class="pqstar">⭐ Spezialfrage (die Spieler wissen es noch nicht)</div>' : ''}<div class="mcat">${esc(h.category)}</div><div class="mtext">${esc(h.text)}</div>${sol}</div>` : ''}
+    ${h ? `<div class="mq">${h.special ? '<div class="pqstar">⭐ Spezialfrage (die Spieler wissen es noch nicht)</div>' : ''}${h.risk ? '<div class="pqstar">⚠️ Risikofrage – falsch kostet Punkte, nicht antworten ist erlaubt</div>' : ''}<div class="mcat">${esc(h.category)}</div><div class="mtext">${esc(h.text)}</div>${sol}</div>` : ''}
     ${showAnswered ? `<div class="mans"><b>${done} von ${active.length}</b> haben geantwortet<div class="mavs">${active.map(p => `<span class="${p.answered ? 'on' : ''}" style="--pc:${p.color}">${p.avatar}</span>`).join('')}</div></div>` : ''}
     ${ph === 'end' && S.players[0] ? `<div class="mq"><div class="mtext">🏆 ${esc(S.players[0].name)} gewinnt mit ${S.players[0].score} ${S.players[0].score === 1 ? 'Punkt' : 'Punkten'}</div></div>` : ''}
     ${act ? `<button class="btn ${act[1]} mbtn" onclick="advance()">${act[0]}</button>` : ''}
@@ -1524,10 +1534,11 @@ function renderFrozen() {
 function renderInfo(icon, title, text, cls) {
   main.innerHTML = `<div class="center ${cls || ''}"><div class="big">${icon}</div><h1>${esc(title)}</h1><p>${text}</p></div>`;
   if (cls === 'special' && navigator.vibrate) navigator.vibrate([80, 50, 80, 50, 200]);
+  if (cls === 'risk' && navigator.vibrate) navigator.vibrate([300, 120, 300, 120, 300]);
 }
 
 function renderChoice() {
-  main.innerHTML = qline(S.question.points ? '' : 'Antworte schnell!') + `
+  main.innerHTML = qline(S.risk ? 'Nur wenn du sicher bist!' : S.question.points ? '' : 'Antworte schnell!', S.risk ? '<span class="rkhint">Falsch kostet Punkte – nicht antworten ist erlaubt.</span>' : '') + `
     <div class="grid">${S.question.answers.map((a, i) => `<button class="ans c${i} ${a.length > 40 ? 'xlong' : a.length > 24 ? 'long' : ''}" onclick="sendAnswer({choice:${i}}, chosenHtml(${i}))"><span class="shape">${shapeSvg(i)}</span>${esc(a)}</button>`).join('')}</div>`;
 }
 
@@ -1559,7 +1570,7 @@ function sendEstimate() {
 // ---------- Geografie: Karte zum Zoomen, Tippen setzt den Pin bzw. wählt das Land ----------
 function renderGeoQ() {
   const q = S.question, me = S.me, pin = q.kind === 'pin';
-  main.innerHTML = qline() + `<div class="kcard">${esc(q.text)}</div>
+  main.innerHTML = qline(S.risk ? 'Nur wenn du sicher bist!' : '', S.risk ? '<span class="rkhint">Falsch kostet Punkte – nicht antworten ist erlaubt.</span>' : '') + `<div class="kcard">${esc(q.text)}</div>
     <div class="kmap" id="kmap"><div class="kload">Karte lädt …</div></div>
     <p class="khelp">${pin ? `Tippen setzt den Pin – nochmal tippen versetzt ihn.${q.radius ? ` <b>Richtig bis ${kKm(q.radius)} daneben.</b>` : ''}` : 'Tippe auf das ' + (q.map === 'deutschland' ? 'Bundesland' : 'Land') + '. Kleine Länder haben einen Kreis.'} Zoomen mit zwei Fingern oder ＋/－.</p>
     <button class="btn" id="kgo" onclick="sendGeo()" ${geo ? '' : 'disabled'}>${pin ? '📍 Hier ist es' : '✓ Dieses ' + (q.map === 'deutschland' ? 'Bundesland' : 'Land')}</button>`;
@@ -1654,7 +1665,7 @@ function renderResult() {
     detail = `<p>${q.name ? `<b>${esc(q.name)}</b><br>` : ''}${r.answered ? `Du lagst <b>${kKm(r.km)}</b> daneben` : ''}<br><small>richtig bis ${kKm(q.radius)}${r.outOfRange ? ` · ab ${kKm(q.range)} keine Punkte` : ''}</small></p>`;
   } else if (q.kind === 'land') {
     cls = !r.answered ? 'none' : r.correct ? 'ok' : 'bad';
-    title = !r.answered ? 'Zu langsam!' : r.correct ? 'Richtig! 🎉' : 'Leider falsch';
+    title = !r.answered ? (r.risk ? 'Ausgesetzt – kein Risiko' : 'Zu langsam!') : r.correct ? 'Richtig! 🎉' : r.risk ? 'Falsch – das kostet Punkte 💥' : 'Leider falsch';
     const mine = r.answered && q.picks ? (q.picks.find(x => x.id === S.me.id) || {}).n : '';
     detail = `<p>Gesucht: <b>${esc(q.name)}</b>${mine && !r.correct ? `<br>Du: ${esc(mine)}` : ''}</p>`;
   } else if (q.kind === 'estimate') {
@@ -1665,7 +1676,7 @@ function renderResult() {
     detail = `<p>Richtig: <b>${fmt(q.value)}${unit}</b>${r.answered ? `<br>Du: ${fmt(r.value)}${unit}` : ''}${far}</p>`;
   } else {
     cls = !r.answered ? 'none' : r.correct ? 'ok' : 'bad';
-    title = !r.answered ? 'Zu langsam!' : r.correct ? 'Richtig! 🎉' : 'Leider falsch';
+    title = !r.answered ? (r.risk ? 'Ausgesetzt – kein Risiko' : 'Zu langsam!') : r.correct ? 'Richtig! 🎉' : r.risk ? 'Falsch – das kostet Punkte 💥' : 'Leider falsch';
     detail = r.correct ? '' : `<p>Richtig war: ${SHAPES[q.correct]} ${esc(q.answers[q.correct])}</p>`;
   }
   main.innerHTML = `<div class="res ${cls}"><h1>${title}</h1>${detail}

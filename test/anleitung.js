@@ -8,7 +8,7 @@ const raw = JSON.parse(fs.readFileSync(path.join(ROOT, 'anleitung.json'), 'utf8'
 const ids = raw.folien.map(f => f.id);
 ok(raw.folien.every(f => f.id && f.titel), 'Jede Folie hat id und titel');
 ok(new Set(ids).size === ids.length, 'Folien-IDs sind eindeutig');
-const ARTEN = ['choice', 'estimate', 'pin', 'land'], MERKMALE = ['choice', 'image', 'flash', 'estimate', 'pin', 'land', 'match', 'tf', 'audio', 'video', 'spotify', 'pub', 'special', 'pause'];
+const ARTEN = ['choice', 'estimate', 'pin', 'land'], MERKMALE = ['choice', 'image', 'flash', 'estimate', 'pin', 'land', 'match', 'tf', 'audio', 'video', 'spotify', 'pub', 'special', 'risk', 'pause'];
 ok(raw.folien.every(f => !f.uebung || ARTEN.includes(f.uebung.art)), 'uebung.art ist bekannt');
 ok(raw.folien.every(f => !f.nurWenn || [].concat(f.nurWenn).every(k => MERKMALE.includes(k))), 'nurWenn nennt nur bekannte Merkmale');
 ok(raw.folien.every(f => !f.wertung || ['speed', 'level'].includes(f.wertung)), 'wertung ist speed oder level');
@@ -61,6 +61,10 @@ const sse = id => fetch(B + '/events?id=' + id).then(async r => { const rd = r.b
   await sleep(300);
   const l2 = views[A].anleitung.list.map(x => x.id);
   ok(l2.includes('punkte_level') && l2.includes('pin_level') && !l2.includes('punkte') && l2.includes('spezial'), 'Level-Folien statt Tempo, Spezialfrage dabei');
+  ok(!l2.includes('risiko'), 'Risikofrage aus: keine Risiko-Folie');
+  await post('/api/einstellungen', { id: A, settings: { ...pk.settings, scoring: 'level', special: { on: true, mult: 3 }, risk: { on: true } } });
+  await sleep(300);
+  ok(views[A].anleitung.list.map(x => x.id).includes('risiko'), 'Risikofrage an: Risiko-Folie dabei');
   console.log('Ende');
   ok((await post('/api/anleitung', { id: A, action: 'stop' })).ok, 'Anna beendet die Anleitung');
   await sleep(200);

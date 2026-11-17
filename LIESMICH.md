@@ -59,7 +59,7 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 - **Autostart abschalten:** `sudo systemctl disable quizabend` und `rm ~/.config/autostart/quizabend-kiosk.desktop`
 
 ## Ablauf und Punkte
-- **🎬 Intro beim Spielstart (22 Sekunden, mit Musik):** Der Fernseher zeigt, was die Runde bringt: Anzahl Blöcke und Fragen, die Kategorien (gemischt, die Reihenfolge wird nicht verraten), die Fragearten, ob es eine Spezialfrage gibt und wer mitspielt. Der 👑-Spieler kann das Intro am Handy überspringen.
+- **🎬 Intro beim Spielstart (22 Sekunden, mit Musik):** Der Fernseher zeigt, was die Runde bringt: Anzahl Blöcke und Fragen, die Kategorien (gemischt, die Reihenfolge wird nicht verraten), die Fragearten, ob es eine Spezialfrage oder eine Risikofrage gibt und wer mitspielt. Der 👑-Spieler kann das Intro am Handy überspringen.
 - Ein Spiel besteht aus einem oder mehreren **Frageblöcken**, jeder mit eigener Paketauswahl und Fragenanzahl.
 - **Schwierigkeit:** Am Anfang kommen fast nur leichte Fragen, schwere werden mit jeder Frage wahrscheinlicher, über alle Blöcke hinweg:
 
@@ -71,6 +71,7 @@ Das Skript installiert Node.js und Chromium, richtet den Server als Dienst ein, 
 
   Dazwischen wird gleichmäßig übergeblendet. Fehlt in einem Block eine Stufe, verteilen sich ihre Prozente auf die anderen Stufen.
 - **⭐ Spezialfrage** (an- und abschaltbar): Genau einmal pro Spiel zählt eine zufällige Frage doppelt, dreifach oder vierfach. Verraten wird das erst nach dem Antworten. Die Chance liegt bei der ersten Frage bei 1 % und steigt dann gleichmäßig bis 100 % bei der letzten Frage.
+- **⚠️ Risikofrage** (an- und abschaltbar): Einmal pro Spiel kündigt ein roter Alarm vor der Frage eine Risikofrage an. Wer richtig antwortet, bekommt die Punkte wie immer. Wer falsch antwortet, verliert genauso viele Punkte, wie es für richtig gegeben hätte (gleiche Antwortzeit, ohne Serienbonus; bei Wertung nach Schwierigkeit 1–3 Punkte). Wer nicht antwortet, dem passiert nichts – auch die Serie bleibt stehen. Es kommen nur Auswahl- und Länderfragen ab ★★ in Frage, nie im ersten Drittel des Spiels; je später, desto wahrscheinlicher (exponentiell, bei 20 Fragen landet sie zu etwa 75 % unter den letzten fünf). Nie zugleich Spezialfrage. Der Punktestand kann dadurch auch unter 0 fallen.
 - **Auswahlfrage:** Richtig = 500 bis 1000 Punkte, je schneller, desto mehr.
 - **Bilderrätsel und Schätzfragen** werden mit einem Countdown angekündigt. Erst danach erscheinen Bild und Frage.
 - **Schätzfrage:** Je näher dran, desto mehr Punkte (bis 800). Wer am nächsten dran ist, bekommt +200 dazu.
@@ -95,6 +96,7 @@ Der 👑-Spieler tippt in der Lobby auf **⚙️ Einstellungen**, im Spiel oben 
 - **Modus:** *Normal* (alle spielen mit, läuft von selbst) oder **🍻 Pub-Quiz** (der 👑-Spieler moderiert, siehe unten).
 - **🏅 Punkte:** *Schnelligkeit* (Standard): bis zu 1000 Punkte je Frage, schnellere richtige Antworten bringen mehr, dazu Serienbonus; Schätz- und Zuordnungsfragen geben Teilpunkte. *Schwierigkeit*: eine richtige Antwort bringt so viele Punkte wie die Schwierigkeit der Frage (1–3), Tempo zählt nicht. Ausnahmen: Bei Zuordnungsfragen gibt jedes richtige Paar 1 Punkt (3 von 4 richtig = 3 Punkte), bei „Richtig oder falsch“ jede richtig eingeschätzte Aussage 1 Punkt, bei Schätzfragen bekommt, wer am nächsten dran ist, die Punkte der Schwierigkeit (bei Jahreszahlen nur innerhalb von ±2 Jahren). Die Spezialfrage vervielfacht in beiden Fällen.
 - **⭐ Spezialfrage:** an/aus und der Multiplikator ×2, ×3 oder ×4.
+- **⚠️ Risikofrage:** an/aus.
 - **🍺 Pause zwischen den Blöcken** an/aus mit Dauer.
 
 **📚 Fragen**
@@ -228,6 +230,7 @@ Alle Stücke sind selbst erzeugt, frei nutzbar und klingen einheitlich (A-Dur, 1
 | `aufloesung.mp3` | Auflösung jeder Frage | 1,6 s |
 | `rangliste.mp3` | Rangliste am Blockende: Spannung, solange die Balken wachsen, Auflösung beim Einsortieren | 13 s |
 | `spezialfrage.mp3` | Alarm, wenn die Spezialfrage eingeblendet wird | 3,5 s |
+| `risikofrage.mp3` | Roter Alarm vor der Risikofrage (a-Moll, Sirene) | 5,6 s |
 | `countdown.mp3` | letzte 10 Sekunden einer Frage: startet leise, baut Spannung auf (wie die Pausenmusik, nur dezenter); bei Sekunde 10 ist die Zeit um, danach klingt ein Schlussakkord aus | 11,8 s |
 | `pause-finale.mp3` | letzte Minute der Pause, ein Schlag pro Sekunde zum Countdown | 60 s |
 | `siegerehrung.mp3` | Siegerpodest | 10 s |
@@ -297,6 +300,7 @@ Das Quiz kann das Licht im Raum mitsteuern. Es braucht dafür nur die Hue Bridge
 | Frage | Dunkles Blau-Lila, stark gedimmt (bei Video/Audio fast aus) |
 | Auflösung | Farbe der richtigen Antwort (rot, blau, gelb, grün); bei Schätz- und Zuordnungsfragen grün |
 | Spezialfrage | Gold, volle Helligkeit, pulsiert, solange der Spezialfrage-Screen zu sehen ist |
+| Risikofrage | Dunkelrot, volle Helligkeit, pulsiert während des Alarms |
 | Pause zwischen den Blöcken | Hell und warmweiß; in der letzten Minute dimmt es langsam (über die ganze Minute) auf das Lila der nächsten Block-Ansage. Wird die Pause verlängert, wird es wieder hell |
 | Spiel angehalten | Warmweiß, halbe Helligkeit |
 | Siegerehrung | Farbe des Gewinners, pulsiert |

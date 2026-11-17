@@ -26,3 +26,5 @@ jobs:
         run: node test/pin.js
       - name: Anleitung (Inhalt, Folien, Ausprobieren)
         run: node test/anleitung.js
+      - name: Risikofrage (Plus, Minus, Aussetzen)
+        run: node test/risikofrage.js

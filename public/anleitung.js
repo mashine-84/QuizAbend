@@ -31,6 +31,12 @@ const ANL_BILD = {
   spezial: i => `${[0, 1, 2, 3, 4, 5].map(k => `<g transform="translate(${28 + (k % 3) * 88},${30 + Math.floor(k / 3) * 74})"><rect width="68" height="54" rx="9" fill="${k === 4 ? 'rgba(245,176,20,.25)' : '#2b2360'}" stroke="${k === 4 ? '#f5b014' : '#4a4580'}" stroke-width="2"/>
       <text x="34" y="35" font-size="${k === 4 ? 22 : 18}" fill="${k === 4 ? '#f5b014' : '#7d77bd'}" text-anchor="middle">${k === 4 ? '⭐' : '?'}</text></g>`).join('')}
     <text x="150" y="190" font-size="16" fill="#f5b014" text-anchor="middle">×${i.spezial || 2} Punkte</text>`,
+  risiko: () => `<rect x="0" y="0" width="300" height="210" rx="12" fill="#2a0006"/>
+    ${[0, 1, 2, 3, 4, 5, 6, 7].map(k => `<path d="M${k * 40 - 10},0 l20,0 l-20,16 l-20,0Z" fill="#e8001f"/><path d="M${k * 40 - 10},194 l20,0 l-20,16 l-20,0Z" fill="#e8001f"/>`).join('')}
+    <path d="M150,30 L188,96 L112,96Z" fill="none" stroke="#ff3347" stroke-width="7" stroke-linejoin="round"/><text x="150" y="88" font-size="34" font-weight="900" fill="#ff3347" text-anchor="middle">!</text>
+    <text x="150" y="124" font-size="18" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing="2">RISIKOFRAGE</text>
+    ${[['Richtig', '+', '#2fb36d'], ['Falsch', '−', '#ff3347'], ['Nichts', '±0', '#8a80c9']].map(([t, v, c], k) => `<g transform="translate(${22 + k * 88},140)"><rect width="80" height="44" rx="8" fill="#140003" stroke="${c}" stroke-width="2"/>
+      <text x="40" y="18" font-size="11" fill="${c}" text-anchor="middle">${t}</text><text x="40" y="37" font-size="16" font-weight="900" fill="#fff" text-anchor="middle">${v} Punkte</text></g>`).join('')}`,
   quiz: i => `${ANL_C.map((c, k) => `<rect x="${12 + (k % 2) * 82}" y="${28 + Math.floor(k / 2) * 50}" width="76" height="42" rx="7" fill="${c}"/>`).join('')}<text x="90" y="16" font-size="11" fill="#b9b2e6" text-anchor="middle">Fernseher</text>
     <path d="M182,80 L212,80" stroke="#f5b014" stroke-width="3" marker-end="url(#anQ)"/>${anlArrow('anQ')}
     ${anlPhone(222, 22, 66, 120, anlTiles(66, 120))}${anlFinger(270, 60)}<text x="255" y="16" font-size="11" fill="#b9b2e6" text-anchor="middle">Handy</text>
