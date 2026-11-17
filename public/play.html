@@ -808,12 +808,14 @@ function techSection(d) {
   return `<h3>🧪 Technik-Test</h3>
     <p class="small">Eine Testfrage für jede Frageart und Kombination – mit und ohne Bild, Merkbild, Ton, Video, Karte und Spotify. Läuft wie ein normales Spiel, auch allein, zählt aber nicht als gespielt (keine Pause, kein Stechen, keine Risiko- oder Spezialfrage).</p>
     <button class="fs" onclick="startTech()"><span>▶ Alles nacheinander</span><small>${sum} Fragen</small><span>›</span></button>
+    <button class="fs" onclick="startTech(null, 'special')"><span>⭐ Spezialfrage-Screen</span><small>1 Frage</small><span>›</span></button>
+    <button class="fs" onclick="startTech(null, 'risk')"><span>⚠️ Risikofrage-Screen</span><small>1 Frage</small><span>›</span></button>
     ${t.map(x => `<button class="fs" onclick="startTech(['${esc(x.id)}'])"><span>${esc(x.name)}</span><small>${x.count < x.total ? (x.count ? `${x.count} von ${x.total}` : 'Spotify nicht verbunden') : `${x.count} ${x.count === 1 ? 'Frage' : 'Fragen'}`}</small><span>›</span></button>`).join('')}
     ${ui.techMsg ? `<div class="sysout bad">${esc(ui.techMsg)}</div>` : ''}`;
 }
-async function startTech(ids) {
+async function startTech(ids, extra) {
   ui.techMsg = null;
-  const { ok, data } = await post('/api/techniktest', { id: myId, packs: ids || null });
+  const { ok, data } = await post('/api/techniktest', { id: myId, packs: ids || null, extra: extra || null });
   if (ok && data && data.ok) { closeSettings(); return; }
   ui.techMsg = ok ? 'Keine passenden Testfragen (Spotify nicht verbunden?).' : 'Das darf nur, wer Raum & Technik verwalten darf – und nur in der Lobby.';
   lastKey = ''; render();
