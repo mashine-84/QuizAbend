@@ -266,6 +266,18 @@
   .ib { border: none; background: rgba(255,255,255,.12); color: #fff; border-radius: 10px; min-width: 40px; height: 36px; font: inherit; font-size: 15px; font-weight: 800; }
   .ib.warn { background: #e5484d; padding: 0 10px; }
   .btn.danger { background: #e5484d; color: #fff; }
+  .ewig { padding: 14px 4px 30px; }
+  .ewtop { display: flex; justify-content: space-between; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; font-weight: 700; }
+  .ewtop .btn { width: auto; }
+  .ewig h1 { margin: 14px 0 12px; }
+  .ewrow { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.06); border-radius: 12px; padding: 10px 12px; margin: 7px 0; }
+  .ewrow.me { box-shadow: inset 0 0 0 2px var(--c); }
+  .ewpl { width: 30px; font-weight: 900; font-size: 18px; text-align: center; }
+  .ewav { font-size: 26px; }
+  .ewn { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .ewn small { color: var(--muted); font-size: 12px; }
+  .ewn .ewpr { color: #ffd98a; }
+  .ews { display: flex; flex-direction: column; align-items: center; } .ews b { font-size: 22px; } .ews small { color: var(--muted); font-size: 11px; }
   .repobox { background: rgba(255,255,255,.06); border-radius: 12px; padding: 10px 12px; margin: 8px 0 10px; word-break: break-all; }
   .repobox small { display: block; color: var(--muted); margin-top: 2px; word-break: normal; }
   .spot { color: #1ed760; } .center.spot h1 { color: #1ed760; }   /* Spotify-Musikfrage */
@@ -514,7 +526,7 @@ function render() {
   if (S.phase === 'scores' && lastPh !== 'scores') scoresSince = Date.now();
   header();
   const me = S.me;
-  const lobbyKey = S.phase === 'lobby' ? [S.players.map(p => (p.connected ? 'c' : '') + (p.ready ? 'r' : '') + p.avatar).join(''), JSON.stringify(S.packs), ui.settings].join(',') : '';
+  const lobbyKey = S.phase === 'lobby' ? [ui.ewig, JSON.stringify(S.bestenliste), S.players.map(p => (p.connected ? 'c' : '') + (p.ready ? 'r' : '') + p.avatar).join(''), JSON.stringify(S.packs), ui.settings].join(',') : '';
   const joinKey = me ? '' : (S.taken || S.players.map(p => p.avatar)).join('');
   const hostKey = ui.host ? [S.players.map(p => p.id + p.name + p.connected).join(','), ui.renaming].join('|') : '';
   const anl = S.phase === 'lobby' && S.anleitung, myTry = anl && me && (anl.tries || []).find(t => t.id === me.id);
@@ -534,6 +546,7 @@ function render() {
   if (ui.pinOpen) return renderPin();
   if (ui.settings) return renderSettings();
   if (S.frozen) return renderFrozen();
+  if (S.phase === 'lobby' && ui.ewig && !S.anleitung) return renderEwig();
   if (S.phase === 'lobby') return S.anleitung ? renderAnleitung() : renderLobby();
   if (S.phase === 'pause') return renderPause();
   if (me.isHost) return renderModerator();
@@ -596,6 +609,30 @@ function waitingFor(a) {
   return '<div class="big">🔗</div>';
 }
 
+// ---------- 🏆 Ewige Bestenliste (Lobby): Siege, Podestplätze und Auszeichnungen über alle Spieleabende ----------
+function ewigVon(name) { return S.bestenliste && S.bestenliste.liste.find(x => x.name.toLowerCase() === String(name).trim().toLowerCase()); }
+function renderEwig() {
+  const b = S.bestenliste || { liste: [], spiele: 0 }, L = b.liste, meinName = S.me.name.toLowerCase();
+  const seit = b.seit ? new Date(b.seit).toLocaleDateString('de-DE') : '';
+  main.innerHTML = `<div class="ewig">
+    <div class="ewtop"><button class="btn ghost sm" onclick="ui.ewig = false; lastKey = ''; render()">‹ Zurück</button><span>${b.spiele} ${b.spiele === 1 ? 'Spiel' : 'Spiele'}${seit ? ` seit ${seit}` : ''}</span></div>
+    <h1>🏆 Ewige Bestenliste</h1>
+    ${L.length ? L.map((x, i) => `<div class="ewrow ${x.name.toLowerCase() === meinName ? 'me' : ''}">
+      <span class="ewpl">${i < 3 && x.siege ? ['🥇', '🥈', '🥉'][i] : i + 1 + '.'}</span><span class="ewav">${x.avatar}</span>
+      <span class="ewn"><b>${esc(x.name)}</b><small>${x.spiele} ${x.spiele === 1 ? 'Spiel' : 'Spiele'} · ${x.zweite}× Zweiter · ${x.dritte}× Dritter${x.serie >= 3 ? ` · 🔥 ${x.serie}er-Serie` : ''}</small>
+        ${Object.keys(x.preise || {}).length ? `<small class="ewpr">${Object.entries(x.preise).map(([t, n]) => `${esc(t)}${n > 1 ? ` ×${n}` : ''}`).join(' · ')}</small>` : ''}</span>
+      <span class="ews"><b>${x.siege}</b><small>${x.siege === 1 ? 'Sieg' : 'Siege'}</small></span></div>`).join('')
+    : '<p class="small">Noch leer – nach dem ersten fertigen Spiel (mit mindestens 2 Spielern) steht hier, wer wie oft gewonnen hat.</p>'}
+    <p class="small">Spieler werden über ihren Namen wiedererkannt – also jedes Mal mit demselben Namen mitspielen. ${S.me.canLead ? 'Zurücksetzen: ⚙️ › 👥 Spieler.' : ''}</p>
+  </div>`;
+}
+async function ewigReset(btn) {
+  if (!btn.dataset.sure) { btn.dataset.sure = '1'; btn.textContent = 'Wirklich alles löschen?'; btn.classList.add('danger'); return; }
+  const { ok } = await post('/api/bestenliste', { id: myId });
+  ui.ewigMsg = ok ? '✓ Bestenliste zurückgesetzt' : 'Zurücksetzen geht nur in der Lobby.';
+  lastKey = ''; render();
+}
+
 function renderJoin() {
   myId = null; localStorage.removeItem('quizId');
   const full = S.players.length >= S.maxPlayers;
@@ -648,6 +685,7 @@ function renderLobby() {
       <button class="btn ghost" onclick="openSettings()">⚙️ Einstellungen${k.errors ? ' · ⚠️' : ''}</button>
       <p class="small">${blocks > 1 ? `${blocks} Blöcke · ` : ''}${k.questions} Fragen${k.special && k.special.on ? ` · ⭐ Spezialfrage ×${k.special.mult}` : ''}${k.risk && k.risk.on ? ' · ⚠️ Risikofrage' : ''}</p>`
       : `${S.me.isVip ? '<p>Zum Starten brauchst du die Host-PIN.</p>' : ready && !waiting.length ? '<p>Warte, bis 👑 das Spiel startet …</p>' : ''}${becomeHost}${S.me.canTech ? '<button class="btn ghost" onclick="openSettings()">⚙️ Raum & Technik</button>' : ''}`}
+    ${S.bestenliste && S.bestenliste.liste.length ? `<button class="btn ghost" onclick="ui.ewig = true; lastKey = ''; render()">🏆 Bestenliste${(e => e && e.siege ? ` · du: ${e.siege} 🏆` : '')(ewigVon(S.me.name))}</button>` : ''}
     <button class="leave" onclick="leave()">Spiel verlassen</button></div>`;
 }
 
@@ -1528,7 +1566,16 @@ function playersSection() {
         ${S.me.canLead ? `<button class="ib" onclick="startRename('${p.id}')" title="Umbenennen">✏️</button>` : ''}
         ${p.id === myId || !S.me.canLead ? '' : `<button class="ib ${ui.confirm === 'kick' + p.id ? 'warn' : ''}" onclick="kick('${p.id}')" title="Entfernen">${ui.confirm === 'kick' + p.id ? 'Sicher?' : '✖'}</button>`}</div>`).join('')
     + `<p class="small">👑 übergibt die Krone: Der andere leitet das Spiel${S.pin && S.pin.set && S.pin.protectTech ? ', darf aber nichts unter „Raum & Technik“ ändern (dafür braucht es die PIN)' : ''}. ✏️ umbenennen · ✖ aus dem Spiel nehmen.${S.pin && S.pin.set ? '' : ' Ohne Host-PIN ist 👑, wer zuerst beigetreten ist.'}</p>`
-    + (ui.crownMsg ? `<div class="sysout bad">${esc(ui.crownMsg)}</div>` : '');
+    + (ui.crownMsg ? `<div class="sysout bad">${esc(ui.crownMsg)}</div>` : '')
+    + ewigSettings();
+}
+function ewigSettings() {
+  const b = S.bestenliste, n = b ? b.liste.length : 0;
+  if (!S.me.canLead) return '';
+  return `<h3>🏆 Ewige Bestenliste</h3>
+    <p class="small">${b ? (n ? `${n} Spieler, ${b.spiele} ${b.spiele === 1 ? 'Spiel' : 'Spiele'} seit ${new Date(b.seit).toLocaleDateString('de-DE')}. Neue Saison? Dann zurücksetzen – Siege, Plätze und Auszeichnungen fangen bei null an.` : 'Noch leer.') : 'Zurücksetzen geht in der Lobby.'}</p>
+    ${b && n && S.phase === 'lobby' ? '<button class="btn ghost" onclick="ewigReset(this)">Bestenliste zurücksetzen</button>' : ''}
+    ${ui.ewigMsg ? `<div class="sysout">${esc(ui.ewigMsg)}</div>` : ''}`;
 }
 
 let pauseTimer = null;
@@ -1742,6 +1789,7 @@ function renderRank(end) {
     ${end && S.awards ? S.awards.filter(a => a.id === me.id).map(a => `<div class="myaward">${a.icon} <b>${esc(a.title)}</b><small>${esc(a.text)}</small></div>`).join('') : ''}
     <h1>${end ? (me.rank === 1 ? (tied.length ? 'Geteilter Sieg!' : 'Du hast gewonnen!') : `Platz ${me.rank}`) : pts(me.score)}</h1>
     <p>${me.rank === 1 ? (end ? `${pts(me.score)} – stark!` : tied.length ? `Gleichauf mit ${tied.join(', ')} 🤝` : 'Du führst! 🔥') : `${pts(gap)} hinter ${esc(ahead.name)}${tied.length ? ` · gleichauf mit ${tied.join(', ')}` : ''}`}</p>
+    ${end ? (e => e ? `<p class="small">🏆 Ewige Bestenliste: ${me.rank === 1 ? `dein <b>${e.siege}. Sieg</b>` : `${e.siege} ${e.siege === 1 ? 'Sieg' : 'Siege'}`} in ${e.spiele} ${e.spiele === 1 ? 'Spiel' : 'Spielen'}</p>` : '')(ewigVon(me.name)) : ''}
     ${me.canLead ? `<button class="btn ${end ? '' : 'ghost'}" onclick="advance()">${end ? 'Neue Runde' : 'Weiter'}</button>` : ''}
   </div>`;
 }
