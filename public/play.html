@@ -426,8 +426,6 @@ function sendAnswer(payload, waitingHtml) {
   renderWaiting(waitingHtml);
   post('/api/answer', { id: myId, ...payload }).finally(() => { sending = false; });
 }
-// Formen als SVG statt Schriftzeichen: ▲◆●■ sitzen je nach Schrift unterschiedlich hoch (meist zu tief).
-// Im SVG liegt jede Form exakt in der Mitte (Dreieck optisch: Schwerpunkt mittig).
 const shapeSvg = i => SHAPES[i];   // früher Formen (▲◆●■), jetzt Buchstaben A–D
 const chosenHtml = i => `<div class="chosen c${i}">${SHAPES[i]}</div>`;
 
