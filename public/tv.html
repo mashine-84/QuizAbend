@@ -52,8 +52,6 @@
   .slot.on { position: relative; }
   .slot .rdy { position: absolute; left: 3.4vw; top: 1vh; width: 2.1vw; height: 2.1vw; border-radius: 50%; background: #2fb36d; border: .2vw solid #fff; display: grid; place-items: center; font-size: 1.1vw; color: #fff; font-weight: 900; }
   .slot.wait { opacity: .6; } .slot.wait.off { opacity: .4; }
-  .slot .zz { margin-left: auto; font-size: 1.3vw; font-weight: 700; opacity: .9; line-height: 1.1; }
-  .slot .crown + .zz { margin-left: 1vw; }
   .hint { margin-top: 3vh; color: var(--muted); font-size: 1.5vw; text-align: center; }
   .hint b { color: var(--ink); }
 
@@ -950,16 +948,16 @@ function renderLobby() {
     const p = S.players[i];
     if (p) {
       const isNew = !seen.has(p.id); seen.add(p.id);
-      slots.push(`<div class="slot on ${isNew ? 'pop' : ''} ${p.connected ? '' : 'off'} ${p.ready ? '' : 'wait'}" style="--pc:${p.color}"><span class="av">${p.avatar}</span>${esc(p.name)}${ewigBadge(p.name)}${p.id === S.vip ? '<span class="crown">👑</span>' : ''}${p.ready ? '<span class="rdy">✓</span>' : '<span class="zz">noch nicht bereit</span>'}</div>`);
+      slots.push(`<div class="slot on ${isNew ? 'pop' : ''} ${p.connected ? '' : 'off'} ${p.ready ? '' : 'wait'}" style="--pc:${p.color}"><span class="av">${p.avatar}</span>${esc(p.name)}${ewigBadge(p.name)}${p.id === S.vip ? '<span class="crown">👑</span>' : ''}${p.ready ? '<span class="rdy">✓</span>' : ''}</div>`);   // noch nicht bereit: Kachel blasser
     } else slots.push(`<div class="slot">Platz frei</div>`);
   }
   const n = S.players.filter(p => p.connected).length;
   const need = Math.max(0, S.minPlayers - n);
-  const waiting = S.players.filter(p => p.connected && !p.ready);
+  const ready = S.players.filter(p => p.connected && p.ready).length;
   const gm = S.pub && S.pub.host;   // Pub-Quiz: der Host moderiert und steht nicht in der Spielerliste
   const vipName = (S.players.find(p => p.id === S.vip) || {}).name || '';
   const starter = gm ? `🎤 <b>${esc(gm.name)}</b>` : `👑 <b>${esc(vipName)}</b>`;
-  app.innerHTML = topbar(`<span class="pill">${n} / ${S.maxPlayers} Spieler</span>`) + `
+  app.innerHTML = topbar('') + `
     <div class="lobby" style="transform:${lobbyShift()}">
       <div class="join">
         <h1>Handy raus,<br><span>los geht's!</span></h1>
@@ -970,7 +968,8 @@ function renderLobby() {
         <div class="slots">${slots.join('')}</div>
         ${packLine()}
         ${soundHint()}
-        <div class="hint">${need > 0 ? `Noch <b>${need}</b> Spieler nötig …` : waiting.length ? `<b>${n - waiting.length} von ${n}</b> bereit – warten auf ${waiting.map(p => `${p.avatar} <b>${esc(p.name)}</b>`).join(', ')} …` : `Alle bereit – ${starter} startet das Spiel am Handy`}</div>
+        <div class="hint">${need === 0 && ready === n ? `Alle bereit – ${starter} startet das Spiel am Handy`
+          : `<b>${ready} von ${n}</b> ${n === 1 ? 'Spieler' : 'Spielern'} bereit${need > 0 ? ` <small>· mindestens ${S.minPlayers} nötig</small>` : ''}`}</div>
       </div>
     </div>`;
 }
