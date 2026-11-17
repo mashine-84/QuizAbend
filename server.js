@@ -43,9 +43,9 @@ const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
 
 const FRAGEN_DIR = path.join(__dirname, 'fragen');
-const fragenRepo = require('./fragenrepo');
-const bestenliste = require('./bestenliste');   // 🏆 Ewige Bestenliste (bestenliste.json)   // Fragen-Repo (eigenes Git-Repo, Kopie unter fragen/_repo)
+const fragenRepo = require('./fragenrepo');   // Fragen-Repo (eigenes Git-Repo, Kopie unter fragen/_repo)
 const { pickNext } = require('./fragenmix');   // Abwechslung bei den Fragearten (Reihenfolge im Spiel)
+const bestenliste = require('./bestenliste');   // 🏆 Ewige Bestenliste (bestenliste.json)
 const zertifikat = require('./zertifikat');   // sichere Adresse (https) im Heim-WLAN: DuckDNS + Let's Encrypt
 const spotify = require('./spotify');         // Spotify Connect: Hintergrundmusik passend zum Spiel, Spotify-Musikfragen
 const HTTPS_PORT = Number(process.env.HTTPS_PORT) || 443;
@@ -1882,6 +1882,14 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, packList());
   }
 
+  // Technik-Test starten (⚙️ › 🛠️ System, nur in der Lobby): packs = Liste von Paket-IDs, sonst alle
+  if (req.method === 'POST' && p === '/api/techniktest') {
+    const body = await readBody(req);
+    if (!canTech(body.id) || state.phase !== 'lobby') return json(res, 403, { ok: false });
+    const ids = Array.isArray(body.packs) ? body.packs.map(String) : null;
+    return json(res, 200, { ok: startTechTest(ids) });
+  }
+
   // Ewige Bestenliste zurücksetzen (wer das Spiel leiten darf, nur in der Lobby)
   if (req.method === 'POST' && p === '/api/bestenliste') {
     const body = await readBody(req);
@@ -1890,14 +1898,6 @@ const server = http.createServer(async (req, res) => {
     console.log('  🏆 Bestenliste zurückgesetzt');
     broadcast();
     return json(res, 200, { ok: true });
-  }
-
-  // Technik-Test starten (⚙️ › 🛠️ System, nur in der Lobby): packs = Liste von Paket-IDs, sonst alle
-  if (req.method === 'POST' && p === '/api/techniktest') {
-    const body = await readBody(req);
-    if (!canTech(body.id) || state.phase !== 'lobby') return json(res, 403, { ok: false });
-    const ids = Array.isArray(body.packs) ? body.packs.map(String) : null;
-    return json(res, 200, { ok: startTechTest(ids) });
   }
 
   // Pub-Quiz: Fragenplan bearbeiten (nur 👑, nur in der Lobby)
