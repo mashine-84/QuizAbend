@@ -50,6 +50,11 @@ async function spiel(name, ids, tv, me, riskOn) {
       await post('/api/answer', { id: ids[0], choice: r });
       await post('/api/answer', { id: ids[1], choice: f });
       if (!v.risk) await post('/api/answer', { id: ids[2], choice: f });
+      else {
+        out.skipBad = (await post('/api/aussetzen', { id: ids[0] }))[0];   // Anna hat schon geantwortet → abgelehnt
+        out.skipOk = (await post('/api/aussetzen', { id: ids[2] }))[0];
+        await sleep(400); out.early = tv.view.phase !== 'question';
+      }
       continue;
     }
     if (v.phase === 'reveal' && v.risk && !out.results) { await sleep(200); out.results = ids.map(id => me[id].me.result); out.after = ids.map(id => me[id].me.score); }
@@ -80,8 +85,11 @@ async function spiel(name, ids, tv, me, riskOn) {
       ok(ra.correct && da > 0 && da === ra.gain, `Anna richtig: +${da}`);
       ok(!rb.correct && rb.answered && db < 0 && db === rb.gain && -db >= 500 && -db <= 1000 && -db % 10 === 0, `Ben falsch: ${db}`);
       ok(-db <= da && -db >= da - 150, `Ben verliert so viel, wie es für richtig gegeben hätte (ohne Serienbonus): ${-db} ≤ ${da}`);
-      ok(!rc.answered && dc === 0, 'Cleo setzt aus: ±0');
+      ok(!rc.answered && rc.skipped && dc === 0, 'Cleo setzt per Knopf aus: ±0');
+      ok(o.skipOk === 200 && o.skipBad === 409, 'Aussetzen nur ohne Antwort möglich');
+      ok(o.early, 'Alle fertig (auch Aussetzen) → die Frage endet sofort');
     }
+    { const [st] = await post('/api/aussetzen', { id: ids[0] }); ok(st === 409, 'Aussetzen außerhalb der Risikofrage abgelehnt'); }
     const o = await spiel('Spiel 5: Risikofrage aus', ids, tv, me, false);
     ok(o.riskQ === null && !o.phases.some(p => p.startsWith('risk')), 'Ohne Einstellung keine Risikofrage');
     console.log('\nPositionen der Risikofrage: ' + pos.join(', '));

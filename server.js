@@ -785,6 +785,7 @@ function nextQuestion() {
   state.idx++;
   if (state.idx >= state.questions.length) return setPhase('end');
   state.answers = {};
+  state.skipped = {};   // Risikofrage: bewusst ausgesetzt
   state.results = {};
   state.step = 0;
   state.special = false;
@@ -989,7 +990,7 @@ function applyRisk(streaks) {
     const a = state.answers[p.id], r = state.results[p.id];
     if (!r) continue;
     r.risk = true;
-    if (!a) { p.streak = streaks.get(p.id) || 0; continue; }
+    if (!a) { p.streak = streaks.get(p.id) || 0; if ((state.skipped || {})[p.id]) r.skipped = true; continue; }
     if (r.correct) continue;
     const speed = Math.max(0, state.answerEnds - a.at) / q.timeMs;
     const loss = level ? (q.level || 1) : round10(500 + 500 * speed);
@@ -1172,7 +1173,7 @@ const minPlayers = () => pubActive() ? 1 : MIN_PLAYERS;
 function allAnswered() {
   const q = currentQuestion();
   const active = [...players.values()].filter(p => p.connected && isPlayer(p) && mayAnswer(q, p));
-  return active.length > 0 && active.every(p => state.answers[p.id]);
+  return active.length > 0 && active.every(p => state.answers[p.id] || (state.skipped || {})[p.id]);
 }
 
 // =====================================================================
@@ -1183,7 +1184,7 @@ function ranking() {
   const list = [...players.values()].filter(isPlayer)
     .sort((a, b) => b.score - a.score || a.joinedAt - b.joinedAt)
     .map(p => ({ id: p.id, name: p.name, color: p.color, avatar: p.avatar, score: p.score, connected: p.connected, joined: p.joinedAt,
-      answered: !!state.answers[p.id], result: state.results[p.id] || null, ready: !!p.ready }));
+      answered: !!(state.answers[p.id] || (state.skipped || {})[p.id]), result: state.results[p.id] || null, ready: !!p.ready }));
   list.forEach((p, i) => { p.place = i && p.score === list[i - 1].score ? list[i - 1].place : i + 1; });
   return list;
 }
@@ -1315,6 +1316,7 @@ function viewFor(client, base) {
     rank: rankOf(me.id), isVip: vipId() === me.id, authed: !!me.authed, canLead: canLead(me.id), canTech: canTech(me.id),
     isHost: pubActive() && hostId() === me.id, hostQ: pubActive() && hostId() === me.id ? hostSolution() : null,
     answer: state.answers[me.id] || null,
+    skipped: !!(state.skipped || {})[me.id],
     result: state.results[me.id] || null,
   } : null };
 }
@@ -1776,6 +1778,16 @@ const server = http.createServer(async (req, res) => {
     const answer = pl && isPlayer(pl) && mayAnswer(q, pl) && state.phase === 'question' && !state.frozen && !state.answers[pl.id] && validAnswer(q, body);
     if (!answer) return json(res, 409, { ok: false });
     state.answers[pl.id] = { ...answer, at: Date.now() };
+    if (allAnswered()) endAnswering(); else broadcast();
+    return json(res, 200, { ok: true });
+  }
+
+  // Risikofrage: bewusst aussetzen (zählt wie „fertig“, damit niemand auf das Ende der Zeit warten muss)
+  if (req.method === 'POST' && p === '/api/aussetzen') {
+    const body = await readBody(req);
+    const pl = players.get(body.id), q = currentQuestion();
+    if (!(pl && isPlayer(pl) && isRisk(q) && mayAnswer(q, pl) && state.phase === 'question' && !state.frozen && !state.answers[pl.id] && !state.skipped[pl.id])) return json(res, 409, { ok: false });
+    state.skipped[pl.id] = true;
     if (allAnswered()) endAnswering(); else broadcast();
     return json(res, 200, { ok: true });
   }

@@ -48,6 +48,7 @@
   .center.risk h1 { color: #ff4757; font-size: 40px; letter-spacing: .03em; }
   .center.risk .big .fa { --fc: #ff3347 !important; }
   .rkhint { color: #ff8a96; font-weight: 800; }
+  .rkskip { margin-top: 12px; border: 2px solid #8a80c9; color: #ddd6ff; font-size: 18px; padding: 13px; }
   .qptsg { display: flex; gap: 6px; }
   .ql1.three .qcat, .ql1.three .qpts { font-size: 14px; }   /* drei Teile (Spezialfrage): etwas kleiner, damit alles in eine Zeile passt */
   .ql1.three .qpts { padding: 3px 9px; }
@@ -437,6 +438,14 @@ const shapeSvg = (i, cls) => `<svg class="${cls || ''}" viewBox="0 0 100 100" fi
 const chosenHtml = i => `<div class="chosen c${i}">${shapeSvg(i)}</div>`;
 
 function advance() { post('/api/advance', { id: myId }); }
+// Risikofrage: bewusst aussetzen
+const skipBtn = () => S.risk ? '<button class="btn ghost rkskip" onclick="skipRisk()">🙈 Aussetzen – kein Risiko</button>' : '';
+function skipRisk() {
+  if (sending || (S.me && (S.me.answer || S.me.skipped))) return;
+  sending = true; if (navigator.vibrate) navigator.vibrate(30);
+  S.me.skipped = true; lastKey = ''; render();
+  post('/api/aussetzen', { id: myId }).finally(() => { sending = false; });
+}
 function leave() {
   post('/api/leave', { id: myId });
   localStorage.removeItem('quizId'); myId = null; lastKey = ''; connect();
@@ -518,7 +527,7 @@ function render() {
   const anl = S.phase === 'lobby' && S.anleitung, myTry = anl && me && (anl.tries || []).find(t => t.id === me.id);
   // Anleitung: neu zeichnen bei neuer Folie und eigener Antwort (nicht bei der Karte – Zoom bleibt erhalten)
   const anlKey = anl ? [anl.idx, anl.total, anl.slide.id, anl.slide.uebung && !['pin', 'land'].includes(anl.slide.uebung.art) && myTry ? JSON.stringify(myTry) : ''].join(':') : '';
-  const key = [anlKey, joinKey, hostKey, ui.host, S.frozen, JSON.stringify(S.system), S.kicked, S.phase, S.qNum, me ? me.id : '-', me && JSON.stringify(me.answer && (me.answer.choice ?? me.answer.value ?? me.answer.order ?? me.answer.pos ?? me.answer.region)),
+  const key = [anlKey, joinKey, hostKey, ui.host, S.frozen, JSON.stringify(S.system), S.kicked, S.phase, S.qNum, me ? me.id : '-', me && me.skipped, me && JSON.stringify(me.answer && (me.answer.choice ?? me.answer.value ?? me.answer.order ?? me.answer.pos ?? me.answer.region)),
     me && me.isVip, me && me.canLead, me && me.canTech, me && me.authed, JSON.stringify(S.pin), lobbyKey, S.question && S.question.step,
     me && me.isHost ? S.players.map(p => (p.answered ? 1 : 0) + (p.connected ? 'c' : '')).join('') + JSON.stringify(me.hostQ) : ''].join('|');
   if (key === lastKey) return; // nichts Relevantes geändert (Eingaben nicht zerstören)
@@ -564,6 +573,7 @@ function render() {
   if (S.phase === 'preview') return renderInfo('👀', 'Merk dir die Begriffe!', 'Gleich musst du ihnen auf dem Handy die richtigen Partner zuordnen.');
   if (S.phase === 'question') {
     if (me.answer) return renderWaiting(waitingFor(me.answer));
+    if (me.skipped) return renderInfo('🙈', 'Ausgesetzt', 'Kein Risiko für dich.<br>Schau auf den Fernseher, ob du richtig gelegen hättest.');
     if (newQuestion) { est = ''; geo = null; match = { sel: (S.question.left || []).map(() => null), active: 0 }; tfMarks = (S.question.statements || []).map(() => null); if (navigator.vibrate) navigator.vibrate([60, 40, 60]); }
     const k = S.question.kind;
     return k === 'estimate' ? renderEstimate() : k === 'match' ? renderMatch() : k === 'tf' ? renderTF() : k === 'pin' || k === 'land' ? renderGeoQ() : renderChoice();
@@ -1538,8 +1548,8 @@ function renderInfo(icon, title, text, cls) {
 }
 
 function renderChoice() {
-  main.innerHTML = qline(S.risk ? 'Nur wenn du sicher bist!' : S.question.points ? '' : 'Antworte schnell!', S.risk ? '<span class="rkhint">Falsch kostet Punkte – nicht antworten ist erlaubt.</span>' : '') + `
-    <div class="grid">${S.question.answers.map((a, i) => `<button class="ans c${i} ${a.length > 40 ? 'xlong' : a.length > 24 ? 'long' : ''}" onclick="sendAnswer({choice:${i}}, chosenHtml(${i}))"><span class="shape">${shapeSvg(i)}</span>${esc(a)}</button>`).join('')}</div>`;
+  main.innerHTML = qline(S.risk ? 'Nur wenn du sicher bist!' : S.question.points ? '' : 'Antworte schnell!', S.risk ? '<span class="rkhint">Falsch kostet Punkte – du kannst auch aussetzen.</span>' : '') + `
+    <div class="grid">${S.question.answers.map((a, i) => `<button class="ans c${i} ${a.length > 40 ? 'xlong' : a.length > 24 ? 'long' : ''}" onclick="sendAnswer({choice:${i}}, chosenHtml(${i}))"><span class="shape">${shapeSvg(i)}</span>${esc(a)}</button>`).join('')}</div>${skipBtn()}`;
 }
 
 function renderEstimate() {
@@ -1570,10 +1580,10 @@ function sendEstimate() {
 // ---------- Geografie: Karte zum Zoomen, Tippen setzt den Pin bzw. wählt das Land ----------
 function renderGeoQ() {
   const q = S.question, me = S.me, pin = q.kind === 'pin';
-  main.innerHTML = qline(S.risk ? 'Nur wenn du sicher bist!' : '', S.risk ? '<span class="rkhint">Falsch kostet Punkte – nicht antworten ist erlaubt.</span>' : '') + `<div class="kcard">${esc(q.text)}</div>
+  main.innerHTML = qline(S.risk ? 'Nur wenn du sicher bist!' : '', S.risk ? '<span class="rkhint">Falsch kostet Punkte – du kannst auch aussetzen.</span>' : '') + `<div class="kcard">${esc(q.text)}</div>
     <div class="kmap" id="kmap"><div class="kload">Karte lädt …</div></div>
     <p class="khelp">${pin ? `Tippen setzt den Pin – nochmal tippen versetzt ihn.${q.radius ? ` <b>Richtig bis ${kKm(q.radius)} daneben.</b>` : ''}` : 'Tippe auf das ' + (q.map === 'deutschland' ? 'Bundesland' : 'Land') + '. Kleine Länder haben einen Kreis.'} Zoomen mit zwei Fingern oder ＋/－.</p>
-    <button class="btn" id="kgo" onclick="sendGeo()" ${geo ? '' : 'disabled'}>${pin ? '📍 Hier ist es' : '✓ Dieses ' + (q.map === 'deutschland' ? 'Bundesland' : 'Land')}</button>`;
+    <button class="btn" id="kgo" onclick="sendGeo()" ${geo ? '' : 'disabled'}>${pin ? '📍 Hier ist es' : '✓ Dieses ' + (q.map === 'deutschland' ? 'Bundesland' : 'Land')}</button>${skipBtn()}`;
   const host = document.getElementById('kmap'), qn = S.qNum;
   loadKarte(q.map).then(m => {
     if (!document.contains(host) || S.qNum !== qn) return;
