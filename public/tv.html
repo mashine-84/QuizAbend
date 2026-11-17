@@ -245,8 +245,13 @@
   .estpanel.pegel { justify-content: stretch; padding: 2vh 2vw 1.4vh; }
   .pg { flex: 1; display: flex; flex-direction: column; min-height: 0; }
   .pgplot { flex: 1; position: relative; display: flex; justify-content: space-around; align-items: flex-end; overflow: hidden; border-bottom: .3vh solid rgba(255,255,255,.35); margin-top: 4vh; min-height: 0; }
-  .pgcol { position: relative; flex: 0 1 7vw; height: 100%; display: flex; align-items: flex-end; justify-content: center; animation: pgrow .7s cubic-bezier(.2,.8,.3,1) both; transform-origin: bottom; }
-  html.lite .pgcol { animation: pgrow .7s cubic-bezier(.2,.8,.3,1) both !important; }
+  /* Säule ohne transform/opacity: sonst wird sie zu einer eigenen Ebene und die Schätzung (.pgv) läge unter dem Wasser */
+  .pgcol { position: relative; flex: 0 1 7vw; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
+  .pgcol .pgbar { animation: pgrow .7s cubic-bezier(.2,.8,.3,1) both; animation-delay: var(--d, 0s); transform-origin: bottom; }
+  .pgcol .pgv { animation: pgin .5s ease both; animation-delay: calc(var(--d, 0s) + .25s); }
+  html.lite .pgcol .pgbar { animation: pgrow .7s cubic-bezier(.2,.8,.3,1) both !important; animation-delay: var(--d, 0s) !important; }
+  html.lite .pgcol .pgv { animation: pgin .5s ease both !important; animation-delay: calc(var(--d, 0s) + .25s) !important; }
+  @keyframes pgin { from { opacity: 0; } }
   @keyframes pgrow { from { transform: scaleY(0); opacity: 0; } }
   .pgbar { width: 70%; height: var(--h); background: var(--pc); border-radius: .8vw .8vw 0 0; transition: opacity .4s; }
   .pgv { position: absolute; bottom: calc(var(--h) + .6vh); left: 50%; transform: translateX(-50%); font-size: 1.6vw; font-weight: 900; white-space: nowrap; font-variant-numeric: tabular-nums; z-index: 3; display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
@@ -1742,7 +1747,7 @@ function renderPegel(box, q, byId, unit, dunit, sign, rows) {
   const h = v => Math.max(0, Math.min(1, v / top)) * 72;
   box.innerHTML = `<div class="pg"><div class="pgplot" id="pgplot">
       ${guesses.map((g, i) => { const p = byId[g.id];
-        return `<div class="pgcol" data-id="${g.id}" style="--pc:${p.color};--h:${h(g.value)}%;animation-delay:${i * 0.12}s"><div class="pgbar"></div><span class="pgv"><small class="pgd">&nbsp;</small><b>${fmt(g.value)}${unit}${g.value > cap ? ' ↑' : ''}</b></span></div>`; }).join('')}
+        return `<div class="pgcol" data-id="${g.id}" style="--pc:${p.color};--h:${h(g.value)}%;--d:${i * 0.12}s"><div class="pgbar"></div><span class="pgv"><small class="pgd">&nbsp;</small><b>${fmt(g.value)}${unit}${g.value > cap ? ' ↑' : ''}</b></span></div>`; }).join('')}
       <div class="pgw" id="pgw"><span class="pgwl" id="pgwl">0${unit}</span></div></div>
     <div class="pgfoot">${guesses.map(g => { const p = byId[g.id];
       return `<div class="pgf" data-id="${g.id}"><span class="vav" style="--pc:${p.color}">${p.avatar}</span><b>${esc(p.name)}</b></div>`; }).join('')}</div></div>`;
