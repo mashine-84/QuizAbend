@@ -44,6 +44,7 @@ const MIN_PLAYERS = 2;
 
 const FRAGEN_DIR = path.join(__dirname, 'fragen');
 const fragenRepo = require('./fragenrepo');   // Fragen-Repo (eigenes Git-Repo, Kopie unter fragen/_repo)
+const { pickNext } = require('./fragenmix');   // Abwechslung bei den Fragearten (Reihenfolge im Spiel)
 const zertifikat = require('./zertifikat');   // sichere Adresse (https) im Heim-WLAN: DuckDNS + Let's Encrypt
 const spotify = require('./spotify');         // Spotify Connect: Hintergrundmusik passend zum Spiel, Spotify-Musikfragen
 const HTTPS_PORT = Number(process.env.HTTPS_PORT) || 443;
@@ -374,13 +375,6 @@ function levelWeights(g, total) {
   return a.map((x, i) => x + (b[i] - x) * u);
 }
 
-function pickWeighted(weights) {
-  const sum = weights.reduce((s, w) => s + w, 0);
-  let r = Math.random() * sum;
-  for (let i = 0; i < weights.length; i++) { r -= weights[i]; if (r < 0) return i; }
-  return weights.length - 1;
-}
-
 // =====================================================================
 // Spielzustand
 // =====================================================================
@@ -621,15 +615,13 @@ function buildGame() {
   const plan = settings.blocks.map((b, bi) => ({ bi, ...blockSummary(b), pool: blockPool(b) })).filter(b => b.plays > 0);
   const total = plan.reduce((s, b) => s + b.plays, 0);
   const used = new Set(), out = [];
+  let prev = null;   // Fragen-Mix (fragenmix.js): Abwechslung bei den Fragearten, auch über Block-Grenzen hinweg
   plan.forEach((b, n) => {
     for (let k = 0; k < b.plays; k++) {
       const left = b.pool.filter(q => !used.has(q));
       if (!left.length) break;
-      const byLevel = [1, 2, 3].map(l => left.filter(q => q.level === l));
-      const w = levelWeights(out.length, total).map((x, i) => byLevel[i].length ? x : 0);
-      const list = fresher(byLevel[pickWeighted(w)]);   // bevorzugt Fragen, die noch nicht (oder lange nicht) dran waren
-      const q = list[Math.floor(Math.random() * list.length)];
-      used.add(q);
+      const q = pickNext(left, { prev, pos: k, len: b.plays, weights: levelWeights(out.length, total), fresher });
+      used.add(q); prev = q;
       out.push({ ...prepareQuestion(q), block: n, bi: b.bi, blockCount: plan.length, blockNames: b.names });
     }
     // Nummer innerhalb des Blocks (für "Block 1/2 · Frage 3/8")
