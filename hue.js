@@ -153,7 +153,7 @@ function xy(hex) {
 // Stimmung auf den ganzen Bereich: { color: '#rrggbb' } oder { mirek: 370 } (warmweiß), bri 1–100, ms Übergang,
 // pulse = Lampen pulsieren lassen (wird mit dem nächsten Befehl wieder gestoppt)
 let pulseTimer = null;
-function apply({ color, mirek, bri, ms = 800, pulse = false }) {
+function apply({ color, mirek, bri, ms = 800, pulse = false }, onSent) {   // onSent: läuft, sobald der Befehl wirklich gesendet ist
   if (!cfg.group) return;
   clearTimeout(pulseTimer);
   // Erst Farbe und Helligkeit setzen (beim Pulsieren ohne Übergang), das Pulsieren kommt als eigener Befehl danach:
@@ -167,7 +167,7 @@ function apply({ color, mirek, bri, ms = 800, pulse = false }) {
       groupLast = Date.now();
       request('PUT', cfg.ip, `/api/${cfg.appKey}/groups/${cfg.group}/action`, { alert: 'lselect' }, null).catch(warn);
     }, 600);
-  } : null);
+  } : onSent || null);
 }
 function stopPulse() { clearTimeout(pulseTimer); if (cfg.group) groupSend({ alert: 'none' }); }
 
@@ -196,7 +196,10 @@ function restore() {
 
 // ---------- Spielphasen -> Licht ----------
 const VIOLET = '#6a3cff', DEEP = '#3b2bd6', GOLD = '#f5b014';
-const REVEAL_HOLD_MS = 3200;   // so lange leuchtet die Antwortfarbe, dann dimmt es zurück
+// Auflösung: so lange leuchtet die Antwortfarbe hell, danach dimmt sie in derselben Farbe ab.
+// Der Farbwechsel zum Blau passiert erst, wenn die Lampen fast dunkel sind – ein Übergang direkt von z. B. Orange
+// nach Blau läuft bei Hue durch Weiß (die Lampe rechnet den Weg im Farbraum geradlinig).
+const REVEAL_HOLD_MS = 1100;
 // Lampenfarben der Antworten A–D: kräftigere Töne als die Kacheln, damit sie auch als Licht eindeutig sind
 // und sich von Grundstimmung (Violett/Blau-Lila), Spezialfrage (Gold) und Risikofrage (Rot) abheben
 const ANSWER = ['#ff4a1c', '#1e9bff', '#ffc21a', '#3fd12e'];
@@ -234,16 +237,21 @@ async function onPhase(phase, info = {}) {
   // Auflösung: nach dem Aufblitzen (gut 1 s – die Bridge verträgt ~1 Befehl pro Sekunde) in derselben Farbe etwas dunkler
   // nach gut 3 s langsam zurück ins gedimmte Frage-Licht – die Auflösung kann lange stehen („Übrigens“, Pub-Quiz)
   if (phase === 'reveal') {
-    seqTimers.push(setTimeout(() => apply({ color: info.correct != null ? ANSWER[info.correct] : ANSWER[3], bri: 70, ms: 800 }), 1100));
-    seqTimers.push(setTimeout(() => apply({ color: DEEP, bri: 22, ms: 2500 }), REVEAL_HOLD_MS));
+    const farbe = info.correct != null ? ANSWER[info.correct] : ANSWER[3];
+    // Schritte hängen am tatsächlichen Senden (die Warteschlange kann verzögern), damit das Abdunkeln fertig ist,
+    // bevor die Farbe wechselt; eine neue Phase bricht die Kette ab (seqGen)
+    const gen = seqGen, live = () => gen === seqGen, later = (ms, f) => { if (live()) seqTimers.push(setTimeout(f, ms)); };
+    later(REVEAL_HOLD_MS, () => apply({ color: farbe, bri: 4, ms: 1200 },                       // in der Antwortfarbe abdunkeln
+      () => later(1300, () => apply({ color: DEEP, bri: 4, ms: 300 },                          // fast dunkel: Farbe wechseln
+        () => later(400, () => apply({ color: DEEP, bri: 22, ms: 1000 }))))));                 // ins normale dunkle Blau
   }
   if (phase === 'ident') {
     seqTimers.push(setTimeout(() => apply({ color: GOLD, bri: 100, ms: 100 }), 1250));
     seqTimers.push(setTimeout(() => apply({ color: VIOLET, bri: 35, ms: 1500 }), 2350));
   }
 }
-let seqTimers = [];
-function clearSeq() { seqTimers.forEach(clearTimeout); seqTimers = []; }
+let seqTimers = [], seqGen = 0;
+function clearSeq() { seqTimers.forEach(clearTimeout); seqTimers = []; seqGen++; }
 
 // Test: 3 Sekunden gold pulsieren, dann zurück; jederzeit abbrechbar
 let testTimer = null, testOwnsSnapshot = false;
