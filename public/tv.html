@@ -179,6 +179,10 @@
   .eresult.many { margin-bottom: .6vh; } .eresult.many .ebig { font-size: 3.8vw; }
   .estpanel.reveal { justify-content: flex-start; }
   .estq.noimg .estpanel.side { width: 86vw; flex-direction: row; align-items: stretch; gap: 1.6vw; background: none; padding: 0; }
+  /* Sobald die Slotmaschine die richtige Zahl zeigt: Kasten „Richtig“ grün mit weißer Schrift (wie bei der Karte) */
+  .estpanel .eresult.landed, .estpanel.side .eresult.landed { background: #2fb36d; border-radius: 1.4vw; box-shadow: 0 .8vh 0 rgba(0,0,0,.25); }
+  .estpanel:not(.side) .eresult.landed { padding: .6vh 1.6vw; }
+  .estpanel .eresult.landed .elabel { color: rgba(255,255,255,.85); } .estpanel .eresult.landed .ebig { color: #fff; }
   .estpanel.side .eresult { flex: 0 0 28vw; flex-direction: column; align-items: center; justify-content: center; gap: 1vh; margin: 0; background: rgba(255,255,255,.06); border-radius: 1.4vw; }
   .estpanel.side .eresult .ebig, .estpanel.side .eresult.many .ebig { font-size: 5.8vw; min-width: 0; text-align: center; }
   /* Übergang zur Auflösung (Timing und Kurve wie beim Zuordnen) */
@@ -1756,7 +1760,7 @@ function slotRoll(el, q, unit, rows, done) {
   const step = () => {
     if (!document.contains(el)) return;
     const p = Math.min(1, (performance.now() - t0) / DUR);
-    if (p >= 1) { show(target); el.classList.add('landed'); return done(); }
+    if (p >= 1) { show(target); el.classList.add('landed'); const r = el.closest('.eresult'); if (r) r.classList.add('landed'); return done(); }   // Kasten erst jetzt grün
     let v = value(p);
     if (keepDir && last !== null && typeof v === 'number' && (v - last) * keepDir < 0) v = last;   // nie rückwärts
     if (v !== last) { show(v); last = v; if (!(hold && hold(p))) tick(p); }
