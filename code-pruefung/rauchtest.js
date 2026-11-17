@@ -1,7 +1,7 @@
 // Rauchtest: startet den Server in einer Kopie des Projekts und spielt zwei komplette Spiele über die API durch.
 //   Spiel 1: Punkte nach Schwierigkeit, alle antworten gleich → Gleichstand → Stechen muss kommen und einen Sieger finden.
 //   Spiel 2: Punkte nach Tempo, zufällige Antworten, zwei Blöcke mit Pause → Pause, Opener, Rangliste, Ende.
-// Aufruf: node test/rauchtest.js   (läuft auch in der GitHub-Prüfung). Ändert nichts am Projekt selbst.
+// Aufruf: node code-pruefung/rauchtest.js   (läuft auch in der GitHub-Prüfung). Ändert nichts am Projekt selbst.
 'use strict';
 const fs = require('fs');
 const os = require('os');
@@ -18,7 +18,7 @@ const ok = (bed, text) => { console.log((bed ? '  ✓ ' : '  ✗ ') + text); if 
 // Kopie ohne persönliche Dateien (Einstellungen, Verlauf, Hue, Fragen-Repo-Zugang)
 const OHNE = new Set(['.git', 'node_modules', 'einstellungen.json', 'verlauf.json', 'hue.json', 'fragen-quelle.json', '.fragen-key', '.fragen-key.pub', '.fragen-known_hosts', '_repo']);
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'quizabend-'));
-fs.cpSync(ROOT, TMP, { recursive: true, filter: src => !OHNE.has(path.basename(src)) && !src.startsWith(path.join(ROOT, 'test')) });
+fs.cpSync(ROOT, TMP, { recursive: true, filter: src => !OHNE.has(path.basename(src)) && !src.startsWith(path.join(ROOT, 'code-pruefung')) });
 
 // Eigenes kleines Testpaket: Die echten Fragen liegen im Fragen-Repo, im App-Repo gibt es nur Medien-Testpakete.
 // Der Test braucht aber alle Fragearten – und Schätzfragen fürs Stechen.

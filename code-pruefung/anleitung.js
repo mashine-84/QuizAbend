@@ -1,4 +1,4 @@
-// Anleitung (anleitung.json): Inhalt, Folienauswahl, Rechte und Ausprobieren per API prüfen. Aufruf: node test/anleitung.js
+// Anleitung (anleitung.json): Inhalt, Folienauswahl, Rechte und Ausprobieren per API prüfen. Aufruf: node code-pruefung/anleitung.js
 const fs = require('fs'), path = require('path'), os = require('os'), vm = require('vm'), { spawn } = require('child_process');
 const ROOT = path.join(__dirname, '..'), PORT = 3472, B = 'http://localhost:' + PORT;
 let fehler = 0; const ok = (c, t) => { console.log((c ? '  ✓ ' : '  ✗ ') + t); if (!c) fehler++; };
@@ -18,7 +18,7 @@ const ohne = ids.filter(id => !ctx.anlBild(id, info).includes('<svg'));
 ok(!ohne.length, 'Jede Folie hat eine Grafik' + (ohne.length ? ' – fehlt: ' + ohne.join(', ') : ''));
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'qa-anl-'));
-const OHNE = new Set(['.git', 'einstellungen.json', 'verlauf.json', 'hue.json', '_repo', 'test', 'spotify.json', 'https.json', '.https', 'host.json']);
+const OHNE = new Set(['.git', 'einstellungen.json', 'verlauf.json', 'hue.json', '_repo', 'code-pruefung', 'spotify.json', 'https.json', '.https', 'host.json']);
 fs.cpSync(ROOT, TMP, { recursive: true, filter: s => !OHNE.has(path.basename(s)) });
 fs.mkdirSync(path.join(TMP, 'fragen', 'Geo'), { recursive: true });
 fs.writeFileSync(path.join(TMP, 'fragen', 'Geo', 'Geo.json'), JSON.stringify({ paket: 'Geo', fragen: [

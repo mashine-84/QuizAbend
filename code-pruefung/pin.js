@@ -1,8 +1,8 @@
-// Host-PIN: Rechte per API prüfen (ohne Browser). Aufruf: node test/pin.js
+// Host-PIN: Rechte per API prüfen (ohne Browser). Aufruf: node code-pruefung/pin.js
 const fs = require('fs'), path = require('path'), os = require('os'), { spawn } = require('child_process');
 const ROOT = path.join(__dirname, '..'), PORT = 3470, B = 'http://localhost:' + PORT;
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'qa-pin-'));
-const OHNE = new Set(['.git', 'einstellungen.json', 'verlauf.json', 'hue.json', '_repo', 'test', 'spotify.json', 'https.json', '.https', 'host.json']);
+const OHNE = new Set(['.git', 'einstellungen.json', 'verlauf.json', 'hue.json', '_repo', 'code-pruefung', 'spotify.json', 'https.json', '.https', 'host.json']);
 fs.cpSync(ROOT, TMP, { recursive: true, filter: s => !OHNE.has(path.basename(s)) });
 let srv; const start = () => { srv = spawn(process.execPath, ['server.js'], { cwd: TMP, env: { ...process.env, PORT: String(PORT), NO_BROWSER: '1' } }); };
 const post = (p, b) => fetch(B + p, { method: 'POST', body: JSON.stringify(b) }).then(async r => ({ status: r.status, ...(await r.json().catch(() => ({}))) }));

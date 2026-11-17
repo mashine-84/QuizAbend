@@ -2,7 +2,7 @@
 //   Teil 1 (ohne Server): Regeln direkt an fragenmix.js – auch Sonderfälle wie ein reiner Kartenblock.
 //   Teil 2 (mit Server, wenn das Fragen-Repo da ist): lässt über /api/plan viele Spiele aus den echten Paketen bauen.
 //   Fragen-Repo: fragen/_repo oder ../quizabend-fragen (oder FRAGEN_REPO=/pfad).
-// Aufruf: node test/fragenmix.js
+// Aufruf: node code-pruefung/fragenmix.js
 'use strict';
 const fs = require('fs'), os = require('os'), path = require('path'), { spawn } = require('child_process');
 const { art, pickNext, MEDIEN } = require('../fragenmix');
@@ -69,7 +69,7 @@ const REPO = [process.env.FRAGEN_REPO, path.join(ROOT, 'fragen', '_repo'), path.
   console.log('\nTeil 2: echte Pakete (' + REPO + ')');
   const OHNE = new Set(['.git', 'node_modules', 'einstellungen.json', 'verlauf.json', 'hue.json', 'fragen-quelle.json', '_repo', 'spotify.json', 'https.json', '.https', 'host.json']);
   const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'quizabend-mix-'));
-  fs.cpSync(ROOT, TMP, { recursive: true, filter: s => !OHNE.has(path.basename(s)) && !s.startsWith(path.join(ROOT, 'test')) });
+  fs.cpSync(ROOT, TMP, { recursive: true, filter: s => !OHNE.has(path.basename(s)) && !s.startsWith(path.join(ROOT, 'code-pruefung')) });
   fs.symlinkSync(REPO, path.join(TMP, 'fragen', '_repo'));
   const PORT = 3970 + Math.floor(Math.random() * 9), B = 'http://127.0.0.1:' + PORT;
   let log = '';

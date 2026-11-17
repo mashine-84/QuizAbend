@@ -1,7 +1,7 @@
 // Technik-Test: startet den Server in einer Kopie (ohne Fragen-Repo) und prüft den 🧪 Technik-Test.
 //   Geprüft: Testpakete laden fehlerfrei, tauchen nicht in der normalen Paketauswahl auf, alle Fragen laufen der Reihe nach
 //   durch (ein Block je Paket), ohne Pause/Stechen/Risiko-/Spezialfrage, zählen nicht als gespielt; Spotify nur wenn verbunden.
-// Aufruf: node test/techniktest.js
+// Aufruf: node code-pruefung/techniktest.js
 'use strict';
 const fs = require('fs'), os = require('os'), path = require('path'), { spawn } = require('child_process');
 const ROOT = path.join(__dirname, '..'), PORT = 3960 + Math.floor(Math.random() * 9), B = 'http://127.0.0.1:' + PORT;
@@ -10,7 +10,7 @@ let fehler = 0; const ok = (c, t) => { console.log((c ? '  ✓ ' : '  ✗ ') + t
 
 const OHNE = new Set(['.git', 'node_modules', 'einstellungen.json', 'verlauf.json', 'hue.json', 'fragen-quelle.json', '_repo', 'spotify.json', 'https.json', '.https', 'host.json']);
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'quizabend-technik-'));
-fs.cpSync(ROOT, TMP, { recursive: true, filter: s => !OHNE.has(path.basename(s)) && !s.startsWith(path.join(ROOT, 'test')) });
+fs.cpSync(ROOT, TMP, { recursive: true, filter: s => !OHNE.has(path.basename(s)) && !s.startsWith(path.join(ROOT, 'code-pruefung')) });
 // Spezialfrage, Risikofrage und Pause eingeschaltet – im Technik-Test dürfen sie trotzdem nicht kommen
 fs.writeFileSync(path.join(TMP, 'einstellungen.json'), JSON.stringify({ blocks: [{ count: 10, disabled: [] }], special: { on: true, mult: 2 }, risk: { on: true }, sound: { on: false }, pause: { on: true, minutes: 1 }, scoring: 'speed' }));
 let log = '';
