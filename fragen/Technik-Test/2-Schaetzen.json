@@ -1,0 +1,15 @@
+{
+  "paket": "Schätzfragen",
+  "fragen": [
+    {"frage": "Test: Schätzfrage (Slotmaschine) – wie viel ist 12 mal 12?", "schaetzen": 144, "schwierigkeit": 1},
+    {"frage": "Test: Schätzfrage mit Komma und Einheit – wie viel sind 7 € geteilt durch 2?", "schaetzen": 3.5, "einheit": "€", "schwierigkeit": 1},
+    {"frage": "Test: In welchem Jahr fiel die Berliner Mauer? (Toleranz ±2)", "schaetzen": 1989, "toleranz": 2, "schwierigkeit": 1},
+    {"frage": "Test: In welchem Jahr wurde Karl der Große Kaiser? (ohne Toleranz)", "schaetzen": 800, "schwierigkeit": 2},
+    {"frage": "Test-Pegel (Höhe): Wie hoch ist der Kölner Dom?", "schaetzen": 157, "einheit": "m", "schwierigkeit": 2},
+    {"frage": "Test-Pegel (Gewicht): Wie viel wiegt ein Liter Wasser?", "schaetzen": 1, "einheit": "kg", "schwierigkeit": 1},
+    {"frage": "Test: Pegel fest eingestellt – wie viele Minuten hat ein Fußballspiel?", "schaetzen": 90, "anzeige": "pegel", "schwierigkeit": 1},
+    {"frage": "Test: Slotmaschine fest eingestellt – wie hoch ist die Zugspitze?", "schaetzen": 2962, "einheit": "m", "anzeige": "slot", "schwierigkeit": 2},
+    {"kategorie": "Bilderrätsel", "bild": "punkte-47.png", "frage": "Test: Schätzfrage mit Bild – wie viele weiße Punkte sind zu sehen?", "schaetzen": 47, "schwierigkeit": 2},
+    {"kategorie": "Merkbild", "bild": "punkte-23.png", "merken": 5, "frage": "Test: Merkbild-Schätzfrage – wie viele orange Punkte waren es?", "schaetzen": 23, "schwierigkeit": 3}
+  ]
+}

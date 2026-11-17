@@ -1,0 +1,8 @@
+{
+  "paket": "Spotify",
+  "fragen": [
+    {"spotify": "https://open.spotify.com/track/0aym2LBJBk9DAYuHHutrIl", "start": 0, "dauer": 10, "frage": "Test-Spotify: Wer singt diesen Song?", "antworten": ["The Beatles", "The Rolling Stones", "The Who", "The Kinks"], "schwierigkeit": 1},
+    {"spotify": "https://open.spotify.com/track/0aym2LBJBk9DAYuHHutrIl", "start": 60, "dauer": 3, "wiederholen": 2, "frage": "Test-Spotify mit Schätzfrage: In welchem Jahr erschien „Hey Jude“? (±2)", "schaetzen": 1968, "toleranz": 2, "schwierigkeit": 2},
+    {"spotify": "https://open.spotify.com/track/0aym2LBJBk9DAYuHHutrIl", "dauer": 8, "frage": "Test-Spotify mit Land antippen: Aus welchem Land kommt die Band? Tippe es an!", "karte": "europa", "land": "Vereinigtes Königreich", "schwierigkeit": 1}
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "paket": "Karte",
+  "fragen": [
+    {"frage": "Test-Pin (Welt): Wo liegt Sydney?", "karte": "welt", "ort": [-33.87, 151.21], "name": "Sydney", "schwierigkeit": 1},
+    {"frage": "Test-Pin (Europa, Radius 50 km): Wo liegt Paris?", "karte": "europa", "ort": [48.86, 2.35], "name": "Paris", "radius": 50, "schwierigkeit": 1},
+    {"frage": "Test-Pin (Deutschland, Radius 15 km, Teilpunkte bis 100 km): Wo liegt Köln?", "karte": "deutschland", "ort": [50.94, 6.96], "name": "Köln", "radius": 15, "toleranz": 100, "schwierigkeit": 2},
+    {"frage": "Test: Land antippen (Welt) – tippe auf Brasilien", "karte": "welt", "land": "Brasilien", "schwierigkeit": 1},
+    {"frage": "Test: Kleines Land mit Tippkreis – tippe auf Luxemburg", "karte": "europa", "land": "Luxemburg", "schwierigkeit": 2},
+    {"frage": "Test: Bundesland – tippe auf Bremen", "karte": "deutschland", "land": "Bremen", "schwierigkeit": 2},
+    {"kategorie": "Bilderrätsel", "bild": "flagge.png", "frage": "Test: Land mit Bild – zu welchem Land gehört diese Flagge? Tippe es an!", "karte": "europa", "land": "Österreich", "schwierigkeit": 1},
+    {"kategorie": "Bilderrätsel", "bild": "flagge.png", "frage": "Test: Pin mit Bild – wo liegt die Hauptstadt dieses Landes?", "karte": "europa", "ort": [48.21, 16.37], "name": "Wien", "radius": 50, "schwierigkeit": 2}
+  ]
+}
