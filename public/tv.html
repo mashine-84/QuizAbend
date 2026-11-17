@@ -104,18 +104,21 @@
   @keyframes rkChip { from { transform: scale(1.5); opacity: 0; } }
   html.lite .chip.rk { animation: rkChip .5s cubic-bezier(.2,1.6,.4,1) both !important; }
   .answers { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(0, var(--row)); align-content: center; gap: 1.4vh 1.6vw; }
-  .ans { border-radius: 1.4vw; display: flex; align-items: center; gap: 1.6vw; padding: 0 1.6vw; font-size: var(--rowfont); font-weight: 800; line-height: 1.1; box-shadow: 0 .8vh 0 rgba(0,0,0,.25); transition: opacity .4s, transform .4s, filter .4s; position: relative; }
+  .ans { border-radius: 1.4vw; display: flex; align-items: center; gap: 1.4vw; padding: 0 1.4vw; font-size: var(--rowfont); font-weight: 800; line-height: 1.1; background: var(--kd); border: .25vw solid var(--k); box-shadow: 0 .8vh 0 rgba(0,0,0,.25); transition: opacity .4s, transform .4s, filter .4s; position: relative; }
   .long .ans, .long .mrow { font-size: calc(var(--rowfont) * .8); } .xlong .ans, .xlong .mrow { font-size: calc(var(--rowfont) * .65); }
-  .ans .shape { font-size: var(--rowfont); width: min(4.4vw, 7vh); flex: none; text-align: center; opacity: .9; }
+  .ans .shape { width: min(4.6vw, 8vh); height: min(4.6vw, 8vh); flex: none; display: grid; place-items: center; border-radius: .8vw; background: var(--k); color: var(--kt); font-size: min(3vw, 5.2vh); font-weight: 900; }
   .ans .count { margin-left: auto; background: rgba(0,0,0,.25); border-radius: 99px; padding: .2vw 1.1vw; font-size: 2vw; }
   .voters { display: flex; flex-wrap: wrap; gap: .5vw; margin-left: auto; max-width: 50%; justify-content: flex-end; }
   .vav { width: 3.6vw; height: 3.6vw; border-radius: 50%; display: grid; place-items: center; font-size: 2.2vw; background: var(--pc); border: .25vw solid #fff; animation: pop .45s cubic-bezier(.2,1.6,.4,1) both; }
   .ans.votes { transform: none; }
   .timesup { font-size: 2vw; font-weight: 900; color: var(--c); }
   .ans.dim { opacity: .25; filter: grayscale(.7); transform: scale(.97); }
-  .ans.win { transform: scale(1.03); box-shadow: 0 0 0 .4vw #fff, 0 .8vh 0 rgba(0,0,0,.25); }
+  .ans.win { transform: scale(1.03); background: var(--k); color: var(--kt); box-shadow: 0 0 0 .4vw #fff, 0 .8vh 0 rgba(0,0,0,.25); }
+  .ans.win .shape { background: var(--kt); color: var(--k); }
   .ans.win::after { content: "✓"; position: absolute; right: -1vw; top: -1.6vw; width: 3.6vw; height: 3.6vw; border-radius: 50%; background: #fff; color: var(--d); display: grid; place-items: center; font-size: 2.4vw; font-weight: 900; }
-  .c0 { background: var(--a); } .c1 { background: var(--b); } .c2 { background: var(--c); } .c3 { background: var(--d); }
+  /* Antwortfarben (A–D): dunkle Kachel, farbiger Rand, Buchstabe – bewusst kein Kahoot-Look; --k Akzent, --kd Kachel, --kt Schrift auf Akzent */
+  .c0 { --k: #ec6a4c; --kd: #2c1a1a; --kt: #3a120a; } .c1 { --k: #4aa3f0; --kd: #14223a; --kt: #062a4d; }
+  .c2 { --k: #e6b23a; --kd: #2a2414; --kt: #3a2a05; } .c3 { --k: #79b84a; --kd: #1a2617; --kt: #1b3309; }
 
 
   /* Fragearten */
@@ -618,9 +621,9 @@
   /* Ausprobieren: Live-Ergebnisse */
   .anlq { position: absolute; top: 1.4vh; left: 1.2vw; right: 1.2vw; z-index: 2; font-size: 1.6vw; font-weight: 800; text-align: center; text-shadow: 0 .2vw .6vw rgba(0,0,0,.6); }
   .anlch { position: absolute; inset: 7vh 1.4vw 1.6vh; display: grid; grid-template-columns: 1fr 1fr; gap: 1vw; }
-  .anlch > div { border-radius: 1vw; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1vh; font-size: 1.8vw; font-weight: 900; position: relative; }
+  .anlch > div { border-radius: 1vw; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1vh; font-size: 1.8vw; font-weight: 900; position: relative; background: var(--kd); border: .2vw solid var(--k); }
   .anlch > div.ziel { box-shadow: 0 0 0 .3vw #fff; }
-  .anlch .shape { font-size: 2.6vw; opacity: .9; }
+  .anlch .shape { width: 3.4vw; height: 3.4vw; display: grid; place-items: center; border-radius: .6vw; background: var(--k); color: var(--kt); font-size: 2.2vw; }
   .anlavs { display: flex; flex-wrap: wrap; justify-content: center; gap: .3vw; min-height: 3.2vw; }
   .anlavs .vav { width: 3vw; height: 3vw; font-size: 1.8vw; border-width: .2vw; }
   .anlest { position: absolute; inset: 7vh 1.6vw 1.6vh; display: flex; flex-direction: column; justify-content: center; gap: 1vh; }
@@ -641,7 +644,8 @@
 <script src="/karte.js"></script>
 <script src="/anleitung.js"></script>
 <script>
-const SHAPES = ['▲', '◆', '●', '■'];
+const SHAPES = ['A', 'B', 'C', 'D'];   // Antworten heißen A–D (Buchstabe in der Kachel)
+const ANS_COLORS = ['#ec6a4c', '#4aa3f0', '#e6b23a', '#79b84a'];
 const LITE = /[?&]lite=1/.test(location.search);
 const KIOSK = /[?&]kiosk=1/.test(location.search);
 if (LITE) document.documentElement.classList.add('lite');
@@ -880,7 +884,7 @@ setInterval(() => { const l = document.querySelector('.lobby'); if (l) { l.class
 // Zeiten passen zu sounds/standard/opener.mp3 (128 BPM): Kacheln rasten bei 0,47 / 0,70 / 0,94 / 1,17 s ein,
 // „?“ bei 1,41 s, Logo ab 1,9 s, Glanz bei 3,75 s, Ausblenden ab 4,45 s. Nur transform/opacity – läuft auch am Pi.
 function renderIdent() {
-  const E8 = 0.234, cols = ['#e5484d', '#3e8ef7', '#f5b014', '#2fb36d'];
+  const E8 = 0.234, cols = ANS_COLORS;
   const from = [['-45vw', '-40vh'], ['45vw', '-40vh'], ['-45vw', '40vh'], ['45vw', '40vh']];
   const to = [['-31vw', '-15vh'], ['31vw', '-17vh'], ['-31vw', '17vh'], ['31vw', '15vh']];   // ab der Kachel-Mitte: landen nahe den Ecken
   app.innerHTML = `<div class="ident anim" style="--an:ifade .4s 4.45s ease-in forwards">
@@ -935,7 +939,7 @@ function renderLobby() {
 // ---------- Anleitung „So geht QuizAbend“ ----------
 // Der 👑 blättert am Handy; bei Folien zum Ausprobieren zeigt der Kasten links live, was die Handys getippt haben.
 let anlKey = '';
-const ANL_FARBEN = ['Rot', 'Blau', 'Gelb', 'Grün'];
+const ANL_FARBEN = ['Koralle', 'Blau', 'Senf', 'Grün'];
 function renderAnleitung() {
   const a = S.anleitung, s = a.slide, key = a.idx + ':' + s.id;
   if (key !== anlKey) {
@@ -1978,7 +1982,7 @@ function awardsHtml(P) {
 
 function confetti() {
   if (LITE) return;
-  const colors = ['#e5484d', '#3e8ef7', '#f5b014', '#2fb36d', '#cc5de8', '#fff'];
+  const colors = [...ANS_COLORS, '#cc5de8', '#fff'];
   for (let i = 0; i < 120; i++) {
     const c = document.createElement('div');
     c.className = 'confetti';

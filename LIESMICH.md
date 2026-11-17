@@ -298,7 +298,7 @@ Das Quiz kann das Licht im Raum mitsteuern. Es braucht dafür nur die Hue Bridge
 |---|---|
 | Intro, Block-Ansage, Rangliste | Lila, gedimmt |
 | Frage | Dunkles Blau-Lila, stark gedimmt (bei Video/Audio fast aus) |
-| Auflösung | Farbe der richtigen Antwort (rot, blau, gelb, grün); bei Schätz- und Zuordnungsfragen grün |
+| Auflösung | Kurz hell aufblitzen, dann Farbe der richtigen Antwort (A orange-rot, B himmelblau, C warmgelb, D grün); bei Schätz- und Zuordnungsfragen grün |
 | Spezialfrage | Gold, volle Helligkeit, pulsiert, solange der Spezialfrage-Screen zu sehen ist |
 | Risikofrage | Dunkelrot, volle Helligkeit, pulsiert während des Alarms |
 | Pause zwischen den Blöcken | Hell und warmweiß; in der letzten Minute dimmt es langsam (über die ganze Minute) auf das Lila der nächsten Block-Ansage. Wird die Pause verlängert, wird es wieder hell |

@@ -1,9 +1,9 @@
 // Anleitung „So geht QuizAbend“: Grafiken für die Folien am Fernseher (eine je Folien-ID aus anleitung.json).
 // Alle Grafiken sind SVG mit viewBox 300×210 und passen sich dem Kasten an. info kommt vom Server (zeit, spezial, radius, host …).
 // Neue Folie ohne eigene Grafik? Dann zeigt der Fernseher das Icon groß – eine Grafik hier ist schöner, aber nicht nötig.
-const ANL_C = ['#e5484d', '#3e8ef7', '#f5b014', '#2fb36d'];
+const ANL_C = ['#ec6a4c', '#4aa3f0', '#e6b23a', '#79b84a'];   // Antwortfarben A–D
 const anlPhone = (x, y, w, h, inner, glow) => `<g transform="translate(${x},${y})"><rect width="${w}" height="${h}" rx="9" fill="#221a4d" stroke="${glow || '#4a4580'}" stroke-width="2.5"/>${inner}</g>`;
-const anlTiles = (w, h, pick) => ANL_C.map((c, i) => `<rect x="${6 + (i % 2) * (w / 2 - 3)}" y="${10 + Math.floor(i / 2) * (h / 2 - 8)}" width="${w / 2 - 9}" height="${h / 2 - 14}" rx="5" fill="${c}" opacity="${pick === undefined || pick === i ? 1 : .35}"/>`).join('');
+const anlTiles = (w, h, pick) => ANL_C.map((c, i) => `<g opacity="${pick === undefined || pick === i ? 1 : .35}"><rect x="${6 + (i % 2) * (w / 2 - 3)}" y="${10 + Math.floor(i / 2) * (h / 2 - 8)}" width="${w / 2 - 9}" height="${h / 2 - 14}" rx="5" fill="#1d1836" stroke="${c}" stroke-width="2"/><text x="${6 + (i % 2) * (w / 2 - 3) + (w / 2 - 9) / 2}" y="${10 + Math.floor(i / 2) * (h / 2 - 8) + (h / 2 - 14) / 2 + 4}" font-size="${Math.round(h / 6)}" font-weight="900" fill="${c}" text-anchor="middle">${'ABCD'[i]}</text></g>`).join('');
 const anlFinger = (x, y) => `<g transform="translate(${x},${y})"><circle r="11" fill="rgba(255,255,255,.25)"/><circle r="5" fill="#fff"/></g>`;
 const anlAv = (x, y, e, c, r = 11) => `<g transform="translate(${x},${y})"><circle r="${r}" fill="${c}" stroke="#fff" stroke-width="2"/><text y="${r * .38}" font-size="${r * 1.1}" text-anchor="middle">${e}</text></g>`;
 const anlPin = (x, y, c, e, s = 1) => `<g transform="translate(${x},${y}) scale(${s})"><path d="M0,0 C-6,-11 -13,-16 -13,-25 A13,13 0 1 1 13,-25 C13,-16 6,-11 0,0Z" fill="${c}" stroke="#fff" stroke-width="2"/><text y="-20" font-size="13" text-anchor="middle">${e}</text></g>`;
