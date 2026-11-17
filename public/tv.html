@@ -1555,11 +1555,8 @@ function renderGeo(byId) {
       const shape = rr.d ? `<path class="kwinrg" d="${rr.d}"/>` : `<circle class="kwinrg" cx="${rr.c[0]}" cy="${rr.c[1]}" r="${14 * u}"/>`;
       winHtml = `<g class="kwin">${shape}</g>`;
     }
-    // Namensschild mittig knapp über dem (vergrößerten) Land
-    const lx = (rr ? (rr.b[0] + rr.b[2]) / 2 : 0), lcy = rr ? (rr.b[1] + rr.b[3]) / 2 : 0, ly = rr ? lcy - (lcy - rr.b[1]) * GEO_WIN_SCALE - 26 * u : 0;
-    const label = reveal && rr ? `<g transform="translate(${lx},${ly}) scale(${u})"><g class="klabel ok"><rect x="${-(q.name.length * 9.5 + 32) / 2}" y="-17" width="${q.name.length * 9.5 + 32}" height="32" rx="10"/><text y="6" text-anchor="middle">${esc(q.name)}</text></g></g>` : '';
-    over.innerHTML = winHtml + av + label;
-    kLabelFit(over);
+    // kein Namensschild auf der Karte – der Name steht rechts im Kasten „Richtig“
+    over.innerHTML = winHtml + av;
     if (reveal) {
       svg.querySelector('.kland').classList.add('kdim'); svg.querySelector('.khit').classList.add('kdim');
       requestAnimationFrame(() => requestAnimationFrame(() => { const w = over.querySelector('.kwin'); if (w) w.classList.add('on'); }));
