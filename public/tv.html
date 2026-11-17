@@ -212,7 +212,9 @@
   .kland.kdim, .khit.kdim, .kavs.kdim { opacity: .25; filter: grayscale(.7); }
   html.lite .kland.kdim, html.lite .khit.kdim { filter: none; }   /* Pi: Filter auf der ganzen Karte ist teuer – blass reicht */
   .kwin { transform-box: fill-box; transform-origin: center; transition: transform .4s; }
-  .kwin.on { transform: scale(1.2); }
+  .kwin.on { transform: scale(1.2); animation: kwinpop .6s cubic-bezier(.2,1.5,.4,1) both; }
+  html.lite .kwin.on { animation: kwinpop .6s cubic-bezier(.2,1.5,.4,1) both !important; }   /* aufpoppen auch am Pi (Lite schaltet Übergänge ab) */
+  @keyframes kwinpop { from { transform: scale(.9); opacity: .4; } to { transform: scale(1.2); opacity: 1; } }
   .kwinrg { fill: #2fb36d; stroke: #fff; stroke-width: 4; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
   .kpin-in { animation: none; } .kpin.dim { opacity: .5; }
   .kpin.drop .kpin-in { animation: kdrop .55s cubic-bezier(.35,1.5,.55,1) both; }
