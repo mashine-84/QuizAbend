@@ -421,8 +421,6 @@
   html.lite .rk-title { animation: rkGlitch 2.3s steps(1, end) infinite !important; }
   html.lite .rk-rules span { animation-name: rkRule !important; animation-duration: .45s !important; animation-fill-mode: both !important; animation-timing-function: cubic-bezier(.2,1.5,.4,1) !important; }
   html.lite .rk-rules .ok { animation-delay: 1.4s !important; } html.lite .rk-rules .bad { animation-delay: 2.1s !important; } html.lite .rk-rules .skip { animation-delay: 2.8s !important; }
-  .orisk { margin-top: 1.6vh; font-size: 2.2vw; font-weight: 900; color: #ff5a68; }
-  .orisk .fa { --fc: #ff3347 !important; margin-right: .4em; }
 
   /* Videofrage */
   .vwrap { position: fixed; inset: 0; background: #000; display: grid; place-items: center; z-index: 40; }
@@ -557,10 +555,14 @@
   .ochips span { background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.18); border-radius: 99px; padding: .8vh 1.5vw; font-size: 1.9vw; font-weight: 800; }
   .ochips.many span { font-size: 1.6vw; padding: .7vh 1.2vw; }
   .ochips .more { background: none; color: var(--muted); }
-  .otypes { display: flex; gap: 4vw; justify-content: center; flex-wrap: wrap; }
+  .otypes { display: flex; gap: 4vw; justify-content: center; flex-wrap: wrap; margin-top: 2vh; }
   .otypes span { display: flex; flex-direction: column; align-items: center; gap: 1vh; font-size: 2.2vw; font-weight: 800; }
   .otypes i { font-style: normal; font-size: 7vw; line-height: 1; }
-  .ospecial { margin-top: 4vh; font-size: 2.8vw; font-weight: 900; color: var(--c); }
+  .oextra { display: flex; gap: 1.6vw; justify-content: center; margin-top: 4vh; }
+  .oextra span { display: inline-flex; align-items: center; gap: .6em; font-size: 2vw; font-weight: 800; padding: 1vh 1.8vw; border-radius: 99px; border: .18vw solid; }
+  .oextra .sp { color: var(--c); border-color: var(--c); background: rgba(245,176,20,.1); }
+  .oextra .rk { color: #ff5a68; border-color: #ff3347; background: rgba(255,51,71,.1); }
+  .oextra .rk .fa { --fc: #ff3347 !important; }
   .oplayers { display: flex; gap: 1.5vw; justify-content: center; flex-wrap: wrap; max-width: 90vw; }
   .oplayers span { display: flex; flex-direction: column; align-items: center; gap: .6vh; background: rgba(255,255,255,.08); border: 2px solid var(--pc); border-radius: 2vh; padding: 2vh 1.6vw; font-size: 2vw; font-weight: 800; min-width: 9vw; }
   .oplayers i { font-style: normal; font-size: 5.5vw; line-height: 1; }
@@ -791,8 +793,7 @@ function renderOpening() {
       <div class="ochips ${cats.length > 10 ? 'many' : ''}">${cats.map((c, i) => `<span class="anim" style="${an('opop', .45, .3 + i * (2.4 / Math.max(cats.length, 1)))}">${esc(c)}</span>`).join('')}${more > 0 ? `<span class="anim more" style="${an('opop', .45, 2.8)}">+ ${more} weitere</span>` : ''}</div>
       <div class="osub anim" style="${an('oup', .5, 2.9)}">Reihenfolge? Wird nicht verraten 🤫</div></div>
     <div class="os"><div class="olabel anim" style="${an('oup', .5)}">So wird gefragt</div><div class="otypes">${o.types.map((t, i) => `<span class="anim" style="${calm(.35 + i * tStep)}"><i>${bicon(t)}</i>${esc(t.label)}</span>`).join('')}</div>
-      ${o.special ? `<div class="ospecial anim" style="${calm(.6 + o.types.length * tStep, .8)}">⭐ Irgendwo versteckt: eine Spezialfrage mit ×${o.special} Punkten</div>` : ''}
-      ${o.risk ? `<div class="orisk anim" style="${calm(.9 + o.types.length * tStep, .8)}">${ic('triangle-exclamation')}Und eine Risikofrage: Falsch kostet Punkte – aussetzen ist erlaubt</div>` : ''}</div>
+      ${o.special || o.risk ? `<div class="oextra">${o.special ? `<span class="sp anim" style="${calm(.6 + o.types.length * tStep, .8)}">⭐ Spezialfrage ×${o.special}</span>` : ''}${o.risk ? `<span class="rk anim" style="${calm(.8 + o.types.length * tStep, .8)}">${ic('triangle-exclamation')} Risikofrage</span>` : ''}</div>` : ''}</div>
     <div class="os"><div class="olabel anim" style="${an('oup', .4)}">Mit dabei</div>
       <div class="oplayers">${players.map((p, i) => `<span class="anim" style="--pc:${p.color};${an('opop', .45, .15 + i * .12)}"><i>${p.avatar}</i>${esc(p.name)}</span>`).join('')}</div></div>
     <div class="os"><div class="ologo anim" style="${an('ozoom', .6)}">Viel Glück! 🍀</div></div>
