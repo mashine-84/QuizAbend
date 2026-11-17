@@ -24,7 +24,7 @@ In der Lobby tippt der 👑 auf **📖 Anleitung zeigen**. Der Fernseher erklär
 - Es kommen **nur die Fragearten vor, die im eingestellten Spiel drin sind**, und die Punkte-Folien passen zur Wertung (nach Tempo oder nach Schwierigkeit).
 - Bei Quizfrage, Schätzfrage und den Karten können **alle am Handy ausprobieren** – der Fernseher zeigt live, wer was getippt hat. Zählt nicht für das Spiel.
 - „Spiel starten“ beendet die Anleitung automatisch.
-- **Anpassen:** Texte stehen in `anleitung.json` (wird bei jedem Öffnen neu gelesen), die Grafiken in `public/anleitung.js` (eine pro Folien-ID). Felder und Platzhalter sind oben in der Datei erklärt. Neue Frageart? Folie mit `nurWenn` ergänzen, Grafik dazu, `node test/anleitung.js` prüft beides.
+- **Anpassen:** Texte stehen in `anleitung.json` (wird bei jedem Öffnen neu gelesen), die Grafiken in `public/anleitung.js` (eine pro Folien-ID). Felder und Platzhalter sind oben in der Datei erklärt. Neue Frageart? Folie mit `nurWenn` ergänzen, Grafik dazu, `node code-pruefung/anleitung.js` prüft beides.
 
 ## Raspberry Pi (z. B. Pi 3 Model B) als feste Quiz-Box
 Der Pi hängt per HDMI am Fernseher. Nach dem Einschalten startet das Quiz von selbst im Vollbild, einen Laptop brauchst du dann nicht mehr.

@@ -1,7 +1,7 @@
 // Risikofrage: startet den Server in einer Kopie und spielt Spiele über die API durch.
 //   Anna antwortet immer richtig, Ben immer falsch, Cleo falsch – nur bei der Risikofrage gar nicht.
 //   Geprüft: Alarm-Phase vor der Frage, nie im ersten Drittel, nur ★★-Fragen, Plus/Minus/Null, ohne Einstellung keine Risikofrage.
-// Aufruf: node test/risikofrage.js
+// Aufruf: node code-pruefung/risikofrage.js
 'use strict';
 const fs = require('fs'), os = require('os'), path = require('path'), { spawn } = require('child_process');
 const ROOT = path.join(__dirname, '..'), PORT = 3990 + Math.floor(Math.random() * 9), B = 'http://127.0.0.1:' + PORT;
@@ -10,7 +10,7 @@ let fehler = 0; const ok = (c, t) => { console.log((c ? '  ✓ ' : '  ✗ ') + t
 
 const OHNE = new Set(['.git', 'node_modules', 'einstellungen.json', 'verlauf.json', 'hue.json', 'fragen-quelle.json', '_repo', 'spotify.json', 'https.json', '.https', 'host.json']);
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'quizabend-risiko-'));
-fs.cpSync(ROOT, TMP, { recursive: true, filter: s => !OHNE.has(path.basename(s)) && !s.startsWith(path.join(ROOT, 'test')) });
+fs.cpSync(ROOT, TMP, { recursive: true, filter: s => !OHNE.has(path.basename(s)) && !s.startsWith(path.join(ROOT, 'code-pruefung')) });
 const N = 12;   // Fragen pro Spiel: 6 leichte (★, nie Risikofrage) und 6 mittlere (★★)
 fs.mkdirSync(path.join(TMP, 'fragen', 'Risiko'), { recursive: true });
 fs.writeFileSync(path.join(TMP, 'fragen', 'Risiko', 'Risiko.json'), JSON.stringify({ paket: 'Risiko', fragen: [

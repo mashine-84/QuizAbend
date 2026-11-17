@@ -17,14 +17,18 @@ jobs:
         with:
           node-version: 20
       - name: Syntax (Server, Fernseher, Handy)
-        run: node test/syntax.js
+        run: node code-pruefung/syntax.js
       - name: Fragen im App-Repo (Testpakete)
         run: if [ -f pruefen.js ]; then node pruefen.js; else echo "pruefen.js fehlt – übersprungen"; fi
       - name: Rauchtest (zwei Spiele per API)
-        run: node test/rauchtest.js
+        run: node code-pruefung/rauchtest.js
       - name: Host-PIN (Rechte)
-        run: node test/pin.js
+        run: node code-pruefung/pin.js
       - name: Anleitung (Inhalt, Folien, Ausprobieren)
-        run: node test/anleitung.js
+        run: node code-pruefung/anleitung.js
       - name: Risikofrage (Plus, Minus, Aussetzen)
-        run: node test/risikofrage.js
+        run: node code-pruefung/risikofrage.js
+      - name: Fragen-Mix (Reihenfolge der Fragearten)
+        run: node code-pruefung/fragenmix.js
+      - name: Technik-Test (alle Testfragen)
+        run: node code-pruefung/techniktest.js
