@@ -42,6 +42,10 @@ const ANSWER = ['#ff4a1c', '#1e9bff', '#ffc21a', '#3fd12e'];
     ok(gesendet.length && gesendet[0].body.xy[0] < 0.25, `Farbe ist Blau für B (xy ${gesendet.length && gesendet[0].body.xy})`);
     ok(gesendet.length && gesendet[0].body.bri >= 250, 'erst hell (Aufblitzen in Farbe)');
     ok(gesendet.length < 2 || gesendet[1].body.bri < gesendet[0].body.bri, 'danach etwas sanfter');
+    // danach zurück ins gedimmte Frage-Licht
+    await sleep(3200);
+    const letzt = gesendet[gesendet.length - 1];
+    ok(gesendet.length >= 3 && letzt.body.bri <= 60 && letzt.t - gesendet[0].t < 4500, `nach gut 3 s wieder gedimmt (bri ${letzt && letzt.body.bri} nach ${letzt && letzt.t - gesendet[0].t} ms)`);
     const abst = gesendet.slice(1).map((g, i) => g.t - gesendet[i].t);
     ok(abst.every(a => a >= 950), `höchstens ~1 Befehl pro Sekunde (${abst.join(', ')} ms)`);
 
@@ -49,6 +53,9 @@ const ANSWER = ['#ff4a1c', '#1e9bff', '#ffc21a', '#3fd12e'];
     await hue.onPhase('question'); await sleep(1100); gesendet.length = 0;
     await hue.onPhase('reveal', { q: 2, correct: null }); await sleep(1300);
     ok(gesendet.length && gesendet.every(g => g.body.ct == null) && gesendet[0].body.xy[1] > 0.5, 'Schätzfrage: sofort Grün, kein Weiß');
+    // nächste Phase vor dem Dimmen: der Dimm-Befehl darf nicht mehr nachkommen
+    await hue.onPhase('scores'); await sleep(200); const n0 = gesendet.length; await sleep(3500);
+    ok(gesendet.slice(n0).every(g => !(g.body.bri <= 60 && g.body.xy && g.body.xy[0] < 0.2)), 'neue Phase bricht das Dimmen ab');
     void ANSWER;
   } catch (e) { ok(false, 'Ausnahme: ' + e.stack); }
   finally { fs.rmSync(TMP, { recursive: true, force: true }); }
