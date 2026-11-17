@@ -199,7 +199,8 @@ const VIOLET = '#6a3cff', DEEP = '#3b2bd6', GOLD = '#f5b014';
 // Auflösung: so lange leuchtet die Antwortfarbe hell, danach dimmt sie in derselben Farbe ab.
 // Der Farbwechsel zum Blau passiert erst, wenn die Lampen fast dunkel sind – ein Übergang direkt von z. B. Orange
 // nach Blau läuft bei Hue durch Weiß (die Lampe rechnet den Weg im Farbraum geradlinig).
-const REVEAL_HOLD_MS = 1100;
+const REVEAL_HOLD_MS = 1100;   // so lange hell in der Antwortfarbe
+const REVEAL_FADE_MS = 2200;   // so lange dauert das Abdunkeln in der Antwortfarbe
 // Lampenfarben der Antworten A–D: kräftigere Töne als die Kacheln, damit sie auch als Licht eindeutig sind
 // und sich von Grundstimmung (Violett/Blau-Lila), Spezialfrage (Gold) und Risikofrage (Rot) abheben
 const ANSWER = ['#ff4a1c', '#1e9bff', '#ffc21a', '#3fd12e'];
@@ -241,9 +242,15 @@ async function onPhase(phase, info = {}) {
     // Schritte hängen am tatsächlichen Senden (die Warteschlange kann verzögern), damit das Abdunkeln fertig ist,
     // bevor die Farbe wechselt; eine neue Phase bricht die Kette ab (seqGen)
     const gen = seqGen, live = () => gen === seqGen, later = (ms, f) => { if (live()) seqTimers.push(setTimeout(f, ms)); };
-    later(REVEAL_HOLD_MS, () => apply({ color: farbe, bri: 4, ms: 1200 },                       // in der Antwortfarbe abdunkeln
-      () => later(1300, () => apply({ color: DEEP, bri: 4, ms: 300 },                          // fast dunkel: Farbe wechseln
-        () => later(400, () => apply({ color: DEEP, bri: 22, ms: 1000 }))))));                 // ins normale dunkle Blau
+    // Den Farbwechsel im Dunkeln schicken wir direkt an jede Lampe (ohne Übergang): Einzelbefehle dürfen ~10× pro Sekunde,
+    // Gruppenbefehle nur ~1× – so ist es nur einen Augenblick ganz dunkel, bevor das Blau wieder hochkommt.
+    later(REVEAL_HOLD_MS, () => apply({ color: farbe, bri: 1, ms: REVEAL_FADE_MS },                  // langsam in der Antwortfarbe abdunkeln
+      () => later(REVEAL_FADE_MS, () => {
+        if (!live()) return;
+        const c = xy(DEEP);
+        for (const l of cfg.lights || []) queue(l.id, { color: { xy: c }, dimming: { brightness: 1 }, dynamics: { duration: 0 } });   // fast dunkel: Farbe springt
+        later(120 * (cfg.lights || []).length + 80, () => apply({ color: DEEP, bri: 22, ms: 1500 }));   // gleich danach ins normale dunkle Blau
+      })));
   }
   if (phase === 'ident') {
     seqTimers.push(setTimeout(() => apply({ color: GOLD, bri: 100, ms: 100 }), 1250));
