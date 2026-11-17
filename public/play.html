@@ -214,6 +214,7 @@
   .live .lh small { color: var(--muted); font-weight: 700; }
   .btn.sm2 { font-size: 16px; padding: 12px; }
   .fs { background: rgba(255,255,255,.07); border: none; font: inherit; text-align: left; border-radius: 12px; padding: 12px 14px; color: #fff; font-weight: 700; display: flex; justify-content: space-between; gap: 10px; cursor: pointer; width: 100%; }
+  .fs small { margin-left: auto; opacity: .6; font-weight: 500; white-space: nowrap; }
   .fs span:last-child { color: var(--muted); font-weight: 900; }
   .stline { display: flex; gap: 8px; align-items: center; font-size: 14px; color: #8ff0b5; font-weight: 700; margin: 2px 0; }
   .stline.warn { color: #ffcf66; } .stline.off { color: var(--muted); }
@@ -718,6 +719,25 @@ async function resetHistory(btn) {
   if (ok) ui.packs = data;
   lastKey = ''; render();
 }
+// Technik-Test: Testfragen für jede Frageart und Kombination (Ordner fragen/Technik-Test), nie im normalen Spiel
+function techSection(d) {
+  const t = d.tech || [];
+  if (!t.length) return '';
+  if (S.phase !== 'lobby') return '<h3>🧪 Technik-Test</h3><p class="small">Starten geht in der Lobby.</p>';
+  const sum = t.reduce((a, x) => a + x.count, 0);
+  return `<h3>🧪 Technik-Test</h3>
+    <p class="small">Eine Testfrage für jede Frageart und Kombination – mit und ohne Bild, Merkbild, Ton, Video, Karte und Spotify. Läuft wie ein normales Spiel, auch allein, zählt aber nicht als gespielt (keine Pause, kein Stechen, keine Risiko- oder Spezialfrage).</p>
+    <button class="fs" onclick="startTech()"><span>▶ Alles nacheinander</span><small>${sum} Fragen</small><span>›</span></button>
+    ${t.map(x => `<button class="fs" onclick="startTech(['${esc(x.id)}'])"><span>${esc(x.name)}</span><small>${x.count < x.total ? (x.count ? `${x.count} von ${x.total}` : 'Spotify nicht verbunden') : `${x.count} ${x.count === 1 ? 'Frage' : 'Fragen'}`}</small><span>›</span></button>`).join('')}
+    ${ui.techMsg ? `<div class="sysout bad">${esc(ui.techMsg)}</div>` : ''}`;
+}
+async function startTech(ids) {
+  ui.techMsg = null;
+  const { ok, data } = await post('/api/techniktest', { id: myId, packs: ids || null });
+  if (ok && data && data.ok) { closeSettings(); return; }
+  ui.techMsg = ok ? 'Keine passenden Testfragen (Spotify nicht verbunden?).' : 'Das darf nur, wer Raum & Technik verwalten darf – und nur in der Lobby.';
+  lastKey = ''; render();
+}
 async function saveCfg() {
   const { ok, data } = await post('/api/einstellungen', { id: myId, settings: cfg() });
   if (ok) ui.packs = data;
@@ -979,7 +999,7 @@ function repoSection(d) {
   return `<h3>📚 Fragen-Repo</h3>
     <p class="small">Die Fragenpakete kommen aus einem eigenen GitHub-Repo. „Update holen“ aktualisiert es mit. Wechselst du das Repo, wird die alte Kopie auf dem Pi gelöscht – im Repo selbst geht nichts verloren.</p>
     ${r.url ? `<div class="repobox"><b>${esc(r.url.replace(/^https:\/\/github\.com\//, ''))}</b>
-      <small>${r.present ? `${own.length} ${own.length === 1 ? 'Paket' : 'Pakete'} · Stand ${esc(r.commit || when)}` : 'Noch nicht geladen'}</small></div>` : '<p class="small">Noch kein Fragen-Repo eingetragen – es gibt nur die eingebauten Testfragen.</p>'}
+      <small>${r.present ? `${own.length} ${own.length === 1 ? 'Paket' : 'Pakete'} · Stand ${esc(r.commit || when)}` : 'Noch nicht geladen'}</small></div>` : '<p class="small">Noch kein Fragen-Repo eingetragen – ohne gibt es keine Fragen fürs Spiel, nur den 🧪 Technik-Test.</p>'}
     ${r.error ? `<div class="sysout bad">${esc(r.error)}</div>` : ''}
     ${ui.repoMsg ? `<div class="sysout ${ui.repoMsg.ok ? '' : 'bad'}">${esc(ui.repoMsg.text)}</div>` : ''}
     ${r.url ? `<button class="btn ghost sysb" onclick="repoDo('update')" ${busy ? 'disabled' : ''}><span class="${busy === 'update' ? 'spin' : ''}">${RELOAD_SVG}</span> ${busy === 'update' ? 'Lädt …' : 'Fragen aktualisieren'}</button>` : ''}
@@ -1155,7 +1175,7 @@ function tileStatus(d) {
   return {
     pin: pin.set ? `${ok('PIN festgelegt')}${S.me.authed ? ' · du bist angemeldet' : ''}` : `<span class="warn">⚠️ Keine PIN – wer zuerst kommt, darf alles</span>`,
     spiel: `${c.pub && c.pub.on ? '🍻 Pub-Quiz' : 'Normal'} · ${(c.scoring || 'speed') === 'level' ? 'Schwierigkeit' : 'Schnelligkeit'}<br>${c.special.on ? `Spezialfrage ×${c.special.mult}` : 'Keine Spezialfrage'}${c.risk && c.risk.on ? ' · Risikofrage' : ''}${c.pause.on && blocks > 1 ? ` · Pause ${c.pause.minutes ? c.pause.minutes + ' min' : '∞'}` : ''}`,
-    fragen: `${blocks} ${blocks === 1 ? 'Block' : 'Blöcke'} · ${sum.questions} Fragen<br>${d.errors.length ? warn('Fehler in Fragendateien') : r.error ? warn('Fragen-Repo: Fehler') : r.url ? ok('Fragen-Repo geladen') : off('Nur Testfragen')}`,
+    fragen: `${blocks} ${blocks === 1 ? 'Block' : 'Blöcke'} · ${sum.questions} Fragen<br>${d.errors.length ? warn('Fehler in Fragendateien') : r.error ? warn('Fragen-Repo: Fehler') : r.url ? ok('Fragen-Repo geladen') : off('Noch keine Fragen')}`,
     spieler: `${n} ${n === 1 ? 'Spieler' : 'Spieler'}${vip ? ` · 👑 ${esc(vip.name)}` : ''}`,
     musik: `${sp ? (sp.blocked ? off('Spotify: nur im Heim-WLAN') : sp.connected ? (sp.device ? (sp.enabled ? ok('Spotify · ' + esc(sp.device.name)) : off('Spotify aus')) : warn('Spotify: Gerät wählen')) : off('Spotify nicht verbunden')) : ''}<br>${hue ? (hue.blocked ? off('Hue: nur im Heim-WLAN') : hue.paired ? (hue.enabled !== false ? ok('Hue') : off('Hue aus')) : off('Hue nicht eingerichtet')) : ''}`,
     netz: `${hs ? (hs.hotspot ? off('Eigenes WLAN aktiv') : hs.active ? ok('https aktiv') : hs.host ? warn('https nicht aktiv') : off('https nicht eingerichtet')) : ''}<br>${sys.wifi ? (sys.wifi.service === 'enabled' ? 'Eigenes WLAN bereit' : warn('Eigenes WLAN fehlt')) : ''}`,
@@ -1235,8 +1255,9 @@ function settingsSection(id, d) {
     const r = d.repo || {};
     return `${systemSection(d.system, true) || '<p class="small">Updates und Ausschalten gehen nur auf dem Pi.</p>'}
       <h3>📚 Fragen-Quelle</h3>
-      ${r.url ? `<div class="repobox"><b>${esc(r.url.replace(/^https:\/\/github\.com\//, ''))}</b><small>${r.present ? '✓ Geladen' : 'Noch nicht geladen'}${r.error ? ' · ⚠️ Fehler' : ''}</small></div>` : '<p class="small">Noch kein Fragen-Repo – es gibt nur die Testfragen.</p>'}
-      ${S.phase === 'lobby' ? more(r.url ? 'Aktualisieren, wechseln, Zugriffsschlüssel' : 'Fragen-Repo eintragen', 'repo') : '<p class="small">Ändern geht in der Lobby.</p>'}`;
+      ${r.url ? `<div class="repobox"><b>${esc(r.url.replace(/^https:\/\/github\.com\//, ''))}</b><small>${r.present ? '✓ Geladen' : 'Noch nicht geladen'}${r.error ? ' · ⚠️ Fehler' : ''}</small></div>` : '<p class="small">Noch kein Fragen-Repo – ohne gibt es keine Fragen fürs Spiel.</p>'}
+      ${S.phase === 'lobby' ? more(r.url ? 'Aktualisieren, wechseln, Zugriffsschlüssel' : 'Fragen-Repo eintragen', 'repo') : '<p class="small">Ändern geht in der Lobby.</p>'}
+      ${techSection(d)}`;
   }
   return '';
 }

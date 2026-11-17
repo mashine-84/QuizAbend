@@ -1,0 +1,12 @@
+{
+  "paket": "Zuordnen & Richtig oder falsch",
+  "fragen": [
+    {"frage": "Test: Zuordnung mit 2 Paaren", "zuordnen": {"Tag": "Sonne", "Nacht": "Mond"}, "schwierigkeit": 1},
+    {"frage": "Test: Zuordnung mit 6 Paaren – welche Hauptstadt gehört zu welchem Land?", "zuordnen": {"Frankreich": "Paris", "Italien": "Rom", "Spanien": "Madrid", "Polen": "Warschau", "Schweden": "Stockholm", "Portugal": "Lissabon"}, "schwierigkeit": 2},
+    {"kategorie": "Bilderrätsel", "bild": "formen.png", "frage": "Test: Zuordnung mit Bild – welche Form hat welche Farbe?", "zuordnen": {"Kreis": "Rot", "Quadrat": "Blau", "Stern": "Gelb", "Dreieck": "Grün"}, "schwierigkeit": 2},
+    {"frage": "Test: Richtig oder falsch mit 2 Aussagen", "behauptungen": [["Wasser ist nass.", true], ["Die Erde ist eine Scheibe.", false]], "schwierigkeit": 1},
+    {"frage": "Test: Richtig oder falsch mit 5 Aussagen", "behauptungen": [["Eine Woche hat 7 Tage.", true], ["Ein Jahr hat 300 Tage.", false], ["Berlin liegt an der Spree.", true], ["Der Mond ist ein Planet.", false], ["Pinguine leben am Südpol.", true]], "schwierigkeit": 2},
+    {"frage": "Test: Richtig oder falsch – alle Aussagen stimmen", "behauptungen": [["2 + 2 = 4", true], ["Schnee ist kalt.", true], ["Im Herbst fallen Blätter.", true]], "schwierigkeit": 1},
+    {"kategorie": "Bilderrätsel", "bild": "formen.png", "frage": "Test: Richtig oder falsch mit Bild", "behauptungen": [["Es gibt genau 3 rote Kreise.", true], ["Die Quadrate sind grün.", false], ["Der Stern ist gelb.", true]], "schwierigkeit": 2}
+  ]
+}

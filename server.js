@@ -258,6 +258,8 @@ function normalizeQuestion(q, dir, packName, packLevel) {
   throw new Error('es fehlen "antworten", "schaetzen", "zuordnen", "behauptungen" oder "karte"');
 }
 
+const TECH_GROUP = 'Technik-Test';
+let techPacks = [];
 function loadPacks() {
   const found = [], errors = [];
   const addFile = (group, rel) => {
@@ -295,7 +297,9 @@ function loadPacks() {
   };
   scan('');
   scan('_repo');
-  packs = found;
+  // Technik-Test (Ordner fragen/Technik-Test): nie im normalen Spiel, nur über ⚙️ › 🛠️ System › 🧪 Technik-Test
+  techPacks = found.filter(p => p.group === TECH_GROUP);
+  packs = found.filter(p => p.group !== TECH_GROUP);
   packErrors = errors;
   if (errors.length) console.log('  ⚠️  Probleme in Fragendateien:\n' + errors.map(e => `     ${e.file}: ${e.error}`).join('\n'));
 }
@@ -306,9 +310,6 @@ let settings = { blocks: [{ count: DEFAULT_PER_GAME, disabled: [] }], special: {
 try {
   const raw = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
   if (Array.isArray(raw.blocks)) settings.blocks = raw.blocks;
-  // Testpakete lagen früher unter „Allgemein“ (mischte sich mit „Allgemein“ aus dem Fragen-Repo) – abgewählte bleiben abgewählt
-  const MOVED = { 'Allgemein/Soundcheck-Test': 'Test Fragen/Soundcheck-Test', 'Allgemein/Videotest': 'Test Fragen/Videotest' };
-  for (const b of settings.blocks) if (b && Array.isArray(b.disabled)) b.disabled = b.disabled.map(id => MOVED[id] || id);
   else if (raw.disabled) settings.blocks = [{ count: raw.perGame || DEFAULT_PER_GAME, disabled: raw.disabled }]; // alte Version
   if (raw.special) settings.special = raw.special;
   if (raw.risk) settings.risk = { on: !!raw.risk.on };
@@ -363,7 +364,8 @@ function packList() {
   }
   const all = packs.flatMap(p => p.questions);
   const played = all.filter(q => history[q.uid]).length;
-  return { groups, errors: packErrors, settings, summary: packSummary(), system: systemInfo(), history: { played, total: all.length }, repo: fragenRepo.status() };
+  const tech = techPacks.map(p => ({ id: p.id, name: p.name, count: p.questions.filter(usable).length, total: p.questions.length }));
+  return { groups, errors: packErrors, settings, summary: packSummary(), system: systemInfo(), history: { played, total: all.length }, repo: fragenRepo.status(), tech };
 }
 
 // Wahrscheinlichkeit der Schwierigkeitsstufen für Frage g (0-basiert) von total
@@ -747,6 +749,25 @@ function startGame() {
   return true;
 }
 
+// Technik-Test: alle Fragearten und Kombinationen der gewählten Testpakete der Reihe nach (ein Block je Paket).
+// Ohne Opener, Risiko-/Spezialfrage, Stechen und Pause; zählt nicht als „schon gespielt“. Spotify-Fragen nur, wenn verbunden.
+function startTechTest(ids) {
+  loadPacks();
+  const sel = techPacks.filter(p => !ids || ids.includes(p.id)).map(p => ({ p, qs: p.questions.filter(usable) })).filter(b => b.qs.length);
+  if (!sel.length) return false;
+  const questions = [];
+  sel.forEach(({ p, qs }, n) => qs.forEach((q, i) => questions.push({ ...prepareQuestion(q), block: n, bi: 0, blockCount: sel.length,
+    blockNames: ['🧪 ' + p.name], blockQ: i + 1, blockLen: qs.length })));
+  for (const p of players.values()) { p.score = 0; p.streak = 0; p.ready = false; }
+  state = newGameState(); anleitung = null;
+  state.tech = true; state.pub = false; state.hostId = null; state.scoring = settings.scoring;
+  state.pubSpecial = null; state.questions = questions; state.riskUid = null;
+  state.opening = openingInfo(questions);
+  console.log(`  🧪 Technik-Test: ${questions.length} Fragen aus ${sel.map(b => b.p.name).join(', ')}`);
+  nextQuestion();
+  return true;
+}
+
 // Opener (Branding-Einspieler): läuft beim Spielstart und nach der Pause; überspringbar
 function showIdent(next) {
   state.identNext = next;
@@ -795,7 +816,7 @@ function nextQuestion() {
 }
 
 function beginQuestion() {
-  markPlayed(currentQuestion().uid);
+  if (!state.tech) markPlayed(currentQuestion().uid);   // Technik-Test zählt nicht als gespielt
   if (currentQuestion().tiebreak) return startAnswering();
   if (isRisk(currentQuestion()) && state.phase !== 'risk') return setPhase('risk', RISK_MS, beginQuestion);   // roter Alarm vor der Frage   // Stechen: die Ansage „Stechen!“ ersetzt die Fragen-Ansage
   if (currentQuestion().label) setPhase('intro', INTRO_MS, afterIntro); // neue Fragearten werden angekündigt
@@ -843,7 +864,7 @@ function endAnswering() {
   if (settings.special.on && !state.specialDone && state.pubSpecial) {
     // vom Host festgelegte Spezialfrage
     if (currentQuestion().uid === state.pubSpecial) { state.special = true; state.specialDone = true; return setPhase('special', SPECIAL_MS, showAnswers); }
-  } else if (settings.special.on && !state.specialDone) {
+  } else if (settings.special.on && !state.specialDone && !state.tech) {
     const k = state.idx, n = state.questions.length;
     const chance = n <= 1 ? 1 : 0.01 + 0.99 * k / (n - 1);
     if (Math.random() < chance) {
@@ -1097,8 +1118,8 @@ function isBlockEnd() {
 
 function afterScores() {
   // Spielende: erst die Rangliste, dann bei Gleichstand auf Platz 1 das Stechen, danach das Podest
-  if (state.idx >= state.questions.length - 1) { if (!startTiebreak()) setPhase('end'); }
-  else if (isBlockEnd() && settings.pause.on) startBlockPause();
+  if (state.idx >= state.questions.length - 1) { if (state.tech || !startTiebreak()) setPhase('end'); }
+  else if (isBlockEnd() && settings.pause.on && !state.tech) startBlockPause();
   else nextQuestion();
 }
 
@@ -1851,6 +1872,14 @@ const server = http.createServer(async (req, res) => {
     try { fs.writeFileSync(HISTORY_FILE, '{}'); } catch (_) {}
     pubPlan = null;
     return json(res, 200, packList());
+  }
+
+  // Technik-Test starten (⚙️ › 🛠️ System, nur in der Lobby): packs = Liste von Paket-IDs, sonst alle
+  if (req.method === 'POST' && p === '/api/techniktest') {
+    const body = await readBody(req);
+    if (!canTech(body.id) || state.phase !== 'lobby') return json(res, 403, { ok: false });
+    const ids = Array.isArray(body.packs) ? body.packs.map(String) : null;
+    return json(res, 200, { ok: startTechTest(ids) });
   }
 
   // Pub-Quiz: Fragenplan bearbeiten (nur 👑, nur in der Lobby)
