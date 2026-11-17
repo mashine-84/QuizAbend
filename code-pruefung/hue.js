@@ -32,21 +32,21 @@ const ANSWER = ['#ff4a1c', '#1e9bff', '#ffc21a', '#3fd12e'];
     await hue.onPhase('opening'); await sleep(50);
     await hue.onPhase('question'); await sleep(1100);
     gesendet.length = 0;
-    // Auflösung mit Antwort B (Index 1)
-    await hue.onPhase('reveal', { q: 1, correct: 1 });
-    await sleep(3200);
-    ok(gesendet.length >= 1, `${gesendet.length} Befehle bei der Auflösung`);
-    ok(gesendet.every(g => g.body.ct == null), 'kein Weiß (ct) bei der Auflösung');
-    ok(gesendet.length && Array.isArray(gesendet[0].body.xy), 'erster Befehl ist schon die Antwortfarbe');
-    // xy der Antwortfarbe B vergleichen (grob: x klein, y mittel → blau)
-    ok(gesendet.length && gesendet[0].body.xy[0] < 0.25, `Farbe ist Blau für B (xy ${gesendet.length && gesendet[0].body.xy})`);
-    ok(gesendet.length && gesendet[0].body.bri >= 250, 'erst hell (Aufblitzen in Farbe)');
-    ok(gesendet.length < 2 || gesendet[1].body.bri < gesendet[0].body.bri, 'danach etwas sanfter');
-    // danach zurück ins gedimmte Frage-Licht
-    await sleep(3200);
-    const letzt = gesendet[gesendet.length - 1];
-    ok(gesendet.length >= 3 && letzt.body.bri <= 60 && letzt.t - gesendet[0].t < 4500, `nach gut 3 s wieder gedimmt (bri ${letzt && letzt.body.bri} nach ${letzt && letzt.t - gesendet[0].t} ms)`);
-    const abst = gesendet.slice(1).map((g, i) => g.t - gesendet[i].t);
+    // Auflösung mit Antwort A (Index 0, Orange) – von Orange nach Blau würde ein direkter Übergang durch Weiß laufen
+    await hue.onPhase('reveal', { q: 1, correct: 0 });
+    await sleep(6000);
+    const g = gesendet, same = (a, b) => a && b && a[0] === b[0] && a[1] === b[1];
+    ok(g.length >= 3, `${g.length} Befehle bei der Auflösung`);
+    ok(g.every(x => x.body.ct == null), 'kein Weiß (ct) bei der Auflösung');
+    ok(g.length && Array.isArray(g[0].body.xy) && g[0].body.xy[0] > 0.5, `erster Befehl ist schon die Antwortfarbe Orange (xy ${g.length && g[0].body.xy})`);
+    ok(g.length && g[0].body.bri >= 250, 'erst hell (Aufblitzen in Farbe)');
+    ok(g.length > 1 && g[1].t - g[0].t <= 1700 && same(g[1].body.xy, g[0].body.xy) && g[1].body.bri < 30, `nach gut 1 s in derselben Farbe abdunkeln (${g[1] && g[1].t - g[0].t} ms, bri ${g[1] && g[1].body.bri})`);
+    const wechsel = g.findIndex(x => !same(x.body.xy, g[0].body.xy));
+    ok(wechsel > 0 && g[wechsel].body.bri <= 13 && g[wechsel - 1].body.bri <= 13, `Farbwechsel zum Blau erst, wenn fast dunkel (bri ${wechsel > 0 && g[wechsel - 1].body.bri} → ${wechsel > 0 && g[wechsel].body.bri})`);
+    ok(wechsel > 0 && g[wechsel].t - g[wechsel - 1].t >= 1200, `Farbwechsel erst nach dem Abdunkeln (${wechsel > 0 && g[wechsel].t - g[wechsel - 1].t} ms ≥ 1200)`);
+    const letzt = g[g.length - 1];
+    ok(letzt && letzt.body.xy[0] < 0.2 && letzt.body.bri > 40 && letzt.body.bri <= 60 && letzt.t - g[0].t < 4500, `am Ende das normale dunkle Blau (bri ${letzt && letzt.body.bri} nach ${letzt && letzt.t - g[0].t} ms)`);
+    const abst = g.slice(1).map((x, i) => x.t - g[i].t);
     ok(abst.every(a => a >= 950), `höchstens ~1 Befehl pro Sekunde (${abst.join(', ')} ms)`);
 
     // Schätzfrage (keine richtige Antwort-Kachel) → Grün, ebenfalls ohne Weiß
