@@ -43,8 +43,8 @@ const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
 
 const FRAGEN_DIR = path.join(__dirname, 'fragen');
-const fragenRepo = require('./fragenrepo');
-const meldungen = require('./meldungen');   // „⚑ Stimmt was nicht?“ – gemeldete Fragen (meldungen.json)   // Fragen-Repo (eigenes Git-Repo, Kopie unter fragen/_repo)
+const fragenRepo = require('./fragenrepo');   // Fragen-Repo (eigenes Git-Repo, Kopie unter fragen/_repo)
+const meldungen = require('./meldungen');   // „⚑ Stimmt was nicht?“ – gemeldete Fragen (meldungen.json)
 const { pickNext } = require('./fragenmix');   // Abwechslung bei den Fragearten (Reihenfolge im Spiel)
 const zertifikat = require('./zertifikat');   // sichere Adresse (https) im Heim-WLAN: DuckDNS + Let's Encrypt
 const spotify = require('./spotify');         // Spotify Connect: Hintergrundmusik passend zum Spiel, Spotify-Musikfragen
