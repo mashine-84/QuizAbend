@@ -217,7 +217,7 @@ async function onPhase(phase, info = {}) {
     case 'media': mood = { color: DEEP, bri: 8, ms: 1000 }; break;                       // Video/Audio: fast dunkel
     case 'special': mood = { color: GOLD, bri: 100, ms: 300, pulse: true }; break;     // pulsiert nur, solange der Screen da ist
     case 'risk': mood = { color: '#b3001b', bri: 100, ms: 200, pulse: true }; break;   // Risikofrage: roter Alarm
-    case 'reveal': key = 'reveal' + info.q; mood = { mirek: 250, bri: 100, ms: 100 }; break;   // erst kurz hell aufblitzen, dann Antwortfarbe (s. u.)
+    case 'reveal': key = 'reveal' + info.q; mood = { color: info.correct != null ? ANSWER[info.correct] : ANSWER[3], bri: 100, ms: 100 }; break;   // sofort in der Antwortfarbe aufblitzen (kein Weiß), dann etwas sanfter (s. u.)
     case 'scores': mood = { color: VIOLET, bri: 40, ms: 1500 }; break;
     case 'pause': mood = { mirek: 370, bri: 100, ms: 3000 }; break;                    // hell und warmweiß
     case 'pausedim': mood = { color: VIOLET, bri: 45, ms: info.ms }; break;            // letzte Minute: langsam zum Licht der Block-Ansage
@@ -230,8 +230,8 @@ async function onPhase(phase, info = {}) {
   apply(mood);
   // Opener „Vier Kacheln“: grob im Takt – mehr als ~1 Befehl pro Sekunde verträgt die Bridge nicht.
   // 1,25 s: Gold-Blitz (das „?“ erscheint bei 1,41 s, Lampen reagieren etwas verzögert), 2,35 s: sanft ins ruhige Violett.
-  // Auflösung: nach dem Aufblitzen (gut 1 s – die Bridge verträgt ~1 Befehl pro Sekunde) in die Farbe der richtigen Antwort
-  if (phase === 'reveal') seqTimers.push(setTimeout(() => apply({ color: info.correct != null ? ANSWER[info.correct] : ANSWER[3], bri: 70, ms: 400 }), 1100));
+  // Auflösung: nach dem Aufblitzen (gut 1 s – die Bridge verträgt ~1 Befehl pro Sekunde) in derselben Farbe etwas dunkler
+  if (phase === 'reveal') seqTimers.push(setTimeout(() => apply({ color: info.correct != null ? ANSWER[info.correct] : ANSWER[3], bri: 70, ms: 800 }), 1100));
   if (phase === 'ident') {
     seqTimers.push(setTimeout(() => apply({ color: GOLD, bri: 100, ms: 100 }), 1250));
     seqTimers.push(setTimeout(() => apply({ color: VIOLET, bri: 35, ms: 1500 }), 2350));

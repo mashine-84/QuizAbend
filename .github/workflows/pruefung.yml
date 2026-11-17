@@ -18,6 +18,8 @@ jobs:
           node-version: 20
       - name: Syntax (Server, Fernseher, Handy)
         run: node code-pruefung/syntax.js
+      - name: Hue-Licht (Auflösung ohne Weiß, Befehlstakt)
+        run: node code-pruefung/hue.js
       - name: Ewige Bestenliste (Eintragen, Name, Zurücksetzen)
         run: node code-pruefung/bestenliste.js
       - name: Fragen im App-Repo (Testpakete)
