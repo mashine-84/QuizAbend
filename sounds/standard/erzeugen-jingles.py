@@ -4,8 +4,9 @@
 #   siegerehrung.mp3  Siegerpodest (ersetzt die alte Fanfare)
 #   rangliste.mp3     Rangliste am Blockende (passt zum Balken-Aufbau und Einsortieren)
 #   spezialfrage.mp3  Alarm, wenn die Spezialfrage eingeblendet wird
+#   risikofrage.mp3   roter Alarm (a-Moll, bedrohlich) vor der Risikofrage, 5,6 s
 # Aufruf: python3 erzeugen-jingles.py /tmp/out  (schreibt WAVs), dann z. B.
-#   for f in block-start aufloesung siegerehrung rangliste spezialfrage; do ffmpeg -i /tmp/out/$f.wav -b:a 128k $f.mp3; done
+#   for f in block-start aufloesung siegerehrung rangliste spezialfrage risikofrage; do ffmpeg -i /tmp/out/$f.wav -b:a 128k $f.mp3; done
 import numpy as np, scipy.signal as sg, scipy.io.wavfile as wf, sys, os
 SR = 44100; BPM = 128; BAR = 240 / BPM; E8 = BAR / 8; S16 = BAR / 16
 note = lambda m: 440 * 2 ** ((m - 69) / 12)
@@ -210,3 +211,27 @@ T.add(T.stab((45, 57, 61, 64, 69, 73, 76), 1.2, 4500, 2.5), t0, gain=0.33)
 for k, m in enumerate((81, 85, 88, 93)):
     nn = int(0.5 * SR); T.add(np.sin(2*np.pi*note(m)*np.arange(nn)/SR) * env(nn, 0.003, 6), t0 + 0.05 + k * 0.06, pan=-0.45 + 0.3 * k, gain=0.09)
 T.write(f'{out}/spezialfrage.wav', fade=0.35)
+
+# ---------- Risikofrage: roter Alarm in a-Moll (5,6 s) – Sirene, Herzschlag, dunkler Schlussakkord ----------
+T = Track(5.6, 31)
+def whoop(length):                                      # Alarm-„Whoop“: Säge, die schnell nach oben zieht (wie ein Schiffsalarm)
+    n = int(length * SR); tt = np.arange(n) / SR; f = 260 + 560 * (tt / length) ** 0.7
+    ph_ = np.cumsum(f) / SR; s = (2 * (ph_ % 1) - 1) * 0.55 + np.sign(np.sin(2*np.pi*ph_)) * 0.45
+    return lp(s, 3200) * np.interp(tt, [0, .02, length * .8, length], [0, 1, .9, 0])
+for k in range(4):                                      # vier Sirenen, je halber Takt
+    T.add(whoop(0.62), k * BAR / 2, pan=-0.2 if k % 2 else 0.2, gain=0.2)
+    T.add(T.boom(0.55, (45, 52), 0.9, 4.5), k * BAR / 2)
+for b in range(8):                                      # Herzschlag: doppelter Kick auf jeder Viertel (2 Takte)
+    t = b * BAR / 4
+    T.add(T.kick(), t + 0.02, gain=0.45); T.add(T.kick(), t + 0.2, gain=0.3)
+n = int(2 * BAR * SR); tt = np.arange(n) / SR           # dunkle Fläche: A und Es (Tritonus), unruhiges Tremolo
+dr = lp(saw(note(33), n, (0, 0.003)), 400) + lp(saw(note(39), n, (-0.004, 0.004)), 900) * 0.6
+T.add(dr * (0.7 + 0.3 * np.sin(2*np.pi*8*tt)) * np.interp(tt, [0, .3, tt[-1]], [0, 1, 1]), 0, gain=0.16)
+for k in range(8): T.add(T.snare(), 2 * BAR - BAR / 2 + k * S16, gain=0.12 + 0.035 * k)   # Wirbel in den Schlag
+T.add(T.riser(0.9, 7000), 2 * BAR - 0.9, gain=0.14)
+t0 = 2 * BAR                                            # Schlag auf a-Moll, lange ausklingen
+T.add(T.boom(1.0, (45, 57, 60, 64), 2.0, 2.0), t0); T.add(T.clap(), t0, gain=0.3)
+T.add(T.stab((33, 45, 57, 60, 64, 69), 1.85, 2600, 1.6), t0, gain=0.4)
+nn = int(1.8 * SR); tl = np.arange(nn) / SR             # letzter, tiefer Sirenenton fällt ab
+T.add(lp(saw(note(57) * (1 - 0.35 * tl / tl[-1]), nn), 2000) * np.interp(tl, [0, .05, tl[-1]], [0, 1, 0]), t0 + 0.05, gain=0.08)
+T.write(f'{out}/risikofrage.wav', fade=0.5)

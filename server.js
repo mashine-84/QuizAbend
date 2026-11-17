@@ -33,6 +33,8 @@ const SCORES_EVERY = Number(process.env.RANGLISTE) || 0; // Rangliste nur am Blo
 const OPENING_MS = 22500;      // Intro beim Spielstart (passt zur Intro-Musik: 12 Takte bei 128 BPM)
 const BLOCK_MS = 4500;         // Ankündigung eines neuen Frageblocks
 const SPECIAL_MS = 3500;       // Animation "Spezialfrage"
+const RISK_MS = 6000;          // Alarm "Risikofrage" vor der Frage (Jingle 5,6 s)
+const RISK_CURVE = 5;          // Risikofrage: Gewicht e^(5·Fortschritt) – je später, desto wahrscheinlicher
 
 // Schwierigkeit: Gewichte (Stufe 1/2/3) am Anfang, in der Mitte und am Ende des Spiels.
 // Dazwischen wird linear übergeblendet – über alle Blöcke hinweg.
@@ -300,7 +302,7 @@ function loadPacks() {
 
 // ---------- Einstellungen: Frageblöcke (je mit eigener Paketauswahl) + Spezialfrage ----------
 const MAX_BLOCKS = 6;
-let settings = { blocks: [{ count: DEFAULT_PER_GAME, disabled: [] }], special: { on: false, mult: 2 }, sound: { on: true }, pause: { on: true, minutes: 10 }, pub: { on: false }, scoring: 'speed' };
+let settings = { blocks: [{ count: DEFAULT_PER_GAME, disabled: [] }], special: { on: false, mult: 2 }, risk: { on: false }, sound: { on: true }, pause: { on: true, minutes: 10 }, pub: { on: false }, scoring: 'speed' };
 try {
   const raw = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
   if (Array.isArray(raw.blocks)) settings.blocks = raw.blocks;
@@ -309,6 +311,7 @@ try {
   for (const b of settings.blocks) if (b && Array.isArray(b.disabled)) b.disabled = b.disabled.map(id => MOVED[id] || id);
   else if (raw.disabled) settings.blocks = [{ count: raw.perGame || DEFAULT_PER_GAME, disabled: raw.disabled }]; // alte Version
   if (raw.special) settings.special = raw.special;
+  if (raw.risk) settings.risk = { on: !!raw.risk.on };
   if (raw.sound) settings.sound = raw.sound;
   if (raw.pause) settings.pause = raw.pause;
   // Pub-Quiz-Modus wird bewusst nicht übernommen: nach jedem Start ist der normale Modus aktiv
@@ -321,9 +324,10 @@ function cleanSettings(input) {
     count: Math.max(1, Math.min(50, Math.round(Number(b && b.count)) || DEFAULT_PER_GAME)),
     disabled: Array.isArray(b && b.disabled) ? b.disabled.filter(x => typeof x === 'string') : [],
   }));
-  const sp = input.special || {}, so = input.sound || {}, pa = input.pause || {}, pu = input.pub || {};
+  const sp = input.special || {}, ri = input.risk || {}, so = input.sound || {}, pa = input.pause || {}, pu = input.pub || {};
   return { blocks: blocks.length ? blocks : settings.blocks,
     special: { on: !!sp.on, mult: [2, 3, 4].includes(Number(sp.mult)) ? Number(sp.mult) : 2 },
+    risk: { on: !!ri.on },
     sound: { on: so.on === undefined ? true : !!so.on },
     pause: { on: pa.on === undefined ? true : !!pa.on, minutes: Math.max(0, Math.min(60, Math.round(Number(pa.minutes ?? 10)))) },
     pub: { on: !!pu.on },
@@ -347,7 +351,7 @@ function blockSummary(b) {
 function packSummary() {
   const blocks = settings.blocks.map(blockSummary);
   return { blocks, totalPacks: packs.length, questions: blocks.reduce((s, b) => s + b.plays, 0),
-    special: settings.special, sound: settings.sound, pause: settings.pause, pub: settings.pub, scoring: settings.scoring, errors: packErrors.length };
+    special: settings.special, risk: settings.risk, sound: settings.sound, pause: settings.pause, pub: settings.pub, scoring: settings.scoring, errors: packErrors.length };
 }
 
 function packList() {
@@ -710,6 +714,22 @@ function planAction(body) {
   return planView();
 }
 
+// ---------- Risikofrage: einmal pro Spiel (wenn eingeschaltet). Richtig = Punkte, falsch = genauso viele Punkte weg,
+// nicht antworten = nichts passiert. Nur Fragen mit klarem Richtig/Falsch (Auswahl, Land antippen), mindestens ★★,
+// nie im ersten Drittel. Position zufällig mit exponentiell steigendem Gewicht – meist kommt sie spät.
+const riskEligible = q => (q.kind === 'choice' || q.kind === 'land') && (q.level || 1) >= 2 && !q.tiebreak;
+function pickRisk(qs, rnd = Math.random) {
+  if (!settings.risk || !settings.risk.on || !qs.length) return null;
+  const n = qs.length, from = Math.ceil(n / 3);
+  const c = qs.map((q, i) => ({ q, i })).filter(({ q, i }) => i >= from && riskEligible(q) && q.uid !== state.pubSpecial);
+  if (!c.length) return null;
+  const w = c.map(({ i }) => Math.exp(RISK_CURVE * (n > 1 ? i / (n - 1) : 1)));
+  let r = rnd() * w.reduce((a, b) => a + b, 0);
+  for (let k = 0; k < c.length; k++) if ((r -= w[k]) <= 0) return c[k].q.uid;
+  return c[c.length - 1].q.uid;
+}
+const isRisk = q => !!q && !!state.riskUid && q.uid === state.riskUid;
+
 function startGame() {
   loadPacks();
   if (pubActive()) planEnsure();
@@ -721,6 +741,7 @@ function startGame() {
   state.pub = pub; state.hostId = pub ? host : null; state.scoring = settings.scoring;
   state.pubSpecial = pub && settings.special.on ? (pubPlan && pubPlan.special) || null : null;
   state.questions = questions;
+  state.riskUid = pickRisk(questions);
   state.opening = openingInfo(questions);
   showIdent(() => setPhase('opening', OPENING_MS, nextQuestion));   // erst der Opener, dann das Intro
   return true;
@@ -754,6 +775,7 @@ function openingInfo(questions) {
   return {
     blocks: blocks.filter(Boolean), questions: questions.length, categories: cats, types,
     special: settings.special && settings.special.on ? settings.special.mult : null,
+    risk: !!state.riskUid,
     pause: settings.pause && settings.pause.on && blocks.length > 1 ? settings.pause.minutes : null,
     scoring: settings.scoring,
   };
@@ -763,6 +785,7 @@ function nextQuestion() {
   state.idx++;
   if (state.idx >= state.questions.length) return setPhase('end');
   state.answers = {};
+  state.skipped = {};   // Risikofrage: bewusst ausgesetzt
   state.results = {};
   state.step = 0;
   state.special = false;
@@ -773,7 +796,8 @@ function nextQuestion() {
 
 function beginQuestion() {
   markPlayed(currentQuestion().uid);
-  if (currentQuestion().tiebreak) return startAnswering();   // Stechen: die Ansage „Stechen!“ ersetzt die Fragen-Ansage
+  if (currentQuestion().tiebreak) return startAnswering();
+  if (isRisk(currentQuestion()) && state.phase !== 'risk') return setPhase('risk', RISK_MS, beginQuestion);   // roter Alarm vor der Frage   // Stechen: die Ansage „Stechen!“ ersetzt die Fragen-Ansage
   if (currentQuestion().label) setPhase('intro', INTRO_MS, afterIntro); // neue Fragearten werden angekündigt
   else startAnswering();
 }
@@ -814,7 +838,7 @@ function startAnswering() {
 function endAnswering() {
   // Pub-Quiz: Antworten sind zu, aufgelöst wird erst auf Knopfdruck des Hosts
   if (state.pub && state.phase === 'question') return setPhase('locked', 0, null);
-  if (currentQuestion().tiebreak) return showAnswers();   // beim Stechen keine Spezialfrage
+  if (currentQuestion().tiebreak || isRisk(currentQuestion())) return showAnswers();   // beim Stechen und bei der Risikofrage keine Spezialfrage
   // Spezialfrage: genau einmal pro Spiel. Chance steigt linear von 1 % (erste Frage) auf 100 % (letzte Frage)
   if (settings.special.on && !state.specialDone && state.pubSpecial) {
     // vom Host festgelegte Spezialfrage
@@ -848,6 +872,7 @@ function recordStats() {
     const a = state.answers[p.id], r = state.results[p.id], ok = !!(r && r.correct);
     const left = a ? Math.max(0, state.answerEnds - a.at) : 0;
     if (a && ok && q.kind !== 'estimate' && q.kind !== 'pin') st.times.push(q.timeMs - left);
+    if (!a && r && r.risk) continue;   // Risikofrage ausgelassen: zählt nicht
     st.streak = ok ? st.streak + 1 : 0; st.best = Math.max(st.best, st.streak);
     if (a && ok && left <= 3000) st.late++;
     if (a && q.kind === 'estimate') {
@@ -957,6 +982,22 @@ function scoreQuestion() {
   }
 }
 
+// Risikofrage: falsch = so viele Punkte abziehen, wie es für richtig gegeben hätte (gleiche Antwortzeit, ohne Serienbonus);
+// nicht geantwortet = nichts passiert (auch die Serie bleibt stehen)
+function applyRisk(streaks) {
+  const q = currentQuestion(), level = (state.scoring || settings.scoring) === 'level';
+  for (const p of players.values()) {
+    const a = state.answers[p.id], r = state.results[p.id];
+    if (!r) continue;
+    r.risk = true;
+    if (!a) { p.streak = streaks.get(p.id) || 0; if ((state.skipped || {})[p.id]) r.skipped = true; continue; }
+    if (r.correct) continue;
+    const speed = Math.max(0, state.answerEnds - a.at) / q.timeMs;
+    const loss = level ? (q.level || 1) : round10(500 + 500 * speed);
+    p.score -= loss; r.gain = -loss;
+  }
+}
+
 // Alternative Wertung: richtige Antwort = so viele Punkte wie die Schwierigkeit (1–3).
 // Zuordnung: jedes richtige Paar 1 Punkt. Schätzfrage: wer am nächsten dran ist (bei Toleranz nur innerhalb).
 function scoreByLevel(q) {
@@ -1015,7 +1056,9 @@ function scoreByLevel(q) {
 }
 
 function reveal() {
+  const risky = isRisk(currentQuestion()), streaks = risky ? new Map([...players.values()].map(p => [p.id, p.streak])) : null;
   scoreQuestion();
+  if (risky) applyRisk(streaks);
   recordStats();
   if (state.special) {
     const m = settings.special.mult;
@@ -1097,6 +1140,7 @@ function advance() {
     case 'opening': nextQuestion(); break;
     case 'tiebreak': nextQuestion(); break;
     case 'block': beginQuestion(); break;
+    case 'risk': beginQuestion(); break;
     case 'intro': afterIntro(); break;
     case 'media': afterMedia(); break;
     case 'preview': startAnswering(); break;
@@ -1129,7 +1173,7 @@ const minPlayers = () => pubActive() ? 1 : MIN_PLAYERS;
 function allAnswered() {
   const q = currentQuestion();
   const active = [...players.values()].filter(p => p.connected && isPlayer(p) && mayAnswer(q, p));
-  return active.length > 0 && active.every(p => state.answers[p.id]);
+  return active.length > 0 && active.every(p => state.answers[p.id] || (state.skipped || {})[p.id]);
 }
 
 // =====================================================================
@@ -1140,7 +1184,7 @@ function ranking() {
   const list = [...players.values()].filter(isPlayer)
     .sort((a, b) => b.score - a.score || a.joinedAt - b.joinedAt)
     .map(p => ({ id: p.id, name: p.name, color: p.color, avatar: p.avatar, score: p.score, connected: p.connected, joined: p.joinedAt,
-      answered: !!state.answers[p.id], result: state.results[p.id] || null, ready: !!p.ready }));
+      answered: !!(state.answers[p.id] || (state.skipped || {})[p.id]), result: state.results[p.id] || null, ready: !!p.ready }));
   list.forEach((p, i) => { p.place = i && p.score === list[i - 1].score ? list[i - 1].place : i + 1; });
   return list;
 }
@@ -1216,12 +1260,13 @@ function baseView() {
     block: q ? { num: q.block + 1, total: q.blockCount, names: q.blockNames, q: q.blockQ, len: q.blockLen } : null,
     nextBlock: (() => { const n = state.questions[state.idx + 1]; return n && q && n.block !== q.block ? { num: n.block + 1, total: n.blockCount, names: n.blockNames } : null; })(),
     special: state.special && ['special', 'votes', 'reveal'].includes(ph) ? { mult: settings.special.mult } : null,
+    risk: isRisk(q) && ['risk', 'intro', 'media', 'preview', 'question', 'locked', 'votes', 'reveal'].includes(ph),   // Risikofrage (vor der Frage angekündigt)
     // Stechen um Platz 1: wer darf antworten (nur in der Ansage und während der Stechen-Frage)
     tiebreak: state.tiebreak && (ph === 'tiebreak' || (q && q.tiebreak)) ? { ids: state.tiebreak.ids, round: state.tiebreak.round } : null,
     awards: ph === 'end' ? computeAwards() : null,   // Sonderpreise bei der Siegerehrung
     anleitung: anleitungView(),
   };
-  if (q && ['intro', 'media', 'preview', 'question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
+  if (q && ['risk', 'intro', 'media', 'preview', 'question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
     const vq = v.question = { kind: q.kind, label: q.label || null, icon: q.icon || null, category: q.category, tiebreak: !!q.tiebreak }; // Schwierigkeit wird im Spiel nicht verraten …
     // … außer bei Punkten nach Schwierigkeit: dann steht oben, was die Frage bringt (Zuordnen: 1 Punkt je Paar)
     if ((state.scoring || settings.scoring) === 'level') { vq.points = stepCount(q) ? 1 : (q.level || 1); vq.perPair = q.kind === 'match'; vq.perItem = q.kind === 'tf'; }
@@ -1271,6 +1316,7 @@ function viewFor(client, base) {
     rank: rankOf(me.id), isVip: vipId() === me.id, authed: !!me.authed, canLead: canLead(me.id), canTech: canTech(me.id),
     isHost: pubActive() && hostId() === me.id, hostQ: pubActive() && hostId() === me.id ? hostSolution() : null,
     answer: state.answers[me.id] || null,
+    skipped: !!(state.skipped || {})[me.id],
     result: state.results[me.id] || null,
   } : null };
 }
@@ -1293,6 +1339,7 @@ function gameFeatures() {
   }
   if (settings.pub && settings.pub.on) f.add('pub');
   if (settings.special && settings.special.on) f.add('special');
+  if (settings.risk && settings.risk.on) f.add('risk');
   if (settings.pause && settings.pause.on && settings.blocks.length > 1) f.add('pause');
   return f;
 }
@@ -1380,8 +1427,8 @@ function anleitungAction(body) {
 // Pub-Quiz: Der Host sieht am Handy die Frage samt Lösung (zum Moderieren)
 function hostSolution() {
   const q = currentQuestion();
-  if (!q || !['intro', 'media', 'preview', 'question', 'locked', 'special', 'votes', 'reveal'].includes(state.phase)) return null;
-  const out = { kind: q.kind, text: q.text, category: q.category, label: q.label || null, icon: q.icon || null, special: state.pubSpecial === q.uid };
+  if (!q || !['risk', 'intro', 'media', 'preview', 'question', 'locked', 'special', 'votes', 'reveal'].includes(state.phase)) return null;
+  const out = { kind: q.kind, text: q.text, category: q.category, label: q.label || null, icon: q.icon || null, special: state.pubSpecial === q.uid, risk: isRisk(q) };
   if (q.brand) out.brand = q.brand;
   if (q.kind === 'choice') { out.answers = q.answers; out.correct = q.correct; }
   if (q.kind === 'estimate') { out.value = q.value; out.unit = q.unit; out.year = q.year; out.tolerance = q.tolerance; }
@@ -1594,7 +1641,7 @@ function serveMedia(req, res, rel) {
 }
 
 // Musik (Intro, letzte Pausenminute): eigene Datei sounds/<name>.* hat Vorrang vor sounds/standard/
-const MUSIC = ['opener', 'pause-finale', 'quiz-intro', 'block-start', 'aufloesung', 'siegerehrung', 'rangliste', 'spezialfrage', 'countdown'];
+const MUSIC = ['opener', 'pause-finale', 'quiz-intro', 'block-start', 'aufloesung', 'siegerehrung', 'rangliste', 'spezialfrage', 'risikofrage', 'countdown'];
 function musicFile(name) {
   for (const dir of [SOUNDS_DIR, path.join(SOUNDS_DIR, 'standard')]) {
     for (const ext of Object.keys(AUDIO_TYPES)) {
@@ -1731,6 +1778,16 @@ const server = http.createServer(async (req, res) => {
     const answer = pl && isPlayer(pl) && mayAnswer(q, pl) && state.phase === 'question' && !state.frozen && !state.answers[pl.id] && validAnswer(q, body);
     if (!answer) return json(res, 409, { ok: false });
     state.answers[pl.id] = { ...answer, at: Date.now() };
+    if (allAnswered()) endAnswering(); else broadcast();
+    return json(res, 200, { ok: true });
+  }
+
+  // Risikofrage: bewusst aussetzen (zählt wie „fertig“, damit niemand auf das Ende der Zeit warten muss)
+  if (req.method === 'POST' && p === '/api/aussetzen') {
+    const body = await readBody(req);
+    const pl = players.get(body.id), q = currentQuestion();
+    if (!(pl && isPlayer(pl) && isRisk(q) && mayAnswer(q, pl) && state.phase === 'question' && !state.frozen && !state.answers[pl.id] && !state.skipped[pl.id])) return json(res, 409, { ok: false });
+    state.skipped[pl.id] = true;
     if (allAnswered()) endAnswering(); else broadcast();
     return json(res, 200, { ok: true });
   }

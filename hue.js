@@ -214,6 +214,7 @@ async function onPhase(phase, info = {}) {
     case 'intro': case 'preview': case 'question': case 'locked': case 'votes': key = 'question'; mood = { color: DEEP, bri: 22, ms: 1200 }; break;
     case 'media': mood = { color: DEEP, bri: 8, ms: 1000 }; break;                       // Video/Audio: fast dunkel
     case 'special': mood = { color: GOLD, bri: 100, ms: 300, pulse: true }; break;     // pulsiert nur, solange der Screen da ist
+    case 'risk': mood = { color: '#b3001b', bri: 100, ms: 200, pulse: true }; break;   // Risikofrage: roter Alarm
     case 'reveal': key = 'reveal' + info.q; mood = { color: info.correct != null ? ANSWER[info.correct] : '#2fb36d', bri: 70, ms: 300 }; break;
     case 'scores': mood = { color: VIOLET, bri: 40, ms: 1500 }; break;
     case 'pause': mood = { mirek: 370, bri: 100, ms: 3000 }; break;                    // hell und warmweiß
