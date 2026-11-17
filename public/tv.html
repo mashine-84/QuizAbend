@@ -214,8 +214,6 @@
   .kwin { transform-box: fill-box; transform-origin: center; transition: transform .4s; }
   .kwin.on { transform: scale(1.2); }
   .kwinrg { fill: #2fb36d; stroke: #fff; stroke-width: 4; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
-  .kcheck circle { fill: #fff; } .kcheck text { font-size: 28px; font-weight: 900; fill: var(--d); }
-  .kcheck { opacity: 0; transition: opacity .4s .2s; } .kwin.on ~ g .kcheck { opacity: 1; }
   .kpin-in { animation: none; } .kpin.dim { opacity: .5; }
   .kpin.drop .kpin-in { animation: kdrop .55s cubic-bezier(.35,1.5,.55,1) both; }
   html.lite .kpin.drop .kpin-in { animation: kdrop .55s cubic-bezier(.35,1.5,.55,1) both !important; }
@@ -1423,6 +1421,13 @@ function updateMain() {
 
 
 // ---------- Geografie: Karte am Fernseher ----------
+// Namensschild auf der Karte: Breite nach dem echten Text messen, damit er nicht am Rand klebt
+function kLabelFit(root) {
+  root.querySelectorAll('.klabel').forEach(g => {
+    const t = g.querySelector('text'), r = g.querySelector('rect');
+    try { const w = t.getBBox().width; if (w > 0) { r.setAttribute('width', w + 32); r.setAttribute('x', -(w + 32) / 2); } } catch (_) {}
+  });
+}
 // Frage: nur die Karte. votes: Pins fallen nacheinander / gewählte Länder färben sich. reveal: richtige Stelle, Linien, Liste.
 let geoLanded = 0;
 const GEO_FADE_MS = 550;   // Frage ausblenden, bevor die Tipps/Auflösung auf der Karte erscheinen
@@ -1472,7 +1477,7 @@ function renderGeo(byId) {
       const rows = pins.map(x => ({ ...x, km: kDist(x.pos, q.target) })).sort((a, b) => a.km - b.km);
       const lines = rows.map((x, i) => { const [px, py] = kProj(m, x.pos[0], x.pos[1]);
         return `<line class="kline" x1="${px}" y1="${py}" x2="${tx}" y2="${ty}" stroke="${byId[x.id].color}" stroke-width="${3 * u}" stroke-dasharray="${8 * u} ${5 * u}" style="animation-delay:${GEO_LINES_S + i * 0.3}s !important"/>`; }).join('');
-      const label = q.name ? `<g transform="translate(${tx},${ty - 112 * u}) scale(${u})"><g class="klabel late"><rect x="${-(q.name.length * 8.5 + 18) / 2}" y="-15" width="${q.name.length * 8.5 + 18}" height="28" rx="8"/><text y="6" text-anchor="middle">${esc(q.name)}</text></g></g>` : '';
+      const label = q.name ? `<g transform="translate(${tx},${ty - 112 * u}) scale(${u})"><g class="klabel late"><rect x="${-(q.name.length * 9.5 + 32) / 2}" y="-17" width="${q.name.length * 9.5 + 32}" height="32" rx="10"/><text y="6" text-anchor="middle">${esc(q.name)}</text></g></g>` : '';
       // Ziel: großer goldener Pin (Font Awesome „location-dot“) fällt auf die Stadt, Schatten und Welle am Boden
       const dot = FA_SVG['location-dot'], ps = 88 / 512;
       const target = `<g transform="translate(${tx},${ty}) scale(${u})"><ellipse rx="20" ry="7" class="kshadow"/><circle r="28" class="kpulse"/>
@@ -1490,6 +1495,7 @@ function renderGeo(byId) {
         + rows.filter(x => x !== win && !ok(x)).reverse().map(x => userPin(x, 40, 'dim')).join('')
         + rows.filter(x => x !== win && ok(x)).reverse().map(x => userPin(x, 40, '')).join('')
         + (win ? userPin(win, 46, 'kpinwin') : '') + label;
+      kLabelFit(over);
       side.innerHTML = `<div class="klist">${rows.map((x, i) => { const p = byId[x.id], r = p.result || {};
         return `<div class="krow ${r.correct ? 'best' : ''}" style="--pc:${p.color};animation-delay:${GEO_LINES_S + 0.2 + i * 0.3}s !important"><span class="vav" style="--pc:${p.color}">${p.avatar}</span><b>${esc(p.name)}</b><i>${kKm(x.km)}</i><span class="eg ${r.correct ? '' : r.gain ? 'mid' : 'no'}">${r.correct ? '✓' : r.gain ? '≈' : '✗'}</span></div>`; }).join('') || '<div class="khint">Niemand hat getippt 🤷</div>'}</div>`;
       setTimeout(() => { geoLanded = S.qNum; const c = document.getElementById('chips'); if (c) c.innerHTML = chips(); }, (GEO_LINES_S + rows.length * 0.3) * 1000);
@@ -1513,13 +1519,16 @@ function renderGeo(byId) {
     // alles andere tritt zurück (blass, grau). Avatare auf dem richtigen Land bleiben obenauf.
     let winHtml = '';
     if (reveal && rr) {
-      const cx = (rr.b[0] + rr.b[2]) / 2, cy = (rr.b[1] + rr.b[3]) / 2, k = GEO_WIN_SCALE;
-      const shape = rr.s ? `<circle class="kwinrg" cx="${rr.c[0]}" cy="${rr.c[1]}" r="${14 * u}"/>` : `<path class="kwinrg" d="${rr.d}"/>`;
-      const bx = rr.s ? rr.c[0] + 20 * u * k : cx + (rr.b[2] - cx) * k, by = rr.s ? rr.c[1] - 20 * u * k : cy + (rr.b[1] - cy) * k;
-      winHtml = `<g class="kwin">${shape}</g><g transform="translate(${bx},${by}) scale(${u})"><g class="kcheck"><circle r="23"/><text y="9" text-anchor="middle">✓</text></g></g>`;
+      // immer die echte Form (bei der Auflösung ist auf das Land gezoomt, auch kleine sind dann groß genug);
+      // den Tippkreis nur, wenn es keine Form gibt. Kein ✓ – das grüne Land und das Namensschild reichen.
+      const shape = rr.d ? `<path class="kwinrg" d="${rr.d}"/>` : `<circle class="kwinrg" cx="${rr.c[0]}" cy="${rr.c[1]}" r="${14 * u}"/>`;
+      winHtml = `<g class="kwin">${shape}</g>`;
     }
-    const label = reveal && rr ? `<g transform="translate(${rr.c[0]},${rr.c[1] - (rr.b[3] - rr.b[1]) * 0.6 - 20 * u}) scale(${u})"><g class="klabel ok"><rect x="${-(q.name.length * 8.5 + 18) / 2}" y="-15" width="${q.name.length * 8.5 + 18}" height="28" rx="8"/><text y="6" text-anchor="middle">${esc(q.name)}</text></g></g>` : '';
+    // Namensschild mittig knapp über dem (vergrößerten) Land
+    const lx = (rr ? (rr.b[0] + rr.b[2]) / 2 : 0), lcy = rr ? (rr.b[1] + rr.b[3]) / 2 : 0, ly = rr ? lcy - (lcy - rr.b[1]) * GEO_WIN_SCALE - 26 * u : 0;
+    const label = reveal && rr ? `<g transform="translate(${lx},${ly}) scale(${u})"><g class="klabel ok"><rect x="${-(q.name.length * 9.5 + 32) / 2}" y="-17" width="${q.name.length * 9.5 + 32}" height="32" rx="10"/><text y="6" text-anchor="middle">${esc(q.name)}</text></g></g>` : '';
     over.innerHTML = winHtml + av + label;
+    kLabelFit(over);
     if (reveal) {
       svg.querySelector('.kland').classList.add('kdim'); svg.querySelector('.khit').classList.add('kdim');
       requestAnimationFrame(() => requestAnimationFrame(() => { const w = over.querySelector('.kwin'); if (w) w.classList.add('on'); }));
@@ -1530,7 +1539,9 @@ function renderGeo(byId) {
     };
     // Zur Auflösung: erst die Frage oben links ausblenden (sie liegt über der Karte), dann zoomen und auflösen
     const txt = box.parentNode.querySelector('.ktext');
-    if ((S.phase === 'votes' || S.phase === 'reveal') && txt && !txt.classList.contains('gone')) { txt.classList.add('gone'); setTimeout(() => { if (document.contains(box)) go(); }, GEO_FADE_MS); }
+    // nur ausführen, wenn inzwischen keine neue Phase kam – sonst malt ein alter Ablauf (z. B. „votes“ ohne Lösung) über die Auflösung
+    const ph = S.phase;
+    if ((ph === 'votes' || ph === 'reveal') && txt && !txt.classList.contains('gone')) { txt.classList.add('gone'); setTimeout(() => { if (document.contains(box) && box.dataset.phase === ph) go(); }, GEO_FADE_MS); }
     else go();
   }).catch(() => { box.innerHTML = '<div class="kload">Karte fehlt</div>'; });
 }
