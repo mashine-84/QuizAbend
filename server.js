@@ -747,9 +747,15 @@ function startGame() {
 
 // Technik-Test: alle Fragearten und Kombinationen der gewählten Testpakete der Reihe nach (ein Block je Paket).
 // Ohne Opener, Risiko-/Spezialfrage, Stechen und Pause; zählt nicht als „schon gespielt“. Spotify-Fragen nur, wenn verbunden.
-function startTechTest(ids) {
+// extra = 'special' | 'risk': nur eine Auswahlfrage – mit Spezialfrage-Screen (nach dem Antworten) bzw. Risikofrage-Screen (davor)
+function startTechTest(ids, extra) {
   loadPacks();
-  const sel = techPacks.filter(p => !ids || ids.includes(p.id)).map(p => ({ p, qs: p.questions.filter(usable) })).filter(b => b.qs.length);
+  let sel = techPacks.filter(p => !ids || ids.includes(p.id)).map(p => ({ p, qs: p.questions.filter(usable) })).filter(b => b.qs.length);
+  if (extra) {
+    const p = techPacks.find(x => x.questions.some(q => q.kind === 'choice' && !q.image && !q.audio && !q.video && !q.spotify));
+    const q = p && p.questions.find(q => q.kind === 'choice' && !q.image && !q.audio && !q.video && !q.spotify);
+    sel = q ? [{ p: { ...p, name: extra === 'risk' ? 'Risikofrage' : 'Spezialfrage' }, qs: [q] }] : [];
+  }
   if (!sel.length) return false;
   const questions = [];
   sel.forEach(({ p, qs }, n) => qs.forEach((q, i) => questions.push({ ...prepareQuestion(q), block: n, bi: 0, blockCount: sel.length,
@@ -757,7 +763,8 @@ function startTechTest(ids) {
   for (const p of players.values()) { p.score = 0; p.streak = 0; p.ready = false; }
   state = newGameState(); anleitung = null;
   state.tech = true; state.pub = false; state.hostId = null; state.scoring = settings.scoring;
-  state.pubSpecial = null; state.questions = questions; state.riskUid = null;
+  state.pubSpecial = extra === 'special' ? questions[0].uid : null; state.questions = questions;
+  state.riskUid = extra === 'risk' ? questions[0].uid : null;
   state.opening = openingInfo(questions);
   console.log(`  🧪 Technik-Test: ${questions.length} Fragen aus ${sel.map(b => b.p.name).join(', ')}`);
   nextQuestion();
@@ -857,7 +864,7 @@ function endAnswering() {
   if (state.pub && state.phase === 'question') return setPhase('locked', 0, null);
   if (currentQuestion().tiebreak || isRisk(currentQuestion())) return showAnswers();   // beim Stechen und bei der Risikofrage keine Spezialfrage
   // Spezialfrage: genau einmal pro Spiel. Chance steigt linear von 1 % (erste Frage) auf 100 % (letzte Frage)
-  if (settings.special.on && !state.specialDone && state.pubSpecial) {
+  if ((settings.special.on || state.tech) && !state.specialDone && state.pubSpecial) {   // Technik-Test: auch wenn ausgeschaltet
     // vom Host festgelegte Spezialfrage
     if (currentQuestion().uid === state.pubSpecial) { state.special = true; state.specialDone = true; return setPhase('special', SPECIAL_MS, showAnswers); }
   } else if (settings.special.on && !state.specialDone && !state.tech) {
@@ -1918,7 +1925,8 @@ const server = http.createServer(async (req, res) => {
     const body = await readBody(req);
     if (!canTech(body.id) || state.phase !== 'lobby') return json(res, 403, { ok: false });
     const ids = Array.isArray(body.packs) ? body.packs.map(String) : null;
-    return json(res, 200, { ok: startTechTest(ids) });
+    const extra = ['special', 'risk'].includes(body.extra) ? body.extra : null;
+    return json(res, 200, { ok: startTechTest(ids, extra) });
   }
 
   // Ewige Bestenliste zurücksetzen (wer das Spiel leiten darf, nur in der Lobby)

@@ -12,7 +12,7 @@ const OHNE = new Set(['.git', 'node_modules', 'einstellungen.json', 'verlauf.jso
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'quizabend-technik-'));
 fs.cpSync(ROOT, TMP, { recursive: true, filter: s => !OHNE.has(path.basename(s)) && !s.startsWith(path.join(ROOT, 'code-pruefung')) });
 // Spezialfrage, Risikofrage und Pause eingeschaltet – im Technik-Test dürfen sie trotzdem nicht kommen
-fs.writeFileSync(path.join(TMP, 'einstellungen.json'), JSON.stringify({ blocks: [{ count: 10, disabled: [] }], special: { on: true, mult: 2 }, risk: { on: true }, sound: { on: false }, pause: { on: true, minutes: 1 }, scoring: 'speed' }));
+fs.writeFileSync(path.join(TMP, 'einstellungen.json'), JSON.stringify({ blocks: [{ count: 10, disabled: [] }], special: { on: false, mult: 2 }, risk: { on: false }, sound: { on: false }, pause: { on: true, minutes: 1 }, scoring: 'speed' }));
 let log = '';
 const srv = spawn(process.execPath, ['server.js'], { cwd: TMP, env: { ...process.env, PORT: String(PORT), NO_BROWSER: '1', SEKUNDEN: '5' } });
 srv.stdout.on('data', d => { log += d; }); srv.stderr.on('data', d => { log += d; });
@@ -52,6 +52,19 @@ const post = (p, b) => fetch(B + p, { method: 'POST', body: JSON.stringify(b) })
     ok(S && S.phase === 'end', 'Karten-Test bis zum Ende');
     await post('/api/advance', { id: j.id }); await sleep(200);
     ok(S && S.phase === 'lobby', 'zurück in der Lobby');
+
+    // Spezialfrage- und Risikofrage-Screen per Knopfdruck (auch wenn beides in den Einstellungen aus wäre)
+    for (const [extra, phase] of [['special', 'special'], ['risk', 'risk']]) {
+      const [stE, rE] = await post('/api/techniktest', { id: j.id, extra });
+      const gesehen = new Set();
+      for (let i = 0; i < 300 && S && S.phase !== 'end'; i++) {
+        gesehen.add(S.phase);
+        if (S.phase === 'question' && S.question && S.question.kind === 'choice') { await post('/api/answer', { id: j.id, choice: 0 }); await sleep(150); gesehen.add(S.phase); }
+        await post('/api/advance', { id: j.id }); await sleep(25);
+      }
+      ok(stE === 200 && rE.ok && gesehen.has(phase), `${extra === 'risk' ? 'Risikofrage' : 'Spezialfrage'}-Screen erscheint (Phasen: ${[...gesehen].join(', ')})`);
+      await post('/api/advance', { id: j.id }); await sleep(200);
+    }
 
     // Alles nacheinander
     const [st2, r2] = await post('/api/techniktest', { id: j.id });
