@@ -222,7 +222,8 @@ async function onPhase(phase, info = {}) {
     case 'media': mood = { color: DEEP, bri: 8, ms: 1000 }; break;                       // Video/Audio: fast dunkel
     case 'special': mood = { color: GOLD, bri: 100, ms: 300, pulse: true }; break;     // pulsiert nur, solange der Screen da ist
     case 'risk': mood = { color: '#b3001b', bri: 100, ms: 200, pulse: true }; break;   // Risikofrage: roter Alarm
-    case 'reveal': key = 'reveal' + info.q; mood = { color: info.correct != null ? ANSWER[info.correct] : ANSWER[3], bri: 100, ms: 100 }; break;   // sofort in der Antwortfarbe aufblitzen (kein Weiß), dann etwas sanfter (s. u.)
+    case 'reveal': key = 'reveal' + info.q; mood = { color: info.correct != null ? ANSWER[info.correct] : ANSWER[3], bri: 100, ms: 0 }; break;   // sofort in der Antwortfarbe aufblitzen – ohne Übergang: sonst läuft die Lampe vom Blau
+                                                                                   // durch den Farbraum (zum Grün über Hellblau, zum Orange über Rosa) und wird dabei schon hell
     case 'scores': mood = { color: VIOLET, bri: 40, ms: 1500 }; break;
     case 'pause': mood = { mirek: 370, bri: 100, ms: 3000 }; break;                    // hell und warmweiß
     case 'pausedim': mood = { color: VIOLET, bri: 45, ms: info.ms }; break;            // letzte Minute: langsam zum Licht der Block-Ansage
