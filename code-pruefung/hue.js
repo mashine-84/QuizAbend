@@ -39,7 +39,7 @@ const ANSWER = ['#ff4a1c', '#1e9bff', '#ffc21a', '#3fd12e'];
     await sleep(6500);
     const g = gesendet, same = (a, b) => a && b && a[0] === b[0] && a[1] === b[1];
     ok(g.every(x => x.body.ct == null), 'kein Weiß (ct) bei der Auflösung');
-    ok(g.length && Array.isArray(g[0].body.xy) && g[0].body.xy[0] > 0.5 && g[0].body.bri >= 250, `erst hell in der Antwortfarbe Orange (xy ${g.length && g[0].body.xy})`);
+    ok(g.length && Array.isArray(g[0].body.xy) && g[0].body.xy[0] > 0.5 && g[0].body.bri >= 250 && g[0].body.transitiontime === 0, `erst hell (ohne Übergang) in der Antwortfarbe Orange (xy ${g.length && g[0].body.xy})`);
     const dim = g[1];
     ok(dim && same(dim.body.xy, g[0].body.xy) && dim.body.bri <= 3 && dim.body.transitiontime >= 20 && dim.t - g[0].t <= 1700,
       `nach gut 1 s langsam in derselben Farbe abdunkeln (${dim && dim.t - g[0].t} ms, ${dim && dim.body.transitiontime / 10} s, bri ${dim && dim.body.bri})`);
@@ -56,7 +56,7 @@ const ANSWER = ['#ff4a1c', '#1e9bff', '#ffc21a', '#3fd12e'];
     // Schätzfrage (keine richtige Antwort-Kachel) → Grün, ebenfalls ohne Weiß
     await hue.onPhase('question'); await sleep(1100); gesendet.length = 0;
     await hue.onPhase('reveal', { q: 2, correct: null }); await sleep(1300);
-    ok(gesendet.length && gesendet.every(g => g.body.ct == null) && gesendet[0].body.xy[1] > 0.5, 'Schätzfrage: sofort Grün, kein Weiß');
+    ok(gesendet.length && gesendet.every(g => g.body.ct == null) && gesendet[0].body.xy[1] > 0.5 && gesendet[0].body.transitiontime === 0, 'Schätz-/Kartenfrage: sofort Grün ohne Übergang (nicht über Hellblau)');
     // nächste Phase vor dem Dimmen: der Dimm-Befehl darf nicht mehr nachkommen
     await hue.onPhase('scores'); await sleep(200); const n0 = gesendet.length; await sleep(3500);
     ok(gesendet.slice(n0).every(g => !(g.body.bri <= 60 && g.body.xy && g.body.xy[0] < 0.2)), 'neue Phase bricht das Dimmen ab');
