@@ -32,7 +32,7 @@
   .lobby.drift, html.lite .lobby.drift { transition: transform 6s ease-in-out !important; }
   .gmline { display: flex; align-items: center; gap: .8vw; font-size: 1.8vw; font-weight: 800; color: var(--muted); margin-bottom: 1.6vh; }
   .gmline b { color: var(--ink); } .gmline .av { width: 3vw; height: 3vw; border-radius: 50%; background: var(--pc); display: grid; place-items: center; font-size: 1.8vw; }
-  /* Lobby „Ticket und Gästeliste“: links die Eintrittskarte(n) mit QR-Code, rechts die Gästeliste */
+  /* Lobby: links die Eintrittskarte(n) mit QR-Code, rechts die Spielerkarten */
   @font-face { font-family: Adventor; src: url(/fonts/texgyreadventor-bold.otf); font-weight: 700; }
   .lobby { flex: 1; display: grid; grid-template-columns: 30vw 1fr; gap: 5vw; align-items: center; padding: 0 2.5vw; }
   .tickets { display: flex; justify-content: center; align-items: flex-start; }
@@ -57,22 +57,21 @@
   .tickets.two .perf::before { left: -2.6vw; } .tickets.two .perf::after { right: -2.6vw; }
   .tickets.two .abriss { padding: 1.3vw 1.2vw 1.5vw; font-size: 1.2vw; } .tickets.two .abriss b { font-size: 1.45vw; }
   .gl { min-width: 0; }
-  .glkopf { display: flex; align-items: baseline; justify-content: space-between; border-bottom: .16vw solid var(--papier); padding-bottom: 1.2vh; }
-  .glkopf h2 { font-family: Adventor, sans-serif; font-weight: 700; font-size: 3.1vw; letter-spacing: -0.01em; margin: 0; line-height: 1; }
-  .glkopf span { font-size: 1.5vw; color: var(--muted); }
-  .glliste { list-style: none; margin: 0; padding: 0; }
-  .glliste li { height: 6.9vh; display: flex; align-items: center; gap: 1.1vw; border-bottom: 1px solid rgba(255,255,255,.1); font-size: 1.55vw; }
-  .glliste .nr { width: 2.4vw; flex: none; color: var(--muted); opacity: .6; font-variant-numeric: tabular-nums; }
-  .glliste .av { width: 3.1vw; height: 3.1vw; border-radius: 50%; background: var(--pc); display: grid; place-items: center; font-size: 1.7vw; flex: none; }
-  .glliste .nm { font-family: Adventor, sans-serif; font-weight: 700; font-size: 1.95vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .glliste .crown { font-size: 1.5vw; }
-  .glliste .ew { font-size: 1.1vw; font-weight: 800; background: rgba(255,255,255,.1); border-radius: 99px; padding: .3vh .6vw; white-space: nowrap; }
-  .glliste .st { margin-left: auto; white-space: nowrap; color: var(--muted); }
-  .glliste .st.ok { color: var(--ink); } .glliste .st.ok i { font-style: normal; color: #2fb36d; font-weight: 900; margin-right: .4vw; }
-  .glliste li.off .av, .glliste li.off .nm { opacity: .4; }
-  .glliste li.frei { color: var(--muted); } .glliste li.frei span:last-child { opacity: .45; }
-  .gl .hint { margin-top: 2.4vh; text-align: left; font-size: 1.6vw; } .gl .hint b { color: var(--ink); }
-  .gl .packs { text-align: left; }
+  .glkopf { font-family: Adventor, sans-serif; font-weight: 700; font-size: 2.65vw; letter-spacing: -0.01em; margin: 0 0 3vh; line-height: 1; }
+  /* Spielerkarten: Avatar mit Ring in der Spielerfarbe = bereit; blass = wartet noch / nicht verbunden */
+  .spk { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2.2vh 1.25vw; }
+  .spk > div { height: 23.6vh; border-radius: 1.7vw; background: rgba(255,255,255,.05); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5vh; position: relative; padding: 0 .8vw; min-width: 0; }
+  .spk > div.frei { background: none; border: .16vw dashed rgba(255,255,255,.09); }
+  .spk .av { width: 6.1vw; height: 6.1vw; border-radius: 50%; background: var(--pc); display: grid; place-items: center; font-size: 3.3vw; flex: none; opacity: .45; }
+  .spk .ok .av { opacity: 1; outline: .26vw solid var(--pc); outline-offset: .3vw; }   /* Umriss statt Schatten: im Lite-Modus sind Schatten aus */
+  .spk .nm { font-family: Adventor, sans-serif; font-weight: 700; font-size: 1.9vw; line-height: 1.1; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .spk .st { font-size: 1.25vw; color: var(--muted); margin-top: -.9vh; white-space: nowrap; }
+  .spk .ok .st { color: #5fd28f; }
+  .spk .off .nm { opacity: .5; }
+  .spk .crown { position: absolute; top: 1.3vh; right: 1.1vw; font-size: 1.6vw; }
+  .spk .ew { position: absolute; top: 1.3vh; left: 1vw; font-size: 1vw; font-weight: 800; background: rgba(255,255,255,.1); border-radius: 99px; padding: .3vh .55vw; white-space: nowrap; }
+  .gl .hint { margin-top: 4vh; text-align: center; font-size: 1.6vw; } .gl .hint b { color: var(--ink); }
+  .gl .packs { text-align: center; }
   .hint { margin-top: 3vh; color: var(--muted); font-size: 1.5vw; text-align: center; }
   .hint b { color: var(--ink); }
 
@@ -956,18 +955,19 @@ function ewigBadge(name) {
 }
 function renderLobby() {
   if (soundOn()) { introMusic.load(); openerMusic.load(); }   // Intro-Musik und Opener schon mal laden
-  const zeilen = [];
+  const karten = [];
   for (let i = 0; i < S.maxPlayers; i++) {
-    const p = S.players[i], nr = `<span class="nr">${i + 1}</span>`;
-    if (!p) { zeilen.push(`<li class="frei">${nr}<span>frei</span></li>`); continue; }
+    const p = S.players[i];
+    if (!p) { karten.push('<div class="frei"></div>'); continue; }
     const isNew = !seen.has(p.id); seen.add(p.id);
-    const st = !p.connected ? '<span class="st">nicht verbunden</span>' : p.ready ? '<span class="st ok"><i>✓</i>bereit</span>' : '<span class="st">wartet noch</span>';
-    zeilen.push(`<li class="${isNew ? 'pop' : ''} ${p.connected ? '' : 'off'}" style="--pc:${p.color}">${nr}<span class="av">${p.avatar}</span><span class="nm">${esc(p.name)}</span>${p.id === S.vip ? '<span class="crown">👑</span>' : ''}${ewigBadge(p.name)}${st}</li>`);
+    const cls = !p.connected ? 'off' : p.ready ? 'ok' : '';
+    const st = !p.connected ? 'nicht verbunden' : p.ready ? 'bereit' : 'wartet noch';
+    karten.push(`<div class="${cls} ${isNew ? 'pop' : ''}" style="--pc:${p.color}">${p.id === S.vip ? '<span class="crown">👑</span>' : ''}${ewigBadge(p.name)}<span class="av">${p.avatar}</span><span class="nm">${esc(p.name)}</span><span class="st">${st}</span></div>`);
   }
   const n = S.players.filter(p => p.connected).length;
   const need = Math.max(0, S.minPlayers - n);
   const ready = S.players.filter(p => p.connected && p.ready).length;
-  const gm = S.pub && S.pub.host;   // Pub-Quiz: der Host moderiert und steht nicht in der Gästeliste
+  const gm = S.pub && S.pub.host;   // Pub-Quiz: der Host moderiert und steht nicht bei den Spielern
   const vipName = (S.players.find(p => p.id === S.vip) || {}).name || '';
   const starter = gm ? `🎤 <b>${esc(gm.name)}</b>` : `<b>${esc(vipName)}</b>`;
   const status = n === 0 ? 'Noch niemand da. Handy raus und den Code scannen!'
@@ -979,8 +979,8 @@ function renderLobby() {
       ${joinBox()}
       <div class="gl">
         ${gm ? `<div class="gmline" style="--pc:${gm.color}">🎤 Gamemaster: <span class="av">${gm.avatar}</span><b>${esc(gm.name)}</b> <small>· Pub-Quiz</small></div>` : ''}
-        <div class="glkopf"><h2>Gästeliste</h2><span>${S.players.length} von ${S.maxPlayers} Plätzen</span></div>
-        <ol class="glliste">${zeilen.join('')}</ol>
+        <h2 class="glkopf">Wer spielt mit?</h2>
+        <div class="spk">${karten.join('')}</div>
         ${packLine()}
         ${soundHint()}
         <div class="hint">${status}</div>
