@@ -7,7 +7,7 @@
 <title>Quiz-Abend – TV</title>
 <style>
   :root {
-    --bg: #14102b; --bg2: #221a4d; --ink: #fff; --muted: #b9b2e6;
+    --bg: #14102b; --bg2: #221a4d; --ink: #fff; --papier: #f3ead8; /* warmes Weiß für helle Flächen: weicher im dunklen Raum, schont den OLED */ --muted: #b9b2e6;
     --a: #e5484d; --b: #3e8ef7; --c: #f5b014; --d: #2fb36d;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -37,7 +37,7 @@
   .join h1 span { color: var(--c); }
   .join p { color: var(--muted); font-size: 1.7vw; margin: 2vh 0 3vh; }
   .qrbox { display: flex; gap: 2vw; align-items: center; }
-  .qr { width: 17vw; height: 17vw; background: #fff; border-radius: 1.2vw; padding: .6vw; box-shadow: 0 1vw 3vw rgba(0,0,0,.4); }
+  .qr { width: 17vw; height: 17vw; background: var(--papier); border-radius: 1.2vw; padding: .6vw; box-shadow: 0 1vw 3vw rgba(0,0,0,.4); }
   .qr svg { width: 100%; height: 100%; display: block; }
   .url { font-size: 1.5vw; color: var(--muted); }
   .url b { display: block; color: var(--ink); font-size: 1.8vw; margin-top: .4vh; white-space: nowrap; }
@@ -61,7 +61,7 @@
   .qwrap > * { flex-shrink: 0; }
   .qwrap > .answers, .qwrap > .imgq, .qwrap > .estq, .qwrap > .mlist, .qwrap > .tflist { flex: 1 1 0; min-height: 0; }
   .qwrap > .mpool { flex: none; }
-  .qcard { background: #fff; color: #1b1440; border-radius: 1.6vw; padding: 4vh 3vw; text-align: center; box-shadow: 0 1vh 0 rgba(0,0,0,.25); }
+  .qcard { background: var(--papier); color: #1b1440; border-radius: 1.6vw; padding: 4vh 3vw; text-align: center; box-shadow: 0 1vh 0 rgba(0,0,0,.25); }
   .qtext { font-size: 3.4vw; font-weight: 900; line-height: 1.15; letter-spacing: -0.01em; }
   /* Kopf bei den Fragen: Uhr · Kategorie + Punkte / Block + Fortschritt + Fragetyp · Spieler */
   .qhead { display: flex; align-items: center; gap: 1.8vw; flex: none; min-height: min(7vw, 12vh); }
@@ -114,7 +114,7 @@
   .ans.dim { opacity: .25; filter: grayscale(.7); transform: scale(.97); }
   .ans.win { transform: scale(1.03); background: var(--k); color: var(--kt); box-shadow: 0 0 0 .4vw #fff, 0 .8vh 0 rgba(0,0,0,.25); }
   .ans.win .shape { background: var(--kt); color: var(--k); }
-  .ans.win::after { content: "✓"; position: absolute; right: -1vw; top: -1.6vw; width: 3.6vw; height: 3.6vw; border-radius: 50%; background: #fff; color: var(--d); display: grid; place-items: center; font-size: 2.4vw; font-weight: 900; }
+  .ans.win::after { content: "✓"; position: absolute; right: -1vw; top: -1.6vw; width: 3.6vw; height: 3.6vw; border-radius: 50%; background: var(--papier); color: var(--d); display: grid; place-items: center; font-size: 2.4vw; font-weight: 900; }
   /* Antwortfarben (A–D): dunkle Kachel, farbiger Rand, Buchstabe – bewusst kein Kahoot-Look; --k Akzent, --kd Kachel, --kt Schrift auf Akzent */
   .c0 { --k: #ec6a4c; --kd: #2c1a1a; --kt: #3a120a; } .c1 { --k: #4aa3f0; --kd: #14223a; --kt: #062a4d; }
   .c2 { --k: #e6b23a; --kd: #2a2414; --kt: #3a2a05; } .c3 { --k: #79b84a; --kd: #1a2617; --kt: #1b3309; }
@@ -159,7 +159,7 @@
   .erow .eg.mid { color: var(--c); } .erow .eg.no { color: #ff8a8d; }
   .erow.best { background: rgba(47,179,109,.45); }
   .erow.out { opacity: .45; }
-  .erow.truth { background: #fff; color: #1b1440; padding: 1vh 1.6vw; font-size: 2.2vw; animation: pop .5s both; }
+  .erow.truth { background: var(--papier); color: #1b1440; padding: 1vh 1.6vw; font-size: 2.2vw; animation: pop .5s both; }
   .eresult { display: flex; align-items: baseline; justify-content: center; gap: 1.2vw; margin-bottom: 2vh; }
   .eresult .elabel { font-size: 1.8vw; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
   .eresult .ebig { font-size: 5.5vw; font-weight: 900; color: var(--c); font-variant-numeric: tabular-nums; min-width: 22vw; text-align: left; }
@@ -192,11 +192,11 @@
   html.lite .estpanel.side .eresult { transition: flex-basis .8s cubic-bezier(.45,0,.2,1), opacity .45s ease .85s !important; }
   .estpanel.side .elist { flex: 1; min-width: 0; background: rgba(255,255,255,.06); border-radius: 1.4vw; padding: 1.6vh 1.2vw; justify-content: center; }
   .erow .ev { min-width: 11vw; text-align: right; }
-  .pincode { display: flex; gap: 1.4vw; justify-content: center; margin: 2vh 0; } .pincode span { width: 7vw; height: 9vw; border-radius: 1.2vw; background: #fff; color: #1b1440; display: grid; place-items: center; font-size: 6vw; font-weight: 900; }
+  .pincode { display: flex; gap: 1.4vw; justify-content: center; margin: 2vh 0; } .pincode span { width: 7vw; height: 9vw; border-radius: 1.2vw; background: var(--papier); color: #1b1440; display: grid; place-items: center; font-size: 6vw; font-weight: 900; }
   /* Geografie */
   .kq { flex: 1 1 0; min-height: 0; display: flex; gap: 1.4vw; position: relative; }
   .ktext.gone { opacity: 0; } .ktext { transition: opacity .45s; } html.lite .kq .ktext { transition: opacity .45s !important; }
-  .ktext { position: absolute; left: 1.2vw; top: 1.6vh; max-width: 44vw; background: #fff; color: #1b1440; border-radius: 1vw; padding: 1.2vh 1.4vw; font-size: 2.6vw; font-weight: 900; line-height: 1.15; box-shadow: 0 .6vh 0 rgba(0,0,0,.25); }
+  .ktext { position: absolute; left: 1.2vw; top: 1.6vh; max-width: 44vw; background: var(--papier); color: #1b1440; border-radius: 1vw; padding: 1.2vh 1.4vw; font-size: 2.6vw; font-weight: 900; line-height: 1.15; box-shadow: 0 .6vh 0 rgba(0,0,0,.25); }
   .ktext small { display: block; font-size: 1vw; letter-spacing: .12em; text-transform: uppercase; color: #6c5ce7; margin-bottom: .3vh; }
   .kbox { flex: 1; min-width: 0; position: relative; border-radius: 1.4vw; overflow: hidden; background: #1d2c55; }
   .kbox svg { width: 100%; height: 100%; display: block; }
@@ -236,7 +236,7 @@
   @keyframes kpulse { from { transform: scale(.3); opacity: 1; } 55% { transform: scale(1.5); opacity: .25; } to { transform: scale(1); opacity: .85; } }
   .klabel { animation: pop .4s .35s both; } html.lite .klabel { animation: pop .4s .35s both !important; }
   .klabel.late { animation-delay: .75s; } html.lite .klabel.late { animation-delay: .75s !important; }
-  .klabel rect { fill: #fff; } .klabel text { font-size: 17px; font-weight: 900; fill: #1b1440; }
+  .klabel rect { fill: var(--papier); } .klabel text { font-size: 17px; font-weight: 900; fill: #1b1440; }
   .klabel.ok rect { fill: #2fb36d; } .klabel.ok text { fill: #fff; }
   .kav { animation: pop .4s both; } html.lite .kav { animation: pop .4s both !important; }
   .kcol { flex: 0 0 25vw; display: flex; flex-direction: column; gap: 1.4vh; min-width: 0; min-height: 0; }
@@ -296,7 +296,7 @@
   .pgcol.out .pgbar { opacity: .3; }
   .pgw { position: absolute; inset: 0; transform: translateY(100%); background: linear-gradient(rgba(90,176,255,.42), rgba(90,176,255,.14)); border-top: .45vh solid #5ab0ff; z-index: 2; will-change: transform; }
   .pgwl { position: absolute; right: .6vw; top: -5.2vh; background: #5ab0ff; color: #14102b; font-size: 2.2vw; font-weight: 900; padding: .1vh 1vw; border-radius: .8vw; font-variant-numeric: tabular-nums; }
-  .estpanel.pegel.landed .pgwl { background: #fff; animation: pop .4s both; }
+  .estpanel.pegel.landed .pgwl { background: var(--papier); animation: pop .4s both; }
   html.lite .estpanel.pegel.landed .pgwl { animation: pop .4s both !important; }
   .pgfoot { display: flex; justify-content: space-around; padding: 1vh 9vw 0 0; }
   .pgplot { padding-right: 9vw; }   /* rechts Platz für die Pegel-Zahl, damit sie keine Säule verdeckt */
@@ -613,7 +613,7 @@
   .ident.anim, .ident .anim, html.lite .ident.anim, html.lite .ident .anim { animation: var(--an) !important; }
   .igrid { position: absolute; left: 50%; top: 50%; width: 30vw; height: 30vw; margin: -15vw 0 0 -15vw; transform: rotate(-8deg); display: grid; grid-template-columns: 1fr 1fr; gap: 1.6vw; }
   .it { border-radius: 2.6vw; will-change: transform; }
-  .iq { position: absolute; left: 50%; top: 50%; width: 15vw; height: 15vw; margin: -7.5vw 0 0 -7.5vw; border-radius: 50%; background: #fff; border: 1.1vw solid var(--bg);
+  .iq { position: absolute; left: 50%; top: 50%; width: 15vw; height: 15vw; margin: -7.5vw 0 0 -7.5vw; border-radius: 50%; background: var(--papier); border: 1.1vw solid var(--bg);
     display: grid; place-items: center; color: var(--bg); font-size: 10vw; font-weight: 900; line-height: 1; }
   .iword { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; overflow: hidden; padding: 2vh 0; }
   .ilogo { font-size: 11vw; font-weight: 900; letter-spacing: -0.03em; line-height: 1; } .ilogo span { color: var(--c); }
@@ -676,6 +676,8 @@
 <script src="/karte.js"></script>
 <script src="/anleitung.js"></script>
 <script>
+// QR-Codes in warmem Weiß mit dunklem Violett statt hartem Schwarz-Weiß (Kontrast reicht zum Scannen)
+const QRF = { light: '#f3ead8', dark: '#1b1440' };
 const SHAPES = ['A', 'B', 'C', 'D'];   // Antworten heißen A–D (Buchstabe in der Kachel)
 const ANS_COLORS = ['#ec6a4c', '#4aa3f0', '#e6b23a', '#79b84a'];
 const LITE = /[?&]lite=1/.test(location.search);
@@ -897,13 +899,13 @@ function joinBox() {
   const ip = j.url.replace(/\/$/, ''), main = j.local ? j.local.replace(/\/$/, '') : ip;
   const addr = `<div class="url">Adresse:<b>${esc(main)}</b>${j.local ? `<small>oder ${esc(ip)}</small>` : ''}</div>`;
   if (!w) return `<p>QR-Code scannen oder Adresse im Handy-Browser öffnen.<br>Alle Handys müssen im selben WLAN sein.</p>
-    <div class="qrbox"><div class="qr">${QR.toSvg(j.url)}</div>${addr}</div>`;
+    <div class="qrbox"><div class="qr">${QR.toSvg(j.url, QRF)}</div>${addr}</div>`;
   // Eigenes WLAN des Pi: erst WLAN-QR, dann Quiz-QR
   return `<p>Der Pi hat ein eigenes WLAN – verbinden, dann öffnet sich das Quiz meist von selbst (sonst 2. QR-Code).</p>
     <div class="qrbox two">
-      <div class="qstep"><div class="qr sm">${QR.toSvg(`WIFI:T:WPA;S:${wifiEsc(w.ssid)};P:${wifiEsc(w.password)};;`)}</div>
+      <div class="qstep"><div class="qr sm">${QR.toSvg(`WIFI:T:WPA;S:${wifiEsc(w.ssid)};P:${wifiEsc(w.password)};;`, QRF)}</div>
         <div class="url"><b>1. WLAN</b>${esc(w.ssid)}<small>Passwort: ${esc(w.password)}</small></div></div>
-      <div class="qstep"><div class="qr sm">${QR.toSvg(j.url)}</div>
+      <div class="qstep"><div class="qr sm">${QR.toSvg(j.url, QRF)}</div>
         <div class="url"><b>2. Quiz</b>${esc(short(j.local || j.url))}${j.local ? `<small>oder ${esc(short(j.url))}</small>` : ''}</div></div>
     </div>`;
 }
@@ -1033,7 +1035,7 @@ function anlLive(u, tries) {
       el.classList.toggle('kpick', !!g); el.style.setProperty('--pc', g ? byId[g[0].id].color : ''); });
     over.innerHTML = Object.entries(groups).map(([id, l]) => { const r = m.byId[id]; if (!r) return '';
       return l.map((t, i) => { const p = byId[t.id];
-        return `<g transform="translate(${r.c[0] + (i - (l.length - 1) / 2) * 30 * u2},${r.c[1]}) scale(${u2})"><circle r="15" fill="#fff" stroke="${p.color}" stroke-width="3"/><text y="6" font-size="17" text-anchor="middle">${p.avatar}</text></g>`; }).join(''); }).join('');
+        return `<g transform="translate(${r.c[0] + (i - (l.length - 1) / 2) * 30 * u2},${r.c[1]}) scale(${u2})"><circle r="15" fill="#f3ead8" stroke="${p.color}" stroke-width="3"/><text y="6" font-size="17" text-anchor="middle">${p.avatar}</text></g>`; }).join(''); }).join('');
   }).catch(() => { box.innerHTML = '<div class="anlnone">Karte fehlt</div>'; });
 }
 
@@ -1523,7 +1525,7 @@ function renderGeo(byId) {
     });
     const av = Object.entries(groups).map(([id, l], gi) => { const r = m.byId[id]; if (!r) return '';
       return `<g class="kavs ${reveal && id !== q.region ? 'kdim' : ''}">` + l.map((x, i) => { const p = byId[x.id];
-        return `<g transform="translate(${r.c[0] + (i - (l.length - 1) / 2) * 30 * u},${r.c[1] + (r.s ? 34 * u : 0)}) scale(${u})"><g class="kav" style="animation-delay:${0.3 + gi * 0.4 + i * 0.1}s !important"><circle r="15" fill="#fff" stroke="${p.color}" stroke-width="3"/><text y="6" font-size="17" text-anchor="middle">${p.avatar}</text></g></g>`; }).join('') + '</g>'; }).join('');
+        return `<g transform="translate(${r.c[0] + (i - (l.length - 1) / 2) * 30 * u},${r.c[1] + (r.s ? 34 * u : 0)}) scale(${u})"><g class="kav" style="animation-delay:${0.3 + gi * 0.4 + i * 0.1}s !important"><circle r="15" fill="#f3ead8" stroke="${p.color}" stroke-width="3"/><text y="6" font-size="17" text-anchor="middle">${p.avatar}</text></g></g>`; }).join('') + '</g>'; }).join('');
     const rr = m.byId[q.region];
     // Auflösung wie bei Auswahlfragen: das richtige Land hebt sich vergrößert mit weißem Rand und ✓ heraus,
     // alles andere tritt zurück (blass, grau). Avatare auf dem richtigen Land bleiben obenauf.
