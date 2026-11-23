@@ -32,26 +32,47 @@
   .lobby.drift, html.lite .lobby.drift { transition: transform 6s ease-in-out !important; }
   .gmline { display: flex; align-items: center; gap: .8vw; font-size: 1.8vw; font-weight: 800; color: var(--muted); margin-bottom: 1.6vh; }
   .gmline b { color: #fff; } .gmline .av { width: 3vw; height: 3vw; border-radius: 50%; background: var(--pc); display: grid; place-items: center; font-size: 1.8vw; }
-  .lobby { flex: 1; display: grid; grid-template-columns: 1fr 1.25fr; gap: 4vw; align-items: center; }
-  .join h1 { font-size: 5.4vw; line-height: 1; font-weight: 900; letter-spacing: -0.03em; }
-  .join h1 span { color: var(--c); }
-  .join p { color: var(--muted); font-size: 1.7vw; margin: 2vh 0 3vh; }
-  .qrbox { display: flex; gap: 2vw; align-items: center; }
-  .qr { width: 17vw; height: 17vw; background: var(--papier); border-radius: 1.2vw; padding: .6vw; box-shadow: 0 1vw 3vw rgba(0,0,0,.4); }
-  .qr svg { width: 100%; height: 100%; display: block; }
-  .url { font-size: 1.5vw; color: var(--muted); }
-  .url b { display: block; color: var(--ink); font-size: 1.8vw; margin-top: .4vh; white-space: nowrap; }
-  .slots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.6vh 1.4vw; }
-  .slot { height: 9.5vh; border-radius: 1.2vw; border: 2px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); display: flex; align-items: center; gap: 1vw; padding: 0 1.4vw; color: rgba(255,255,255,.3); font-size: 1.5vw; }
-  .slot.on { border: none; background: var(--pc); color: #fff; font-weight: 800; font-size: 2vw; box-shadow: 0 .6vh 0 rgba(0,0,0,.25); }
-  .slot .av { font-size: 2.8vw; }
-  .slot .crown { margin-left: auto; font-size: 1.7vw; }
-  .slot .ew { font-size: 1.15vw; font-weight: 800; background: rgba(0,0,0,.25); border-radius: 99px; padding: .3vh .6vw; white-space: nowrap; }
-  .slot.off { opacity: .45; }
-  /* Bereit: grüner Haken am Avatar; noch nicht bereit: blasser, mit Hinweis */
-  .slot.on { position: relative; }
-  .slot .rdy { position: absolute; left: 3.4vw; top: 1vh; width: 2.1vw; height: 2.1vw; border-radius: 50%; background: #2fb36d; border: .2vw solid #fff; display: grid; place-items: center; font-size: 1.1vw; color: #fff; font-weight: 900; }
-  .slot.wait { opacity: .6; } .slot.wait.off { opacity: .4; }
+  /* Lobby „Ticket und Gästeliste“: links die Eintrittskarte(n) mit QR-Code, rechts die Gästeliste */
+  @font-face { font-family: Adventor; src: url(/fonts/texgyreadventor-bold.otf); font-weight: 700; }
+  .lobby { flex: 1; display: grid; grid-template-columns: 30vw 1fr; gap: 5vw; align-items: center; padding: 0 2.5vw; }
+  .tickets { display: flex; justify-content: center; align-items: flex-start; }
+  .ticket { width: 25vw; background: var(--papier); color: #1b1440; border-radius: 1.4vw; box-shadow: 0 2vw 5vw rgba(0,0,0,.5); transform: rotate(-2.5deg); }
+  .ticket .tk { padding: 2.3vw 2.9vw 2vw; display: flex; flex-direction: column; align-items: center; gap: 1.5vw; }
+  .ticket h2 { font-family: Adventor, sans-serif; font-weight: 700; font-size: 1.95vw; line-height: 1.1; text-align: center; margin: 0; }
+  .ticket .qr { width: 19vw; height: 19vw; }
+  .ticket .qr svg { width: 100%; height: 100%; display: block; }
+  .ticket .perf { position: relative; border-top: .25vw dashed #c9bda4; margin: 0 2vw; }
+  .ticket .perf::before, .ticket .perf::after { content: ""; position: absolute; top: -1.45vw; width: 2.8vw; height: 2.8vw; border-radius: 50%; background: var(--bg); }
+  .ticket .perf::before { left: -3.4vw; } .ticket .perf::after { right: -3.4vw; }
+  .ticket .abriss { padding: 1.6vw 2vw 1.9vw; text-align: center; font-size: 1.45vw; line-height: 1.3; color: #5b5470; font-weight: 600; }
+  .ticket .abriss b { display: block; font-size: 1.7vw; color: #1b1440; font-weight: 800; overflow-wrap: anywhere; }
+  .ticket .abriss small { display: block; font-size: 1.2vw; margin-top: .3vw; }
+  .tickets.two { gap: 1.6vw; margin-left: -2vw; }
+  .tickets.two .ticket { width: 17vw; }
+  .tickets.two .ticket:first-child { transform: rotate(-4deg); margin-top: 3vw; }
+  .tickets.two .ticket:last-child { transform: rotate(2.5deg); }
+  .tickets.two .tk { padding: 1.8vw 1.6vw 1.5vw; gap: 1.1vw; }
+  .tickets.two .qr { width: 13.5vw; height: 13.5vw; }
+  .tickets.two h2 { font-size: 1.6vw; }
+  .tickets.two .perf::before { left: -2.6vw; } .tickets.two .perf::after { right: -2.6vw; }
+  .tickets.two .abriss { padding: 1.3vw 1.2vw 1.5vw; font-size: 1.2vw; } .tickets.two .abriss b { font-size: 1.45vw; }
+  .gl { min-width: 0; }
+  .glkopf { display: flex; align-items: baseline; justify-content: space-between; border-bottom: .16vw solid var(--papier); padding-bottom: 1.2vh; }
+  .glkopf h2 { font-family: Adventor, sans-serif; font-weight: 700; font-size: 3.1vw; letter-spacing: -0.01em; margin: 0; line-height: 1; }
+  .glkopf span { font-size: 1.5vw; color: var(--muted); }
+  .glliste { list-style: none; margin: 0; padding: 0; }
+  .glliste li { height: 6.9vh; display: flex; align-items: center; gap: 1.1vw; border-bottom: 1px solid rgba(255,255,255,.1); font-size: 1.55vw; }
+  .glliste .nr { width: 2.4vw; flex: none; color: var(--muted); opacity: .6; font-variant-numeric: tabular-nums; }
+  .glliste .av { width: 3.1vw; height: 3.1vw; border-radius: 50%; background: var(--pc); display: grid; place-items: center; font-size: 1.7vw; flex: none; }
+  .glliste .nm { font-family: Adventor, sans-serif; font-weight: 700; font-size: 1.95vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .glliste .crown { font-size: 1.5vw; }
+  .glliste .ew { font-size: 1.1vw; font-weight: 800; background: rgba(255,255,255,.1); border-radius: 99px; padding: .3vh .6vw; white-space: nowrap; }
+  .glliste .st { margin-left: auto; white-space: nowrap; color: var(--muted); }
+  .glliste .st.ok { color: var(--ink); } .glliste .st.ok i { font-style: normal; color: #2fb36d; font-weight: 900; margin-right: .4vw; }
+  .glliste li.off .av, .glliste li.off .nm { opacity: .4; }
+  .glliste li.frei { color: var(--muted); } .glliste li.frei span:last-child { opacity: .45; }
+  .gl .hint { margin-top: 2.4vh; text-align: left; font-size: 1.6vw; } .gl .hint b { color: var(--ink); }
+  .gl .packs { text-align: left; }
   .hint { margin-top: 3vh; color: var(--muted); font-size: 1.5vw; text-align: center; }
   .hint b { color: var(--ink); }
 
@@ -490,13 +511,6 @@
   .pbar.wide i { transition: width .2s linear; }
   html.lite .eq i { transform: scaleY(.6); }
 
-  /* Lobby: WLAN + Quiz */
-  .qrbox.two { gap: 2.5vw; }
-  .qstep { display: flex; flex-direction: column; align-items: center; gap: 1vh; text-align: center; }
-  .qr.sm { width: 12.5vw; height: 12.5vw; }
-  .qstep .url { font-size: 1.4vw; }
-  .qstep .url b { font-size: 1.6vw; color: var(--c); }
-  .url small { display: block; font-size: 1.3vw; color: var(--muted); margin-top: .4vh; font-weight: 700; }
 
   /* Blockpause */
   .bpause { position: relative; overflow: hidden; }
@@ -891,23 +905,20 @@ function renderBlock() {
     <div class="bnames">${b.names.map(n => `<span>${esc(n)}</span>`).join('')}</div></div>`;
 }
 
-const short = u => String(u).replace(/^http:\/\//, '').replace(/\/$/, '');
+const short = u => String(u).replace(/^https?:\/\//, '').replace(/\/$/, '');
 const wifiEsc = s => String(s).replace(/([\\;,:"])/g, '\\$1');
 function joinBox() {
   const j = S.join, w = j.wifi;
   // Lesbare Adresse (quizabend.local) groß, IP klein darunter; der QR-Code nutzt weiter die IP
-  const ip = j.url.replace(/\/$/, ''), main = j.local ? j.local.replace(/\/$/, '') : ip;
-  const addr = `<div class="url">Adresse:<b>${esc(main)}</b>${j.local ? `<small>oder ${esc(ip)}</small>` : ''}</div>`;
-  if (!w) return `<p>QR-Code scannen oder Adresse im Handy-Browser öffnen.<br>Alle Handys müssen im selben WLAN sein.</p>
-    <div class="qrbox"><div class="qr">${QR.toSvg(j.url, QRF)}</div>${addr}</div>`;
-  // Eigenes WLAN des Pi: erst WLAN-QR, dann Quiz-QR
-  return `<p>Der Pi hat ein eigenes WLAN – verbinden, dann öffnet sich das Quiz meist von selbst (sonst 2. QR-Code).</p>
-    <div class="qrbox two">
-      <div class="qstep"><div class="qr sm">${QR.toSvg(`WIFI:T:WPA;S:${wifiEsc(w.ssid)};P:${wifiEsc(w.password)};;`, QRF)}</div>
-        <div class="url"><b>1. WLAN</b>${esc(w.ssid)}<small>Passwort: ${esc(w.password)}</small></div></div>
-      <div class="qstep"><div class="qr sm">${QR.toSvg(j.url, QRF)}</div>
-        <div class="url"><b>2. Quiz</b>${esc(short(j.local || j.url))}${j.local ? `<small>oder ${esc(short(j.url))}</small>` : ''}</div></div>
-    </div>`;
+  const ip = short(j.url), main = short(j.local || j.url);
+  const ticket = (titel, qr, unter, gross, klein) => `<div class="ticket"><div class="tk"><h2>${titel}</h2><div class="qr">${qr}</div></div>
+    <div class="perf"></div><div class="abriss">${unter}<b>${esc(gross)}</b>${klein ? `<small>${esc(klein)}</small>` : ''}</div></div>`;
+  if (!w) return `<div class="tickets">${ticket('Scannen und mitspielen', QR.toSvg(j.url, QRF), 'oder im Browser öffnen', main, j.local ? 'oder ' + ip : '')}</div>`;
+  // Eigenes WLAN des Pi: zwei Tickets – erst ins WLAN, dann mitspielen (öffnet sich meist von selbst)
+  return `<div class="tickets two">
+    ${ticket('1. Ins WLAN', QR.toSvg(`WIFI:T:WPA;S:${wifiEsc(w.ssid)};P:${wifiEsc(w.password)};;`, QRF), 'Netz', w.ssid, w.password ? 'Passwort: ' + w.password : '')}
+    ${ticket('2. Mitspielen', QR.toSvg(j.url, QRF), 'oder öffnen', main, j.local ? 'oder ' + ip : '')}
+  </div>`;
 }
 
 // Schutz vor Nachbildern (OLED): die Lobby wandert alle 20 s ganz langsam ein paar Pixel weiter
@@ -945,33 +956,34 @@ function ewigBadge(name) {
 }
 function renderLobby() {
   if (soundOn()) { introMusic.load(); openerMusic.load(); }   // Intro-Musik und Opener schon mal laden
-  const slots = [];
+  const zeilen = [];
   for (let i = 0; i < S.maxPlayers; i++) {
-    const p = S.players[i];
-    if (p) {
-      const isNew = !seen.has(p.id); seen.add(p.id);
-      slots.push(`<div class="slot on ${isNew ? 'pop' : ''} ${p.connected ? '' : 'off'} ${p.ready ? '' : 'wait'}" style="--pc:${p.color}"><span class="av">${p.avatar}</span>${esc(p.name)}${ewigBadge(p.name)}${p.id === S.vip ? '<span class="crown">👑</span>' : ''}${p.ready ? '<span class="rdy">✓</span>' : ''}</div>`);   // noch nicht bereit: Kachel blasser
-    } else slots.push(`<div class="slot">Platz frei</div>`);
+    const p = S.players[i], nr = `<span class="nr">${i + 1}</span>`;
+    if (!p) { zeilen.push(`<li class="frei">${nr}<span>frei</span></li>`); continue; }
+    const isNew = !seen.has(p.id); seen.add(p.id);
+    const st = !p.connected ? '<span class="st">nicht verbunden</span>' : p.ready ? '<span class="st ok"><i>✓</i>bereit</span>' : '<span class="st">wartet noch</span>';
+    zeilen.push(`<li class="${isNew ? 'pop' : ''} ${p.connected ? '' : 'off'}" style="--pc:${p.color}">${nr}<span class="av">${p.avatar}</span><span class="nm">${esc(p.name)}</span>${p.id === S.vip ? '<span class="crown">👑</span>' : ''}${ewigBadge(p.name)}${st}</li>`);
   }
   const n = S.players.filter(p => p.connected).length;
   const need = Math.max(0, S.minPlayers - n);
   const ready = S.players.filter(p => p.connected && p.ready).length;
-  const gm = S.pub && S.pub.host;   // Pub-Quiz: der Host moderiert und steht nicht in der Spielerliste
+  const gm = S.pub && S.pub.host;   // Pub-Quiz: der Host moderiert und steht nicht in der Gästeliste
   const vipName = (S.players.find(p => p.id === S.vip) || {}).name || '';
-  const starter = gm ? `🎤 <b>${esc(gm.name)}</b>` : `👑 <b>${esc(vipName)}</b>`;
+  const starter = gm ? `🎤 <b>${esc(gm.name)}</b>` : `<b>${esc(vipName)}</b>`;
+  const status = n === 0 ? 'Noch niemand da. Handy raus und den Code scannen!'
+    : need > 0 ? `<b>${n} von mindestens ${S.minPlayers}</b> da. Noch ${need === 1 ? 'eine Person' : need + ' Personen'}, dann kann es losgehen.`
+    : ready === n ? `<b>Alle bereit.</b> ${starter} startet das Spiel am Handy.`
+    : `<b>${ready} von ${n}</b> bereit. ${starter} startet, sobald alle so weit sind.`;
   app.innerHTML = topbar('') + `
     <div class="lobby" style="transform:${lobbyShift()}">
-      <div class="join">
-        <h1>Handy raus,<br><span>los geht's!</span></h1>
-        ${joinBox()}
-      </div>
-      <div>
+      ${joinBox()}
+      <div class="gl">
         ${gm ? `<div class="gmline" style="--pc:${gm.color}">🎤 Gamemaster: <span class="av">${gm.avatar}</span><b>${esc(gm.name)}</b> <small>· Pub-Quiz</small></div>` : ''}
-        <div class="slots">${slots.join('')}</div>
+        <div class="glkopf"><h2>Gästeliste</h2><span>${S.players.length} von ${S.maxPlayers} Plätzen</span></div>
+        <ol class="glliste">${zeilen.join('')}</ol>
         ${packLine()}
         ${soundHint()}
-        <div class="hint">${need === 0 && ready === n ? `Alle bereit – ${starter} startet das Spiel am Handy`
-          : `<b>${ready} von ${n}</b> ${n === 1 ? 'Spieler' : 'Spielern'} bereit${need > 0 ? ` <small>· mindestens ${S.minPlayers} nötig</small>` : ''}`}</div>
+        <div class="hint">${status}</div>
       </div>
     </div>`;
 }
