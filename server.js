@@ -1648,7 +1648,7 @@ function json(res, code, obj) {
   res.end(JSON.stringify(obj));
 }
 
-const MIME = { '.json': 'application/json; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
+const MIME = { '.json': 'application/json; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.otf': 'font/otf' };
 
 function serveFile(res, file) {
   const full = path.join(__dirname, 'public', file);
@@ -1755,6 +1755,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && p === '/icons.js') return serveFile(res, 'icons.js');
   if (req.method === 'GET' && p === '/karte.js') return serveFile(res, 'karte.js');
   if (req.method === 'GET' && p === '/anleitung.js') return serveFile(res, 'anleitung.js');
+  if (req.method === 'GET' && p === '/fonts/texgyreadventor-bold.otf') return serveFile(res, 'fonts/texgyreadventor-bold.otf');   // Schrift der Lobby (TeX Gyre Adventor, GUST Font License)
   if (req.method === 'GET' && /^\/karten\/[a-z]+\.json$/.test(p) && KARTEN[p.slice(8, -5)]) return serveFile(res, 'karten/' + p.slice(8));
   if (req.method === 'GET' && p.startsWith('/media/')) return serveMedia(req, res, p.slice(7));
   if (req.method === 'GET' && p.startsWith('/sounds/')) return serveMusic(res, p.slice(8));
