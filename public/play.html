@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#14102b">
 <title>Quiz-Abend</title>
 <style>
-  :root { --bg: #14102b; --ink: #fff; --muted: #b9b2e6; --a: #e5484d; --b: #3e8ef7; --c: #f5b014; --d: #2fb36d; --pc: #6a5acd; }
+  :root { --bg: #14102b; --ink: #fff; --papier: #f3ead8; /* warmes Weiß für helle Flächen */ --muted: #b9b2e6; --a: #e5484d; --b: #3e8ef7; --c: #f5b014; --d: #2fb36d; --pc: #6a5acd; }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
   body { font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif, "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji"; background: var(--bg); color: var(--ink);
@@ -20,7 +20,7 @@
   h1 { font-size: 34px; font-weight: 900; letter-spacing: -0.02em; line-height: 1.1; }
   h1 span { color: var(--c); }
   p { color: var(--muted); font-size: 17px; line-height: 1.4; }
-  input { width: 100%; font: inherit; font-size: 22px; font-weight: 700; padding: 16px 18px; border-radius: 14px; border: 3px solid transparent; background: #fff; color: #1b1440; text-align: center; outline: none; }
+  input { width: 100%; font: inherit; font-size: 22px; font-weight: 700; padding: 16px 18px; border-radius: 14px; border: 3px solid transparent; background: var(--papier); color: #1b1440; text-align: center; outline: none; }
   input:focus { border-color: var(--c); }
   .btn { width: 100%;   /* volle Breite auf allen Handys */ font: inherit; font-size: 21px; font-weight: 900; padding: 17px; border-radius: 14px; border: none; background: var(--c); color: #1b1440; box-shadow: 0 5px 0 rgba(0,0,0,.3); cursor: pointer; }
   .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
@@ -152,7 +152,7 @@
   .devrow .pn { flex: 1; display: flex; flex-direction: column; font-weight: 800; } .devrow small { color: var(--muted); font-weight: 700; }
   .note { background: rgba(255,255,255,.05); border-radius: 12px; padding: 10px 12px; font-size: 14px; color: var(--muted); font-weight: 600; line-height: 1.4; }
   /* Geografie */
-  .kcard { background: #fff; color: #1b1440; border-radius: 14px; padding: 10px 14px; text-align: center; font-weight: 900; font-size: 19px; margin: 6px 0 10px; }
+  .kcard { background: var(--papier); color: #1b1440; border-radius: 14px; padding: 10px 14px; text-align: center; font-weight: 900; font-size: 19px; margin: 6px 0 10px; }
   .kmap { position: relative; flex: 1; min-height: 260px; border-radius: 14px; overflow: hidden; background: #1d2c55; border: 2px solid rgba(255,255,255,.12); }
   .kmap svg { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
   .kload { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); }
@@ -167,13 +167,13 @@
   .kzoom button { width: 42px; height: 42px; border-radius: 12px; border: none; background: rgba(0,0,0,.5); color: #fff; font: inherit; font-size: 22px; font-weight: 900; }
   .khelp { font-size: 13px; color: var(--muted); text-align: center; margin: 8px 4px; }
   .est { flex: 1; display: flex; flex-direction: column; gap: 12px; }
-  .display { background: #fff; color: #1b1440; border-radius: 16px; padding: 16px; text-align: center; font-size: 40px; font-weight: 900; min-height: 82px; display: flex; align-items: baseline; justify-content: center; gap: 8px; font-variant-numeric: tabular-nums; }
+  .display { background: var(--papier); color: #1b1440; border-radius: 16px; padding: 16px; text-align: center; font-size: 40px; font-weight: 900; min-height: 82px; display: flex; align-items: baseline; justify-content: center; gap: 8px; font-variant-numeric: tabular-nums; }
   .display small { font-size: 20px; color: #6a5acd; }
   .display .ph { font-size: 20px; color: #9a94bf; font-weight: 700; }
   .pad { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .pad button { font: inherit; font-size: 28px; font-weight: 800; border: none; border-radius: 14px; background: rgba(255,255,255,.12); color: #fff; min-height: 56px; }
   .pad button:active { background: rgba(255,255,255,.3); }
-  .bigval { font-size: 48px; font-weight: 900; background: #fff; color: #1b1440; border-radius: 20px; padding: 14px 26px; }
+  .bigval { font-size: 48px; font-weight: 900; background: var(--papier); color: #1b1440; border-radius: 20px; padding: 14px 26px; }
   /* Zuordnen */
   .mslots { display: flex; flex-direction: column; gap: 10px; width: 100%; }
   .mslot { display: flex; align-items: center; gap: 12px; width: 100%; border: 3px solid transparent; border-radius: 14px; background: rgba(255,255,255,.1); color: #fff; font: inherit; font-size: 19px; font-weight: 800; padding: 10px 12px; text-align: left; }
@@ -332,7 +332,7 @@
   .anlp { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
   .anlhead { display: flex; justify-content: space-between; align-items: baseline; color: var(--muted); font-size: 14px; font-weight: 700; }
   .anlp h2 { font-size: 23px; line-height: 1.15; }
-  .anlp .anlask { background: #fff; color: #1b1440; border-radius: 14px; padding: 10px 14px; text-align: center; font-weight: 900; font-size: 19px; }
+  .anlp .anlask { background: var(--papier); color: #1b1440; border-radius: 14px; padding: 10px 14px; text-align: center; font-weight: 900; font-size: 19px; }
   .anlp .grid { min-height: 230px; }
   .anlp .ans.mine { outline: 4px solid #fff; outline-offset: -4px; }
   .anlp .ans.dim { opacity: .45; }
