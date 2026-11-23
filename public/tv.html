@@ -66,7 +66,7 @@
   .spk > div.frei { background: rgba(255,255,255,.025); }
   .spk .plus { width: 4.6vw; height: 4.6vw; border-radius: 50%; border: .18vw solid rgba(255,255,255,.14); display: grid; place-items: center; font-size: 1.7vw; color: rgba(255,255,255,.22); --fc: rgba(255,255,255,.22); }
   .spk .frei.next .plus { border-color: var(--c); color: var(--c); --fc: var(--c); }
-  .spk .frei.next .st { color: var(--c); margin-top: 0; }
+  .spk .frei.next .st { color: var(--c); margin-top: 0; position: absolute; left: 0; right: 0; top: calc(50% + 3.3vw); text-align: center; }   /* Text unter dem Kreis, damit alle ➕ auf gleicher Höhe sitzen */
   .spk .av { width: 6.1vw; height: 6.1vw; border-radius: 50%; background: var(--pc); display: grid; place-items: center; font-size: 3.3vw; flex: none; opacity: .45; }
   .spk .ok .av { opacity: 1; outline: .26vw solid var(--pc); outline-offset: .3vw; }   /* Umriss statt Schatten: im Lite-Modus sind Schatten aus */
   .spk .nm { font-family: Adventor, sans-serif; font-weight: 700; font-size: 1.9vw; line-height: 1.1; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
