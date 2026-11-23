@@ -57,11 +57,16 @@
   .tickets.two .perf::before { left: -2.6vw; } .tickets.two .perf::after { right: -2.6vw; }
   .tickets.two .abriss { padding: 1.3vw 1.2vw 1.5vw; font-size: 1.2vw; } .tickets.two .abriss b { font-size: 1.45vw; }
   .gl { min-width: 0; }
+  .glkopf span { color: var(--c); }
   .glkopf { font-family: Adventor, sans-serif; font-weight: 700; font-size: 2.65vw; letter-spacing: -0.01em; margin: 0 0 3vh; line-height: 1; }
   /* Spielerkarten: Avatar mit Ring in der Spielerfarbe = bereit; blass = wartet noch / nicht verbunden */
   .spk { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2.2vh 1.25vw; }
   .spk > div { height: 23.6vh; border-radius: 1.7vw; background: rgba(255,255,255,.05); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5vh; position: relative; padding: 0 .8vw; min-width: 0; }
-  .spk > div.frei { background: none; border: .16vw dashed rgba(255,255,255,.09); }
+  /* Freier Platz: kein gestrichelter Rand (am Pi unsauber), sondern eine leise Karte mit ➕; der nächste freie Platz lädt ein */
+  .spk > div.frei { background: rgba(255,255,255,.025); }
+  .spk .plus { width: 4.6vw; height: 4.6vw; border-radius: 50%; border: .18vw solid rgba(255,255,255,.14); display: grid; place-items: center; font-size: 1.7vw; color: rgba(255,255,255,.22); --fc: rgba(255,255,255,.22); }
+  .spk .frei.next .plus { border-color: var(--c); color: var(--c); --fc: var(--c); }
+  .spk .frei.next .st { color: var(--c); margin-top: 0; position: absolute; left: 0; right: 0; top: calc(50% + 3.3vw); text-align: center; }   /* Text unter dem Kreis, damit alle ➕ auf gleicher Höhe sitzen */
   .spk .av { width: 6.1vw; height: 6.1vw; border-radius: 50%; background: var(--pc); display: grid; place-items: center; font-size: 3.3vw; flex: none; opacity: .45; }
   .spk .ok .av { opacity: 1; outline: .26vw solid var(--pc); outline-offset: .3vw; }   /* Umriss statt Schatten: im Lite-Modus sind Schatten aus */
   .spk .nm { font-family: Adventor, sans-serif; font-weight: 700; font-size: 1.9vw; line-height: 1.1; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -958,7 +963,7 @@ function renderLobby() {
   const karten = [];
   for (let i = 0; i < S.maxPlayers; i++) {
     const p = S.players[i];
-    if (!p) { karten.push('<div class="frei"></div>'); continue; }
+    if (!p) { const next = i === S.players.length; karten.push(`<div class="frei ${next ? 'next' : ''}"><span class="plus">➕</span>${next ? '<span class="st">Mitspielen</span>' : ''}</div>`); continue; }
     const isNew = !seen.has(p.id); seen.add(p.id);
     const cls = !p.connected ? 'off' : p.ready ? 'ok' : '';
     const st = !p.connected ? 'nicht verbunden' : p.ready ? 'bereit' : 'wartet noch';
@@ -979,7 +984,7 @@ function renderLobby() {
       ${joinBox()}
       <div class="gl">
         ${gm ? `<div class="gmline" style="--pc:${gm.color}">🎤 Gamemaster: <span class="av">${gm.avatar}</span><b>${esc(gm.name)}</b> <small>· Pub-Quiz</small></div>` : ''}
-        <h2 class="glkopf">Wer spielt mit?</h2>
+        <h2 class="glkopf">Wer spielt <span>mit?</span></h2>
         <div class="spk">${karten.join('')}</div>
         ${packLine()}
         ${soundHint()}
