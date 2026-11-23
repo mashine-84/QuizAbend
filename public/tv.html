@@ -7,7 +7,7 @@
 <title>Quiz-Abend – TV</title>
 <style>
   :root {
-    --bg: #14102b; --bg2: #221a4d; --ink: #fff; --papier: #f3ead8; /* warmes Weiß für helle Flächen: weicher im dunklen Raum, schont den OLED */ --muted: #b9b2e6;
+    --bg: #14102b; --bg2: #221a4d; --ink: #f3ead8; --papier: #f3ead8; /* warmes Weiß für helle Flächen: weicher im dunklen Raum, schont den OLED */ --muted: #b9b2e6;
     --a: #e5484d; --b: #3e8ef7; --c: #f5b014; --d: #2fb36d;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -31,7 +31,7 @@
   /* Lobby */
   .lobby.drift, html.lite .lobby.drift { transition: transform 6s ease-in-out !important; }
   .gmline { display: flex; align-items: center; gap: .8vw; font-size: 1.8vw; font-weight: 800; color: var(--muted); margin-bottom: 1.6vh; }
-  .gmline b { color: #fff; } .gmline .av { width: 3vw; height: 3vw; border-radius: 50%; background: var(--pc); display: grid; place-items: center; font-size: 1.8vw; }
+  .gmline b { color: var(--ink); } .gmline .av { width: 3vw; height: 3vw; border-radius: 50%; background: var(--pc); display: grid; place-items: center; font-size: 1.8vw; }
   /* Lobby „Ticket und Gästeliste“: links die Eintrittskarte(n) mit QR-Code, rechts die Gästeliste */
   @font-face { font-family: Adventor; src: url(/fonts/texgyreadventor-bold.otf); font-weight: 700; }
   .lobby { flex: 1; display: grid; grid-template-columns: 30vw 1fr; gap: 5vw; align-items: center; padding: 0 2.5vw; }
@@ -98,8 +98,8 @@
   .qico { font-size: .9em; line-height: 1; }
   .qpts { color: var(--c); border-color: var(--c); padding: .2em .8em; }
   .qpts.sp { background: var(--c); color: #1b1440; }
-  .qpts.rk { background: #c4001d; border-color: #ff3347; color: #fff; }
-  .qpts.rk .fa { --fc: #fff !important; margin-right: .3em; }
+  .qpts.rk { background: #c4001d; border-color: #ff3347; color: var(--ink); }
+  .qpts.rk .fa { --fc: var(--ink) !important; margin-right: .3em; }
   .ql2 { display: flex; align-items: center; gap: .9vw; color: var(--muted); font-weight: 700; font-size: 1.35vw; white-space: nowrap; }
   .qdots { display: flex; gap: .45vw; }
   .qdots i { width: 1.6vw; height: .55vh; border-radius: 99px; background: rgba(255,255,255,.16); }
@@ -119,7 +119,7 @@
   .chip .gain { color: #8ff0b5; margin-left: .3vw; }
   .chip.rk { font-size: 1.5vw; padding-right: .5vw; animation: rkChip .5s cubic-bezier(.2,1.6,.4,1) both; }
   .chip.rk.skip { opacity: 1; background: rgba(138,128,201,.3); }
-  .chip .rks { display: inline-grid; place-items: center; min-width: 2.6vw; height: 2.6vw; margin-left: .5vw; border-radius: 50%; font-size: 2vw; font-weight: 900; line-height: 1; color: #fff; background: rgba(255,255,255,.15); }
+  .chip .rks { display: inline-grid; place-items: center; min-width: 2.6vw; height: 2.6vw; margin-left: .5vw; border-radius: 50%; font-size: 2vw; font-weight: 900; line-height: 1; color: var(--ink); background: rgba(255,255,255,.15); }
   .chip.ok .rks { background: #2fb36d; } .chip.bad .rks { background: #e5001f; } .chip.skip .rks { background: none; font-size: 1.6vw; }
   @keyframes rkChip { from { transform: scale(1.5); opacity: 0; } }
   html.lite .chip.rk { animation: rkChip .5s cubic-bezier(.2,1.6,.4,1) both !important; }
@@ -188,7 +188,7 @@
   html.lite .eresult .ebig.landed { animation: pop .4s both !important; }
   .elist.ehidden { visibility: hidden; }
   .erow .ed { min-width: 9vw; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
-  .erow.best .ed { color: #fff; }
+  .erow.best .ed { color: var(--ink); }
   .erow.ehead { background: none; font-size: 1.3vw; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; padding-top: 0; padding-bottom: 0; animation: none; }
   .erow.ehead .ev { margin-left: auto; }
   .erow.ehead .vav { visibility: hidden; }
@@ -201,7 +201,7 @@
   /* Sobald die Slotmaschine die richtige Zahl zeigt: Kasten „Richtig“ grün mit weißer Schrift (wie bei der Karte) */
   .estpanel .eresult.landed, .estpanel.side .eresult.landed { background: #2fb36d; border-radius: 1.4vw; box-shadow: 0 .8vh 0 rgba(0,0,0,.25); }
   .estpanel:not(.side) .eresult.landed { padding: .6vh 1.6vw; }
-  .estpanel .eresult.landed .elabel { color: rgba(255,255,255,.85); } .estpanel .eresult.landed .ebig { color: #fff; }
+  .estpanel .eresult.landed .elabel { color: rgba(255,255,255,.85); } .estpanel .eresult.landed .ebig { color: var(--ink); }
   .estpanel.side .eresult { flex: 0 0 28vw; flex-direction: column; align-items: center; justify-content: center; gap: 1vh; margin: 0; background: rgba(255,255,255,.06); border-radius: 1.4vw; }
   .estpanel.side .eresult .ebig, .estpanel.side .eresult.many .ebig { font-size: 5.8vw; min-width: 0; text-align: center; }
   /* Übergang zur Auflösung (Timing und Kurve wie beim Zuordnen) */
@@ -258,7 +258,7 @@
   .klabel { animation: pop .4s .35s both; } html.lite .klabel { animation: pop .4s .35s both !important; }
   .klabel.late { animation-delay: .75s; } html.lite .klabel.late { animation-delay: .75s !important; }
   .klabel rect { fill: var(--papier); } .klabel text { font-size: 17px; font-weight: 900; fill: #1b1440; }
-  .klabel.ok rect { fill: #2fb36d; } .klabel.ok text { fill: #fff; }
+  .klabel.ok rect { fill: #2fb36d; } .klabel.ok text { fill: var(--ink); }
   .kav { animation: pop .4s both; } html.lite .kav { animation: pop .4s both !important; }
   .kcol { flex: 0 0 25vw; display: flex; flex-direction: column; gap: 1.4vh; min-width: 0; min-height: 0; }
   .kcol .imgbox { flex: 0 1 auto; max-height: 46%; transition: max-height .6s; }
@@ -274,13 +274,13 @@
   .krow b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .krow i { margin-left: auto; font-style: normal; color: var(--muted); font-size: 1.3vw; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .krow .eg { color: #8ff0b5; width: 1.6vw; text-align: right; } .krow .eg.mid { color: var(--c); } .krow .eg.no { color: #ff8a8d; }
-  .krow.best { background: rgba(47,179,109,.45); } .krow.best i { color: #fff; }
+  .krow.best { background: rgba(47,179,109,.45); } .krow.best i { color: var(--ink); }
   /* Liste rechts wie bei der Schätzfrage: oben der Kasten „Richtig“, darunter die Spieler in einem Kasten (kPanel) */
   .kside { justify-content: stretch; }
   .kside > .khint { margin: auto 0; }
   .kres { flex: none; background: rgba(255,255,255,.06); border-radius: 1.4vw; padding: 2.2vh 1vw; display: flex; flex-direction: column; align-items: center; gap: .4vh; text-align: center; animation: pop .4s both; }
   html.lite .kres { animation: pop .4s both !important; }
-  .kres { background: #2fb36d; box-shadow: 0 .8vh 0 rgba(0,0,0,.25); } .kside .kres .lbl, .kside .kres small { color: rgba(255,255,255,.85); } .kside .kres .big { color: #fff; }   /* grün wie das richtige Land */
+  .kres { background: #2fb36d; box-shadow: 0 .8vh 0 rgba(0,0,0,.25); } .kside .kres .lbl, .kside .kres small { color: rgba(255,255,255,.85); } .kside .kres .big { color: var(--ink); }   /* grün wie das richtige Land */
   .kres .lbl { font-size: 1.3vw; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
   .kres .big { font-size: 3.8vw; font-weight: 900; color: var(--c); line-height: 1.1; overflow-wrap: anywhere; }
   .kres .big.s { font-size: 2.8vw; } .kres .big.xs { font-size: 2.1vw; }
@@ -288,7 +288,7 @@
   .klist.kpanel { flex: 1 1 0; min-height: 0; background: rgba(255,255,255,.06); border-radius: 1.4vw; padding: 1.6vh 1vw; justify-content: center; overflow: hidden; }
   .kpanel .krow { border-left: 0; font-size: 1.5vw; font-weight: 800; padding: .6vh 1.1vw .6vh .5vw; }
   .kpanel .krow .vav { width: 2.7vw; height: 2.7vw; font-size: 1.5vw; }
-  .kpanel .krow i { color: #fff; font-size: 1.4vw; font-weight: 800; }
+  .kpanel .krow i { color: var(--ink); font-size: 1.4vw; font-weight: 800; }
   .kpanel .krow .eg { width: 2vw; }
   .kpanel .krow.khead { background: none; font-size: 1.05vw; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; padding-top: 0; padding-bottom: 0; animation: none; }
   .kpanel .krow.khead i { color: var(--muted); font-size: 1.05vw; }
@@ -337,7 +337,7 @@
   /* Aussparung im rechten Teil um die Nase des linken Teils – echt ausgeschnitten (Maske), also durchsichtig */
   .mrow .mright { -webkit-mask: radial-gradient(circle 2.9vh at -.5vw 50%, transparent 97%, #000 100%); mask: radial-gradient(circle 2.9vh at -.5vw 50%, transparent 97%, #000 100%); }
   .mrow .mright.filled { background: #f5b014; color: #1b1440; animation: snap .35s cubic-bezier(.2,1.6,.4,1); }
-  .mrow.locked .mleft, .mrow.locked .mright.filled { background: #2fb36d; color: #fff; }
+  .mrow.locked .mleft, .mrow.locked .mright.filled { background: #2fb36d; color: var(--ink); }
   @keyframes snap { 0% { transform: translateX(1vw); } 60% { transform: translateX(-.4vw); } }
   .mpool { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1vh 1.2vw; flex: none; min-height: calc(2.2vw + 2vh); }
   .mpool .pbar { width: 50vw; }
@@ -360,7 +360,7 @@
   .tfright .vav + .vav { margin-left: -.7vw; }
   .tfright .none { color: rgba(255,255,255,.6); font-size: 1.4vw; font-weight: 700; animation: pop .45s both; }
   .tfv { min-width: 11vw; text-align: center; border-radius: .9vw; padding: .8vh 1vw; background: rgba(255,255,255,.1); color: rgba(255,255,255,.35); font-size: 1.9vw; font-weight: 900; }
-  .tfv.stamp { color: #fff; text-transform: uppercase; letter-spacing: .06em; animation: stamp .45s cubic-bezier(.2,1.6,.4,1) both; }
+  .tfv.stamp { color: var(--ink); text-transform: uppercase; letter-spacing: .06em; animation: stamp .45s cubic-bezier(.2,1.6,.4,1) both; }
   .tfrow.true { background: #2fb36d; } .tfrow.false { background: #a83a4b; }
   .tfrow.true .tfv { background: #1d7a49; } .tfrow.false .tfv { background: #e5484d; }
   @keyframes stamp { from { transform: scale(1.8) rotate(-8deg); opacity: 0; } }
@@ -426,7 +426,7 @@
   @keyframes zoom { from { transform: scale(.2) rotate(-12deg); opacity: 0; } }
   .sp-star { font-size: 12vw; line-height: 1; animation: pulse 1s ease-in-out infinite; }
   @keyframes pulse { 50% { transform: scale(1.15); } }
-  .sp-title { font-size: 7vw; font-weight: 900; color: #fff; letter-spacing: -0.02em; text-shadow: 0 .6vh 0 #ff4d6d; }
+  .sp-title { font-size: 7vw; font-weight: 900; color: var(--ink); letter-spacing: -0.02em; text-shadow: 0 .6vh 0 #ff4d6d; }
   .sp-mult { display: inline-block; margin-top: 2vh; font-size: 4vw; font-weight: 900; color: #1b1440; background: var(--c); border-radius: 99px; padding: .5vh 3vw; }
   html.lite .special { background: #14102b; }
   /* „💡 Übrigens“ (Feld "info"): nach der Auflösung über dem Bild, damit es alle lesen */
@@ -463,7 +463,7 @@
   @keyframes rkPulse { to { transform: scale(1.12); } }
   .rk-kick { font-family: 'DejaVu Sans Mono', ui-monospace, monospace; font-size: 1.6vw; font-weight: 700; letter-spacing: .5em; color: #ff8a96; margin-bottom: 1vh; animation: rkBlink .94s steps(1, end) infinite; }
   @keyframes rkBlink { 50% { opacity: .25; } }
-  .rk-title { font-size: 8.5vw; font-weight: 900; letter-spacing: .04em; color: #fff; line-height: 1;
+  .rk-title { font-size: 8.5vw; font-weight: 900; letter-spacing: .04em; color: var(--ink); line-height: 1;
     text-shadow: 0 0 2vw rgba(255,30,50,.9), .35vw 0 0 rgba(255,0,40,.85), -.35vw 0 0 rgba(0,200,255,.35); animation: rkGlitch 2.3s steps(1, end) infinite; }
   @keyframes rkGlitch { 0% { transform: none; } 61% { transform: translateX(-.4vw) skewX(-6deg); } 63% { transform: translateX(.5vw); } 65% { transform: none; } 88% { transform: translateY(-.3vh) skewX(4deg); } 90% { transform: none; } }
   .rk-rules { display: flex; gap: 1.4vw; justify-content: center; margin-top: 4vh; }
@@ -488,12 +488,12 @@
   .vwrap { position: fixed; inset: 0; background: #000; display: grid; place-items: center; z-index: 40; }
   .vwrap video { width: 100%; height: 100%; object-fit: contain; background: #000; }
   .vwrap.flash img { width: 100%; height: 100%; object-fit: contain; }
-  .vwrap .fhint { position: absolute; top: 2.4vh; left: 50%; transform: translateX(-50%); background: rgba(20,16,43,.85); color: #fff; font-weight: 900; font-size: 2vw; padding: .6vh 1.6vw; border-radius: 99px; }
+  .vwrap .fhint { position: absolute; top: 2.4vh; left: 50%; transform: translateX(-50%); background: rgba(20,16,43,.85); color: var(--ink); font-weight: 900; font-size: 2vw; padding: .6vh 1.6vw; border-radius: 99px; }
   .vwrap .credit { bottom: 2.2vh; }
   .credit.tcredit { position: fixed; right: 1vw; bottom: 1.2vh; }
   .vwrap .fbar { position: absolute; left: 0; right: 0; bottom: 0; height: 1.2vh; background: rgba(255,255,255,.15); }
   .vwrap .fbar i { display: block; height: 100%; width: 100%; background: var(--c); }
-  .vhint { position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%); background: rgba(0,0,0,.75); color: #fff; padding: 1vh 2vw; border-radius: 99px; font-size: 1.6vw; font-weight: 700; z-index: 41; }
+  .vhint { position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%); background: rgba(0,0,0,.75); color: var(--ink); padding: 1vh 2vw; border-radius: 99px; font-size: 1.6vw; font-weight: 700; z-index: 41; }
 
   /* Soundcheck */
   .iicon.sc { animation: pulse 1.2s ease-in-out infinite; }
@@ -658,8 +658,8 @@
   .anlvis .anlbig { font-size: 12vw; }
   .anl ul { list-style: none; display: flex; flex-direction: column; gap: 1.8vh; font-size: 1.95vw; line-height: 1.3; color: #e9e6ff; font-weight: 600; }
   .anl li { padding-left: 2.2vw; position: relative; } .anl li::before { content: ''; position: absolute; left: .3vw; top: .5em; width: .8vw; height: .8vw; border-radius: 50%; background: var(--c); }
-  .anl li b { color: #fff; font-weight: 900; }
-  .anltip { margin-top: 2.2vh; border: .18vw solid var(--c); border-radius: 1vw; padding: 1.1vh 1.4vw; font-size: 1.8vw; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 1vw; }
+  .anl li b { color: var(--ink); font-weight: 900; }
+  .anltip { margin-top: 2.2vh; border: .18vw solid var(--c); border-radius: 1vw; padding: 1.1vh 1.4vw; font-size: 1.8vw; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 1vw; }
   .anltip b { color: var(--c); }
   .anlfoot { margin-top: 1.4vh; font-size: 1.2vw; color: var(--muted); display: flex; justify-content: space-between; }
   .anl .anim { animation: anlin .5s cubic-bezier(.2,.9,.3,1) both; }
