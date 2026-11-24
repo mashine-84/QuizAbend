@@ -7,6 +7,7 @@
     {"audio": "alle-meine-entchen.mp3", "start": 0, "dauer": 5, "frage": "Test: Ton mit Schätzfrage – wie viele Sekunden lief der Ausschnitt?", "schaetzen": 5, "einheit": "s", "schwierigkeit": 2},
     {"audio": "haenschen-klein.mp3", "dauer": 6, "frage": "Test: Ton mit Zuordnung – welches Lied geht wie weiter?", "zuordnen": {"Hänschen klein": "ging allein", "Alle meine Entchen": "schwimmen auf dem See", "Bruder Jakob": "schläfst du noch?"}, "schwierigkeit": 1},
     {"audio": "alle-meine-entchen.mp3", "dauer": 6, "frage": "Test: Ton mit Richtig oder falsch", "behauptungen": [["Das war ein Kinderlied.", true], ["Das Lied lief rückwärts.", false]], "schwierigkeit": 1},
-    {"audio": "alle-meine-entchen.mp3", "dauer": 6, "frage": "Test: Ton mit Land antippen – aus welchem Land stammt dieses Lied? Tippe es an!", "karte": "europa", "land": "Deutschland", "schwierigkeit": 1}
+    {"audio": "alle-meine-entchen.mp3", "dauer": 6, "frage": "Test: Ton mit Land antippen – aus welchem Land stammt dieses Lied? Tippe es an!", "karte": "europa", "land": "Deutschland", "schwierigkeit": 1},
+    {"audio": "sprachtest.mp3", "tonnachweis": "Lesung: KI-Stimme (ElevenLabs, elevenlabs.io), Text gemeinfrei (Franz Kafka)", "frage": "Test: Gesprochene Sprache – aus welchem Werk stammt dieser Satz?", "antworten": ["Die Verwandlung", "Der Process", "Das Schloss", "Der Steppenwolf"], "schwierigkeit": 1}
   ]
 }
