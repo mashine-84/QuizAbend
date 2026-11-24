@@ -1474,11 +1474,13 @@ function renderGeo(byId) {
     if (S.phase === 'votes' || S.phase === 'reveal') {
       const r = box.getBoundingClientRect(), pts = [];
       const addRegion = id => { const g = m.byId[id]; if (g) pts.push([g.b[0], g.b[1]], [g.b[2], g.b[3]]); };
+      // Ausschnitt in „votes“ und „reveal“ gleich (Tipps + Lösung über q.rahmen) – so springt die Karte bei der Auflösung nicht mehr
+      const ra = q.rahmen || (q.kind === 'pin' ? (q.target ? { pos: q.target, radius: q.radius } : null) : (q.region ? { region: q.region } : null));
       if (q.kind === 'pin') {
         (q.pins || []).forEach(x => pts.push(kProj(m, x.pos[0], x.pos[1])));
-        if (S.phase === 'reveal') { const [x, y] = kProj(m, q.target[0], q.target[1]), [rx, ry] = kRadius(m, q.target[0], q.radius); pts.push([x - rx, y - ry], [x + rx, y + ry]); }
+        if (ra) { const [x, y] = kProj(m, ra.pos[0], ra.pos[1]), [rx, ry] = kRadius(m, ra.pos[0], ra.radius || 0); pts.push([x - rx, y - ry], [x + rx, y + ry]); }
       }
-      else { (q.picks || []).forEach(x => addRegion(x.region)); if (S.phase === 'reveal') addRegion(q.region); }
+      else { (q.picks || []).forEach(x => addRegion(x.region)); if (ra) addRegion(ra.region); }
       if (pts.length) svg.setAttribute('viewBox', kFit(m, pts, r.width / r.height, q.kind === 'pin' ? 0.22 : 0.3, 0.35).join(' '));
       kSizeSmall(svg, 6);
     }
