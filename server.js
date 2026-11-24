@@ -1332,6 +1332,10 @@ function baseView() {
         vq.guesses = byTime.map(([id, a]) => ({ id, value: a.value })).sort((a, b) => a.value - b.value);
       if (q.kind === 'pin') vq.pins = byTime.map(([id, a]) => ({ id, pos: a.pos }));
       if (q.kind === 'land') vq.picks = byTime.map(([id, a]) => ({ id, region: a.region, n: KARTEN[q.map].regions.get(a.region).n }));
+      // Kartenausschnitt schon beim Zeigen der Tipps inkl. Lösung, damit er bei der Auflösung nicht noch einmal springt
+      // (die Antworten sind da schon gesperrt; der Fernseher zeigt die Lösung erst bei „reveal“)
+      if (q.kind === 'pin') vq.rahmen = { pos: q.target, radius: q.radius };
+      if (q.kind === 'land') vq.rahmen = { region: q.region };
     }
     if (ph === 'reveal') {
       if (q.kind === 'choice') vq.correct = q.correct;
