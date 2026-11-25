@@ -1147,6 +1147,8 @@ function hueSection() {
         `<button class="btn sm ${st.target && st.target.id === t.id ? '' : 'ghost'}" onclick="hueSelect('${t.kind}','${esc(t.id)}')">${esc(t.name)}</button>`).join('')}</div>`).join('')
         : `<button class="btn ghost" onclick="hueTargets()">${st.target ? '🔁 Anderen Bereich wählen' : '💡 Bereich wählen'}</button>`}
       ${st.target ? (st.testing ? '<button class="btn danger" onclick="hueStopTest()">⏹ Test stoppen</button>' : '<button class="btn ghost" onclick="hueTest()">✨ Testen</button>') : ''}
+      ${st.target && st.target.kind === 'entertainment_configuration' ? `<button class="btn ghost" ${ui.hue.show ? 'disabled' : ''} onclick="hueLichtshow()">${ui.hue.show ? '🌈 Lichtshow läuft …' : '🌈 Lichtshow testen'}</button>
+        <p class="small">Probiert den schnellen Lichtweg (Hue Entertainment) aus: 5 Sekunden wandern die Antwortfarben über die Lampen. Jeder Schritt steht im Protokoll.</p>` : ''}
       <button class="btn danger sm" onclick="hueForget()">${ui.confirm === 'hue' ? 'Wirklich trennen? Nochmal tippen' : 'Verbindung trennen'}</button>`;
   }
   if (st.blocked) return `<h3>💡 Philips Hue <small>(Test)</small></h3><div class="sysout">📶 Der Pi hat gerade sein eigenes WLAN an. Philips Hue geht nur im Heim-WLAN – dort ist die Bridge erreichbar. Das Licht bleibt im Spiel unverändert.</div>`;
@@ -1182,6 +1184,11 @@ async function hueTest() {
   const r = await hueCall('test');
   await hueRefresh(r.ok ? { ok: true, text: 'Die Lampen pulsieren jetzt 3 Sekunden gold.' } : { ok: false, text: r.text });
   if (r.ok) { clearTimeout(hueTest.t); hueTest.t = setTimeout(() => { if (ui.settings) hueRefresh({ ok: true, text: 'Test beendet, Licht wie vorher.' }); }, 3300); }
+}
+async function hueLichtshow() {
+  ui.hue.show = true; ui.hue.msg = { ok: true, text: 'Verbinde mit der Bridge …' }; lastKey = ''; render();
+  const r = await hueCall('lichtshow');
+  ui.hue.show = false; hueRefresh(r.ok ? { ok: true, text: r.text } : { ok: false, text: r.text || 'Hat nicht geklappt.' });
 }
 async function hueStopTest() { clearTimeout(hueTest.t); await hueCall('stoptest'); hueRefresh({ ok: true, text: 'Test gestoppt, Licht wie vorher.' }); }
 async function hueForget() {

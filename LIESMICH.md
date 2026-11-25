@@ -301,6 +301,7 @@ Das Quiz kann das Licht im Raum mitsteuern. Es braucht dafür nur die Hue Bridge
 2. Den runden Knopf oben auf der Bridge drücken und innerhalb von 30 Sekunden „Verbinden“ tippen.
 3. Den Bereich wählen: einen Entertainment-Bereich (z. B. „TV“), einen Raum oder eine Zone.
 4. Mit „Testen“ prüfen: Die Lampen pulsieren 3 Sekunden gold (mit „Test stoppen“ abbrechbar), danach ist alles wie vorher.
+5. Nur bei einem Entertainment-Bereich: **„🌈 Lichtshow testen“** probiert den schnellen Lichtweg (Hue Entertainment, verschlüsselter Stream über UDP-Port 2100) aus. 5 Sekunden wandern die Antwortfarben über die Lampen; jeder Schritt steht im Protokoll („Hue-Lichtshow: …“). Klappt das, können später schnelle Effekte ins Spiel (Countdown-Puls, Farbwellen). Im Spiel selbst ändert sich dadurch noch nichts.
 
 **Was im Spiel passiert:**
 | Moment | Licht |
@@ -346,6 +347,7 @@ Beispiel (Windows, Eingabeaufforderung): `set FRAGEN=15 && node server.js`
 - `public/icons.js`: Symbole aus **Font Awesome Free** (https://fontawesome.com, Icons unter CC BY 4.0), funktioniert offline. Im Code stehen weiter Emojis; `icons.js` tauscht sie beim Anzeigen gegen die Symbole (Spieler-Avatare und Gesichter wie 🤫 bleiben Emojis). Erzeugt mit `public/icons-erzeugen.py` – neue Symbole dort eintragen.
 - `public/fonts/texgyreadventor-bold.otf`: Schrift **TeX Gyre Adventor** (GUST Font License, liegt daneben) für Ticket und Spielerkarten in der Lobby – liegt auf dem Pi, braucht kein Internet.
 - `hue.js`: Philips-Hue-Steuerung (Kopplung, Bereich, Licht je Spielphase)
+- `hue-dtls.js`: kleiner DTLS-Client für Hue Entertainment (nur das Verfahren, das die Bridge verlangt; keine Abhängigkeiten), Test: `node code-pruefung/hue-dtls.js`
 - `sounds/`: Pausenmusik (`standard/` mit Erzeuger-Skript, eigene Datei daneben)
 - `fragen/`: eingebaute Testpakete; `fragen/_repo/`: Kopie des Fragen-Repos (`fragenrepo.js`)
 - `einstellungen.json`: gewählte Pakete (legt das Spiel selbst an)
