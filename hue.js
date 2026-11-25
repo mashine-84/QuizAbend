@@ -280,4 +280,54 @@ function stopTest() {
 }
 function testing() { return !!testTimer; }
 
-module.exports = { status, discover, pair, targets, select, enable, forget, test, stopTest, testing, onPhase };
+// ---------- Lichtshow-Test: Hue Entertainment (verschlüsselter Lichtstream) ----------
+// Prüft, ob der schnelle Weg zur Bridge klappt: Streaming starten, DTLS-Verbindung aufbauen, 5 Sekunden lang
+// laufen die vier Antwortfarben über die Lampen (25 Bilder pro Sekunde), dann Streaming stoppen.
+// Jeder Schritt steht im Protokoll („Hue-Lichtshow: …“). Braucht einen Unterhaltungsbereich aus der Hue-App.
+let showLaeuft = false;
+async function lichtshow() {
+  if (showLaeuft) return { ok: false, text: 'Die Lichtshow läuft schon.' };
+  const t = cfg.target;
+  if (!t || t.kind !== 'entertainment_configuration') return { ok: false, text: 'Für die Lichtshow einen Unterhaltungsbereich wählen („Anderen Bereich wählen“ › Entertainment-Bereiche). Den legst du in der Hue-App an.' };
+  if (!cfg.clientKey) return { ok: false, text: 'Für die Lichtshow fehlt ein Schlüssel – bitte „Verbindung trennen“ und die Bridge neu verbinden.' };
+  const log = s => console.log('Hue-Lichtshow: ' + s);
+  const fehlerText = r => ((r.json && r.json.errors) || []).map(e => e.description).join(', ');
+  const dtls = require('./hue-dtls');   // erst hier laden: wird nur für die Lichtshow gebraucht
+  showLaeuft = true; stopTest();
+  let s = null, gestartet = false, ms = 0;
+  try {
+    const r = await clip('GET', 'entertainment_configuration/' + t.id);
+    const conf = r.json && r.json.data && r.json.data[0];
+    if (!conf) throw new Error(`Bereich nicht gefunden (HTTP ${r.status}${fehlerText(r) ? ': ' + fehlerText(r) : ''})`);
+    const kanaele = (conf.channels || []).map(c => c.channel_id);
+    log(`Bereich „${t.name}“ mit ${kanaele.length} Kanälen`);
+    if (!kanaele.length) throw new Error('Der Bereich hat keine Lampen');
+    const st = await clip('PUT', 'entertainment_configuration/' + t.id, { action: 'start' });
+    if (st.status !== 200) throw new Error(`Bridge lehnt den Start ab (HTTP ${st.status}${fehlerText(st) ? ': ' + fehlerText(st) : ''})`);
+    gestartet = true; log('Streaming an der Bridge gestartet');
+    const t0 = Date.now();
+    s = await dtls.connect({ host: cfg.ip, identity: cfg.appKey, psk: Buffer.from(cfg.clientKey, 'hex') });
+    ms = Date.now() - t0; log(`verschlüsselte Verbindung steht nach ${ms} ms`);
+    // A–D wandern weich über die Lampen: jede Lampe blendet alle halbe Sekunde zur nächsten Antwortfarbe über
+    const rgb = ANSWER.map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) * 257));
+    for (let f = 0; f < 125; f++) {
+      s.send(dtls.hueStream(t.id, f, kanaele.map((id, k) => {
+        const p = (k + f / 12.5) % 4, a = rgb[Math.floor(p)], b = rgb[(Math.floor(p) + 1) % 4], w = p % 1;
+        const m = i => Math.round(a[i] + (b[i] - a[i]) * w);
+        return { id, r: m(0), g: m(1), b: m(2) };
+      })));
+      await new Promise(res => setTimeout(res, 40));
+    }
+    log('125 Bilder gesendet (5 Sekunden)');
+    return { ok: true, text: `Lichtshow lief ✓ ${kanaele.length} Lampen, Verbindung nach ${ms} ms. Haben die Farben gewechselt?` };
+  } catch (e) {
+    log('Fehler – ' + e.message);
+    return { ok: false, text: 'Lichtshow ging nicht: ' + e.message };
+  } finally {
+    if (s) s.close();
+    if (gestartet) { await clip('PUT', 'entertainment_configuration/' + t.id, { action: 'stop' }).catch(() => {}); log('Streaming gestoppt'); }
+    showLaeuft = false;
+  }
+}
+
+module.exports = { status, discover, pair, targets, select, enable, forget, test, stopTest, testing, onPhase, lichtshow };
