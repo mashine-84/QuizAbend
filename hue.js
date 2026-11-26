@@ -333,7 +333,7 @@ function restore() {
 
 // ---------- Spielphasen -> Licht ----------
 const VIOLET = '#6a3cff', DEEP = '#3b2bd6', GOLD = '#f5b014';
-const FRAGE_BRI = 30;   // Helligkeit des blau-lila Frage-Lichts in % (war 22 – etwas zu dunkel, vor allem im Stream)
+const FRAGE_BRI = 40;   // Helligkeit des blau-lila Frage-Lichts in % (früher 22, dann 30 – noch zu dunkel)
 // Auflösung: so lange leuchtet die Antwortfarbe hell, danach dimmt sie in derselben Farbe ab.
 // Der Farbwechsel zum Blau passiert erst, wenn die Lampen fast dunkel sind – ein Übergang direkt von z. B. Orange
 // nach Blau läuft bei Hue durch Weiß (die Lampe rechnet den Weg im Farbraum geradlinig).
