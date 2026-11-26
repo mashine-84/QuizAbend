@@ -121,12 +121,6 @@
   .chip.ok { background: rgba(47,179,109,.35); opacity: 1; }
   .chip.bad { background: rgba(229,72,77,.3); opacity: 1; }
   .chip .gain { color: #8ff0b5; margin-left: .3vw; }
-  .chip.rk { font-size: 1.5vw; padding-right: .5vw; animation: rkChip .5s cubic-bezier(.2,1.6,.4,1) both; }
-  .chip.rk.skip { opacity: 1; background: rgba(138,128,201,.3); }
-  .chip .rks { display: inline-grid; place-items: center; min-width: 2.6vw; height: 2.6vw; margin-left: .5vw; border-radius: 50%; font-size: 2vw; font-weight: 900; line-height: 1; color: var(--ink); background: rgba(255,255,255,.15); }
-  .chip.ok .rks { background: #2fb36d; } .chip.bad .rks { background: #e5001f; } .chip.skip .rks { background: none; font-size: 1.6vw; }
-  @keyframes rkChip { from { transform: scale(1.5); opacity: 0; } }
-  html.lite .chip.rk { animation: rkChip .5s cubic-bezier(.2,1.6,.4,1) both !important; }
   .answers { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(0, var(--row)); align-content: center; gap: 1.4vh 1.6vw; }
   .ans { border-radius: 1.4vw; display: flex; align-items: center; gap: 1.4vw; padding: 0 1.4vw; font-size: var(--rowfont); font-weight: 800; line-height: 1.1; background: var(--kd); border: .25vw solid var(--k); box-shadow: 0 .8vh 0 rgba(0,0,0,.25); transition: opacity .4s, transform .4s, filter .4s; position: relative; }
   .long .ans, .long .mrow { font-size: calc(var(--rowfont) * .8); } .xlong .ans, .xlong .mrow { font-size: calc(var(--rowfont) * .65); }
@@ -1073,9 +1067,10 @@ function chips() {
     if (S.phase === 'reveal' && p.result && !hideResult) {
       cls = p.result.correct ? 'ok' : (p.result.gain ? 'done' : 'bad');
       extra = p.result.correct ? ' ✓' : p.result.gain ? ' ≈' : (p.result.answered ? ' ✗' : ' –');   // Punkte gibt's erst am Blockende
-      if (p.result.risk) {   // Risikofrage: groß Plus, Minus oder ausgesetzt (Beträge bleiben bis zum Blockende geheim)
-        cls = p.result.correct ? 'ok rk' : p.result.answered ? 'bad rk' : 'rk skip';
-        extra = p.result.correct ? '<b class="rks">+</b>' : p.result.answered ? '<b class="rks">−</b>' : p.result.skipped ? '<b class="rks">🙈</b>' : '<b class="rks">0</b>';
+      // Risikofrage: dieselben Zeichen wie sonst (✓ ✗ –), nur wer ausgesetzt hat, bekommt 🙈 – Beträge bleiben bis zum Blockende geheim
+      if (p.result.risk) {   // Minuspunkte sind kein Teilerfolg (≈): falsch bleibt ✗
+        cls = p.result.correct ? 'ok' : p.result.skipped ? 'done' : 'bad';
+        extra = p.result.correct ? ' ✓' : p.result.skipped ? ' 🙈' : p.result.answered ? ' ✗' : ' –';
       }
     }
     return `<div class="chip ${cls}" style="--pc:${p.color}"><span class="dot">${p.avatar}</span>${esc(p.name)}${extra}</div>`;
