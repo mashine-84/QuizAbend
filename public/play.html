@@ -1143,6 +1143,8 @@ function hueSection() {
     (h.list || []).forEach(t => (groups[t.group] = groups[t.group] || []).push(t));
     body = `<p class="small">Verbunden mit der Bridge ${esc(st.ip)}${st.target ? ` · Bereich: <b>${esc(st.target.name)}</b> (${st.lights} Lampen)` : ''}</p>
       ${st.target ? `<label class="switch"><input type="checkbox" ${st.enabled ? 'checked' : ''} onchange="hueEnable(this.checked)"><span>Licht im Spiel steuern</span></label>` : ''}
+      ${st.target && st.streamMoeglich ? `<label class="switch"><input type="checkbox" ${st.stream ? 'checked' : ''} onchange="hueStream(this.checked)"><span>Schneller Lichtweg (Stream)</span></label>
+        <p class="small">${st.streamAktiv ? '🟢 Der Lichtstream läuft gerade.' : st.streamFehler ? '⚠️ Der Lichtstream ging in diesem Spiel nicht – das Licht läuft über den normalen Weg (Details im Protokoll).' : st.stream ? 'Im Spiel läuft das Licht als Stream: weichere, genauere Übergänge. Bis zur Lobby reagieren die Lampen nicht auf die Hue-App.' : 'Aus: Das Licht läuft über einzelne Befehle (höchstens ~1 pro Sekunde).'}</p>` : ''}
       ${h.list ? Object.entries(groups).map(([g, l]) => `<p class="small"><b>${esc(g)}</b></p><div class="huelist">${l.map(t =>
         `<button class="btn sm ${st.target && st.target.id === t.id ? '' : 'ghost'}" onclick="hueSelect('${t.kind}','${esc(t.id)}')">${esc(t.name)}</button>`).join('')}</div>`).join('')
         : `<button class="btn ghost" onclick="hueTargets()">${st.target ? '🔁 Anderen Bereich wählen' : '💡 Bereich wählen'}</button>`}
@@ -1185,6 +1187,7 @@ async function hueTest() {
   await hueRefresh(r.ok ? { ok: true, text: 'Die Lampen pulsieren jetzt 3 Sekunden gold.' } : { ok: false, text: r.text });
   if (r.ok) { clearTimeout(hueTest.t); hueTest.t = setTimeout(() => { if (ui.settings) hueRefresh({ ok: true, text: 'Test beendet, Licht wie vorher.' }); }, 3300); }
 }
+async function hueStream(on) { await hueCall('stream', { on }); hueRefresh(); }
 async function hueLichtshow() {
   ui.hue.show = true; ui.hue.msg = { ok: true, text: 'Verbinde mit der Bridge …' }; lastKey = ''; render();
   const r = await hueCall('lichtshow');
