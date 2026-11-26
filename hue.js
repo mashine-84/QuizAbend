@@ -333,6 +333,7 @@ function restore() {
 
 // ---------- Spielphasen -> Licht ----------
 const VIOLET = '#6a3cff', DEEP = '#3b2bd6', GOLD = '#f5b014';
+const FRAGE_BRI = 30;   // Helligkeit des blau-lila Frage-Lichts in % (war 22 – etwas zu dunkel, vor allem im Stream)
 // Auflösung: so lange leuchtet die Antwortfarbe hell, danach dimmt sie in derselben Farbe ab.
 // Der Farbwechsel zum Blau passiert erst, wenn die Lampen fast dunkel sind – ein Übergang direkt von z. B. Orange
 // nach Blau läuft bei Hue durch Weiß (die Lampe rechnet den Weg im Farbraum geradlinig).
@@ -356,7 +357,7 @@ async function onPhase(phase, info = {}) {
     case 'opening': mood = { color: VIOLET, bri: 40, ms: 2500 }; break;
     case 'block': mood = { color: VIOLET, bri: 45, ms: 1000 }; break;
     case 'tiebreak': mood = { color: GOLD, bri: 80, ms: 600 }; break;                    // Stechen um Platz 1
-    case 'intro': case 'preview': case 'question': case 'locked': case 'votes': key = 'question'; mood = { color: DEEP, bri: 22, ms: 1200 }; break;
+    case 'intro': case 'preview': case 'question': case 'locked': case 'votes': key = 'question'; mood = { color: DEEP, bri: FRAGE_BRI, ms: 1200 }; break;
     case 'media': mood = { color: DEEP, bri: 8, ms: 1000 }; break;                       // Video/Audio: fast dunkel
     case 'special': mood = { color: GOLD, bri: 100, ms: 300, pulse: true }; break;     // pulsiert nur, solange der Screen da ist
     case 'risk': mood = { color: '#b3001b', bri: 100, ms: 200, pulse: true }; break;   // Risikofrage: roter Alarm
@@ -391,7 +392,7 @@ async function onPhase(phase, info = {}) {
     const gen = seqGen, live = () => gen === seqGen, later = (ms, f) => { if (live()) seqTimers.push(setTimeout(f, ms)); };
     if (stromAn()) {   // Stream: exakt nach Zeit, Farbwechsel ohne Umweg – halten, in der Antwortfarbe abdunkeln, weich ins Frage-Blau
       later(REVEAL_HOLD_MS, () => apply({ color: farbe, bri: 1, ms: REVEAL_FADE_MS }));
-      later(REVEAL_HOLD_MS + REVEAL_FADE_MS, () => apply({ color: DEEP, bri: 22, ms: 1500 }));
+      later(REVEAL_HOLD_MS + REVEAL_FADE_MS, () => apply({ color: DEEP, bri: FRAGE_BRI, ms: 1500 }));
       return;
     }
     // Den Farbwechsel im Dunkeln schicken wir direkt an jede Lampe (ohne Übergang): Einzelbefehle dürfen ~10× pro Sekunde,
@@ -401,7 +402,7 @@ async function onPhase(phase, info = {}) {
         if (!live()) return;
         const c = xy(DEEP);
         for (const l of cfg.lights || []) queue(l.id, { color: { xy: c }, dimming: { brightness: 1 }, dynamics: { duration: 0 } });   // fast dunkel: Farbe springt
-        later(120 * (cfg.lights || []).length + 80, () => apply({ color: DEEP, bri: 22, ms: 1500 }));   // gleich danach ins normale dunkle Blau
+        later(120 * (cfg.lights || []).length + 80, () => apply({ color: DEEP, bri: FRAGE_BRI, ms: 1500 }));   // gleich danach ins normale dunkle Blau
       })));
   }
   if (phase === 'ident') {
