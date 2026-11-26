@@ -1664,13 +1664,13 @@ function json(res, code, obj) {
   res.end(JSON.stringify(obj));
 }
 
-const MIME = { '.json': 'application/json; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.otf': 'font/otf' };
+const MIME = { '.json': 'application/json; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.otf': 'font/otf' };
 
-function serveFile(res, file) {
+function serveFile(res, file, cache) {   // cache: Sekunden im Browser behalten (z. B. Avatar-Bilder, die bei jedem Neuzeichnen vorkommen)
   const full = path.join(__dirname, 'public', file);
   fs.readFile(full, (err, buf) => {
     if (err) { res.writeHead(404); res.end('Nicht gefunden'); return; }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(full)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
+    res.writeHead(200, { 'Content-Type': MIME[path.extname(full)] || 'application/octet-stream', 'Cache-Control': cache ? 'max-age=' + cache : 'no-store' });
     res.end(buf);
   });
 }
@@ -1769,6 +1769,8 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && p === '/tv') return serveFile(res, 'tv.html');
   if (req.method === 'GET' && p === '/qr.js') return serveFile(res, 'qr.js');
   if (req.method === 'GET' && p === '/icons.js') return serveFile(res, 'icons.js');
+  if (req.method === 'GET' && p === '/avatare.js') return serveFile(res, 'avatare.js');
+  if (req.method === 'GET' && /^\/avatare\/[0-9a-f]{4,6}\.png$/.test(p)) return serveFile(res, p.slice(1), 86400);   // Avatar-Bilder (nur Codepoint-Namen)
   if (req.method === 'GET' && p === '/karte.js') return serveFile(res, 'karte.js');
   if (req.method === 'GET' && p === '/anleitung.js') return serveFile(res, 'anleitung.js');
   if (req.method === 'GET' && p === '/fonts/texgyreadventor-bold.otf') return serveFile(res, 'fonts/texgyreadventor-bold.otf');   // Schrift der Lobby (TeX Gyre Adventor, GUST Font License)
