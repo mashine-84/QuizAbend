@@ -125,12 +125,11 @@ const dtls = require(path.join(TMP, 'hue-dtls.js'));
     await sleep(700); f = bild();
     ok(f[2][0] > 60000, `Welle ist rechts angekommen (${f[2]})`);
     await hue.onPhase('special'); await sleep(600);
-    const an = () => { const b = bild(); return Object.keys(b).filter(k => hell(b[k]) > 50000).length; };
-    const zaehl = []; for (let i = 0; i < 6; i++) { zaehl.push(an()); await sleep(117); }
-    ok(zaehl.every(z => z === 1), `Lauflicht: immer genau eine Lampe hell (${zaehl.join(' ')})`);
-    await hue.onPhase('end', { winnerColor: '#4aa3f0' }); await sleep(400);
-    const feu = {}; for (let i = 0; i < 40; i++) { const b = bild(); for (const k in b) (feu[k] = feu[k] || []).push(hell(b[k])); await sleep(50); }
-    ok(Object.values(feu).filter(v => Math.max(...v) > 2 * Math.min(...v)).length >= 3, 'Feuerwerk: Lampen blitzen unterschiedlich auf und verglühen');
+    const sp = []; for (let i = 0; i < 20; i++) { const b = bild(); sp.push(Object.values(b).map(hell)); await sleep(50); }
+    ok(sp.every(r => Math.max(...r) - Math.min(...r) < 2000) && Math.max(...sp.flat()) > 2 * Math.min(...sp.flat()), 'Spezialfrage: alle Lampen pulsieren ruhig und gleich (kein Lauflicht)');
+    await hue.onPhase('end', { winnerColor: '#4aa3f0' }); await sleep(600);
+    const en = []; for (let i = 0; i < 20; i++) { const b = bild(); en.push(Object.values(b).map(hell)); await sleep(50); }
+    ok(en.every(r => Math.max(...r) - Math.min(...r) < 2000), 'Siegerehrung: alle Lampen gleich (kein Feuerwerk)');
     hue.setEffekt('welle', false);
     await hue.onPhase('reveal', { q: 3, correct: 1 }); await sleep(90); f = bild();
     ok(f[2][2] > 60000, 'Welle abgeschaltet: alle Lampen sofort in der Antwortfarbe');

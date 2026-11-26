@@ -232,7 +232,7 @@ function streamStart() {
       if (!conf) throw new Error(`Bereich nicht gefunden (HTTP ${r.status})`);
       const kanaele = (conf.channels || []).map(c => c.channel_id);
       if (!kanaele.length) throw new Error('der Bereich hat keine Lampen');
-      // Platz im Raum (aus der Hue-App): Reihenfolge von links nach rechts für Welle und Lauflicht
+      // Platz im Raum (aus der Hue-App): Reihenfolge von links nach rechts für Welle und Antwortfarben
       const xyz = (conf.channels || []).map(c => c.position || {});
       const order = kanaele.map((_, k) => k).sort((a, b) => ((xyz[a].x || 0) - (xyz[b].x || 0)) || ((xyz[a].y || 0) - (xyz[b].y || 0)));
       const rang = []; order.forEach((k, i) => { rang[k] = i; });
@@ -282,12 +282,10 @@ async function streamStop() {
   console.log('Hue: Lichtstream beendet, Lampen wieder frei');
 }
 // ---------- Lichteffekte (nur im Stream, einzeln abschaltbar: cfg.effekte) ----------
-const EFFEKTE = { welle: 'Farbwelle bei der Auflösung', antworten: 'Antwortfarben bei der Frage', herz: 'Herzschlag in den letzten 5 Sekunden',
-  lauf: 'Lauflicht bei Spezial- und Risikofrage', feuer: 'Feuerwerk bei der Siegerehrung' };
+const EFFEKTE = { welle: 'Farbwelle bei der Auflösung', antworten: 'Antwortfarben bei der Frage', herz: 'Herzschlag in den letzten 5 Sekunden' };
+// (Lauflicht bei Spezial-/Risikofrage und Feuerwerk bei der Siegerehrung gab es kurz – zu unruhig; dort pulsiert es ruhig wie vorher)
 const effektAn = n => stromAn() && !(cfg.effekte && cfg.effekte[n] === false);
-const TAKT_MS = 60000 / 128;     // Musik: 128 BPM
 const mix = (a, b, w) => a.map((v, i) => v + (b[i] - v) * w);
-const zufall = (a, b) => { const x = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return x - Math.floor(x); };   // fest je Lampe und Runde
 // Auflösung: die Antwortfarbe läuft in 0,5 s von links nach rechts durch den Raum
 function welle() {
   const s = strom, t0 = Date.now(), vorher = s.von, n = Math.max(1, s.kanaele.length - 1);
@@ -303,24 +301,6 @@ function herz(ende) {
     const t = phase % 1, b = Math.max(bump(t, 0.08), 0.6 * bump(t, 0.3));
     const m = Math.max(...c) || 1, hell = c.map(v => v / m * 0.5);   // gleiche Farbe, deutlich heller
     return mix(c, hell, b);
-  };
-}
-// Spezial- und Risikofrage: ein helles Licht läuft im Takt der Musik von Lampe zu Lampe
-function lauf() {
-  const s = strom, t0 = Date.now(), n = s.kanaele.length;
-  s.puls = false;
-  s.effekt = (k, jetzt, c) => { const schritt = Math.floor((jetzt - t0) / TAKT_MS), r = s.rang[k];
-    return c.map(v => v * (r === schritt % n ? 1 : r === (schritt + n - 1) % n ? 0.45 : 0.15)); };
-}
-// Siegerehrung: Lampen blitzen einzeln und zufällig in der Farbe des Gewinners auf und verglühen
-function feuer() {
-  const s = strom, t0 = Date.now();
-  s.puls = false;
-  s.effekt = (k, jetzt, c) => {
-    const dauer = 900 + zufall(k, 0) * 700, t = jetzt - t0 + zufall(k, 1) * dauer, runde = Math.floor(t / dauer), d = t % dauer;
-    if (zufall(k, runde + 2) < 0.25) return c.map(v => v * 0.12);                 // diese Runde Pause
-    if (d < 70) return mix(c, [1, 1, 1], 0.55 * (1 - d / 70));                     // Blitz, kurz fast weiß
-    return c.map(v => v * (0.12 + 0.88 * Math.exp(-(d - 70) / 260)));             // verglühen
   };
 }
 // Frage: vier gedämpfte Antwortfarben auf den Lampen verteilt (nur Auswahlfragen) + Herzschlag am Ende
@@ -403,8 +383,6 @@ async function onPhase(phase, info = {}) {
   if (stromAn()) {   // Lichteffekte im Stream
     if (phase === 'question') frageEffekte(info);
     if (phase === 'reveal' && effektAn('welle')) welle();
-    if ((phase === 'special' || phase === 'risk') && effektAn('lauf')) lauf();
-    if (phase === 'end' && effektAn('feuer')) feuer();
   }
   // Opener „Vier Kacheln“: grob im Takt – mehr als ~1 Befehl pro Sekunde verträgt die Bridge nicht.
   // 1,25 s: Gold-Blitz (das „?“ erscheint bei 1,41 s, Lampen reagieren etwas verzögert), 2,35 s: sanft ins ruhige Violett.
