@@ -22,6 +22,8 @@
     --rowfont: min(2.3vw, 4vh);  /* einheitliche Schrift dafür */
   }
   #app { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 3vh 4vw 4.5vh; }
+  /* Überblenden Lobby ⇄ Bestenliste: nur Deckkraft (GPU), auch im Lite-Modus */
+  #app.blende { transition: opacity .45s ease !important; } #app.blende.weg { opacity: 0 !important; }
   .brand { font-weight: 900; letter-spacing: -0.02em; }
   .brand span { color: var(--c); }
   .topbar { display: flex; justify-content: space-between; align-items: center; font-size: 1.4vw; color: var(--muted); min-height: 4vh; }
@@ -64,7 +66,7 @@
   .beste { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 12vw; }
   .beste .bsp { margin-left: 1vw; opacity: .7; }
   .bliste { display: flex; flex-direction: column; gap: 1.2vh; }
-  .brow { display: flex; align-items: center; gap: 1.4vw; background: rgba(255,255,255,.05); border-radius: 1.4vw; padding: 1.3vh 1.6vw; }
+  .brow { display: flex; align-items: center; gap: 1.4vw; background: rgba(255,255,255,.05); border-radius: 1.4vw; padding: 1.1vh 1.6vw; }
   .brow:first-child { background: rgba(245,176,20,.14); }
   .brow.heute { outline: .16vw solid rgba(245,176,20,.55); outline-offset: -.16vw; }
   .bpl { width: 3vw; text-align: center; font-family: Adventor, sans-serif; font-weight: 700; font-size: 2vw; color: var(--muted); }
@@ -953,10 +955,20 @@ function lobbyOderBeste() {
 setInterval(() => {
   if (!S || S.phase !== 'lobby' || S.anleitung) { besteSeit = Date.now(); besteZeigt = false; return; }
   const soll = besteDa() && (Date.now() - besteSeit) % (LOBBY_MS + BESTE_MS) >= LOBBY_MS;
-  if (soll !== besteZeigt) { besteZeigt = soll; soll ? renderBeste() : renderLobby(); }
+  if (soll !== besteZeigt && !blendet) { besteZeigt = soll; ueberblenden(() => soll ? renderBeste() : renderLobby()); }
 }, 500);
+let blendet = false;
+function ueberblenden(neu) {   // ausblenden – Inhalt tauschen – einblenden (je 0,45 s)
+  blendet = true; app.classList.add('blende', 'weg');
+  setTimeout(() => {
+    if (S && S.phase === 'lobby') neu();
+    requestAnimationFrame(() => { app.classList.remove('weg'); setTimeout(() => { app.classList.remove('blende'); blendet = false; }, 500); });
+  }, 450);
+}
+const shiftY = () => SHIFTS[Math.floor(Date.now() / 20000) % SHIFTS.length][1] * innerHeight / 100;   // Wander-Versatz rausrechnen
+let lobbyKopfY = null;   // Oberkante der Lobby-Überschrift (gemessen), damit die Bestenliste-Überschrift in derselben Flucht steht
 function renderBeste() {
-  const b = S.bestenliste, L = b.liste.slice(0, 6);
+  const b = S.bestenliste, L = b.liste.slice(0, 5);
   const heute = new Set(S.players.map(p => p.name.trim().toLowerCase()));
   const anfeuern = S.players.length ? 'Wer holt sich heute den nächsten Sieg?' : 'Wer holt sich den nächsten Sieg?';
   app.innerHTML = topbar('') + `<div class="beste" style="transform:${lobbyShift()}">
@@ -968,6 +980,8 @@ function renderBeste() {
       ${heute.has(x.name.toLowerCase()) ? '<span class="bheute">heute dabei</span>' : ''}
       <span class="bsg"><b>${x.siege}</b><small>${x.siege === 1 ? 'Sieg' : 'Siege'}</small></span></div>`).join('')}</div>
   </div>`;
+  const be = app.querySelector('.beste'), h = be && be.querySelector('.glkopf');
+  if (h && lobbyKopfY != null) { be.style.justifyContent = 'flex-start'; be.style.paddingTop = '0px'; be.style.paddingTop = Math.max(0, lobbyKopfY - (h.getBoundingClientRect().top - shiftY())) + 'px'; }
 }
 
 // ---------- Opener „Vier Kacheln“ (Spielstart und nach der Pause) ----------
@@ -1032,6 +1046,7 @@ function renderLobby() {
         ${packLine()}
       </div>
     </div>`;
+  const k = app.querySelector('.glkopf'); if (k) lobbyKopfY = k.getBoundingClientRect().top - shiftY();
 }
 
 // ---------- Anleitung „So geht QuizAbend“ ----------
