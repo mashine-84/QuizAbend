@@ -60,6 +60,22 @@
   .glkopf span { color: var(--c); }
   .glkopf { font-family: Adventor, sans-serif; font-weight: 700; font-size: 2.65vw; letter-spacing: -0.01em; margin: 0 0 1.2vh; line-height: 1; }
   .glunter { font-size: 1.6vw; color: var(--muted); margin: 0 0 3vh; } .glunter b { color: var(--ink); }
+  /* Ewige Bestenliste im Wechsel mit der Lobby */
+  .beste { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 12vw; }
+  .beste .bsp { margin-left: 1vw; opacity: .7; }
+  .bliste { display: flex; flex-direction: column; gap: 1.2vh; }
+  .brow { display: flex; align-items: center; gap: 1.4vw; background: rgba(255,255,255,.05); border-radius: 1.4vw; padding: 1.3vh 1.6vw; }
+  .brow:first-child { background: rgba(245,176,20,.14); }
+  .brow.heute { outline: .16vw solid rgba(245,176,20,.55); outline-offset: -.16vw; }
+  .bpl { width: 3vw; text-align: center; font-family: Adventor, sans-serif; font-weight: 700; font-size: 2vw; color: var(--muted); }
+  .bav { font-size: 3vw; line-height: 1; }
+  .bnm { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .bnm b { font-family: Adventor, sans-serif; font-weight: 700; font-size: 2.1vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bnm small { font-size: 1.2vw; color: var(--muted); }
+  .bheute { font-size: 1.15vw; font-weight: 800; color: var(--c); border: .14vw solid var(--c); border-radius: 99px; padding: .3vh .8vw; white-space: nowrap; }
+  .bsg { display: flex; flex-direction: column; align-items: center; min-width: 6vw; }
+  .bsg b { font-family: Adventor, sans-serif; font-weight: 700; font-size: 3vw; line-height: 1; color: var(--c); }
+  .bsg small { font-size: 1.1vw; color: var(--muted); }
   /* Spielerkarten: Avatar mit Ring in der Spielerfarbe = bereit; blass = wartet noch / nicht verbunden */
   .spk { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2.2vh 1.25vw; }
   .spk > div { height: 23.6vh; border-radius: 1.7vw; background: rgba(255,255,255,.05); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5vh; position: relative; padding: 0 .8vw; min-width: 0; }
@@ -809,7 +825,7 @@ function render() {
   frozenOverlay(); systemOverlay(); pinResetOverlay();
 
   document.getElementById('status').style.display = (!KIOSK && S.phase === 'lobby' && !S.anleitung) ? '' : 'none';
-  if (S.phase === 'lobby') { prevScores = {}; if (S.anleitung) return renderAnleitung(); anlKey = ''; return renderLobby(); }
+  if (S.phase === 'lobby') { prevScores = {}; if (S.anleitung) return renderAnleitung(); anlKey = ''; return lobbyOderBeste(); }
   if (S.phase === 'ident') return fresh ? renderIdent() : null;
   if (S.phase === 'opening') return fresh ? renderOpening() : null;
   if (S.phase === 'block') return fresh ? renderBlock() : null;
@@ -928,6 +944,38 @@ function joinBox() {
 const SHIFTS = [[0, 0], [1.2, .8], [.4, 1.6], [-.8, 1], [-1.2, -.4], [-.4, -1.4], [.8, -1], [1.2, .2]];
 const lobbyShift = () => { const [x, y] = SHIFTS[Math.floor(Date.now() / 20000) % SHIFTS.length]; return `translate(${x}vw, ${y}vh)`; };
 setInterval(() => { const l = document.querySelector('.lobby'); if (l) { l.classList.add('drift'); l.style.transform = lobbyShift(); } }, 20000);
+
+// ---------- Lobby im Wechsel mit der ewigen Bestenliste (auch als Bildschirmschoner) ----------
+// 30 s Lobby, 10 s Bestenliste, immer wieder. Tut sich in der Lobby etwas (jemand kommt, geht, ist bereit – nicht: Handy im Standby),
+// springt der Fernseher sofort zur Lobby zurück und die 30 s beginnen neu. Nur wenn schon jemand in der Liste steht.
+const LOBBY_MS = 30000, BESTE_MS = 10000;
+let besteSeit = Date.now(), besteZeigt = false, besteSig = '';
+const besteDa = () => !!(S && S.bestenliste && S.bestenliste.liste && S.bestenliste.liste.length);
+function lobbyOderBeste() {
+  const sig = S.players.map(p => p.id + (p.ready ? 'r' : '')).join(',');   // Standby eines Handys zählt nicht
+  if (sig !== besteSig) { besteSig = sig; besteSeit = Date.now(); besteZeigt = false; }
+  return besteZeigt && besteDa() ? renderBeste() : renderLobby();
+}
+setInterval(() => {
+  if (!S || S.phase !== 'lobby' || S.anleitung) { besteSeit = Date.now(); besteZeigt = false; return; }
+  const soll = besteDa() && (Date.now() - besteSeit) % (LOBBY_MS + BESTE_MS) >= LOBBY_MS;
+  if (soll !== besteZeigt) { besteZeigt = soll; soll ? renderBeste() : renderLobby(); }
+}, 500);
+function renderBeste() {
+  const b = S.bestenliste, L = b.liste.slice(0, 6);
+  const heute = new Set(S.players.map(p => p.name.trim().toLowerCase()));
+  const anfeuern = S.players.length ? 'Wer holt sich heute den nächsten Sieg?' : 'Wer holt sich den nächsten Sieg?';
+  app.innerHTML = topbar('') + `<div class="beste" style="transform:${lobbyShift()}">
+    <h2 class="glkopf">🏆 Die ewige <span>Bestenliste</span></h2>
+    <div class="glunter">${anfeuern} <span class="bsp">${b.spiele} ${b.spiele === 1 ? 'Spiel' : 'Spiele'} bisher</span></div>
+    <div class="bliste">${L.map((x, i) => `<div class="brow ${heute.has(x.name.toLowerCase()) ? 'heute' : ''}">
+      <span class="bpl">${i < 3 && x.siege ? ['🥇', '🥈', '🥉'][i] : i + 1}</span><span class="bav">${x.avatar}</span>
+      <span class="bnm"><b>${esc(x.name)}</b><small>${x.spiele} ${x.spiele === 1 ? 'Spiel' : 'Spiele'} · ${x.zweite}× Zweiter · ${x.dritte}× Dritter${x.serie >= 3 ? ` · 🔥 ${x.serie}er-Serie` : ''}</small></span>
+      ${heute.has(x.name.toLowerCase()) ? '<span class="bheute">heute dabei</span>' : ''}
+      <span class="bsg"><b>${x.siege}</b><small>${x.siege === 1 ? 'Sieg' : 'Siege'}</small></span></div>`).join('')}</div>
+  </div>`;
+}
+
 // ---------- Opener „Vier Kacheln“ (Spielstart und nach der Pause) ----------
 // Zeiten passen zu sounds/standard/opener.mp3 (128 BPM): Kacheln rasten bei 0,47 / 0,70 / 0,94 / 1,17 s ein,
 // „?“ bei 1,41 s, Logo ab 1,9 s, Glanz bei 3,75 s, Ausblenden ab 4,45 s. Nur transform/opacity – läuft auch am Pi.
