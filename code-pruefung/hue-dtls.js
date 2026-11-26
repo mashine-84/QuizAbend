@@ -40,7 +40,8 @@ https.request = (opt, cb) => {
   req.end = () => {
     let antwort = '{}';
     if (opt.method === 'GET' && opt.path.endsWith('entertainment_configuration/' + CONF))
-      antwort = JSON.stringify({ errors: [], data: [{ id: CONF, channels: [{ channel_id: 0 }, { channel_id: 1 }, { channel_id: 2 }] }] });
+      antwort = JSON.stringify({ errors: [], data: [{ id: CONF, status: 'active', channels: [   // absichtlich nicht von links nach rechts sortiert
+        { channel_id: 0, position: { x: 0.3 } }, { channel_id: 1, position: { x: -1 } }, { channel_id: 2, position: { x: 1 } }, { channel_id: 3, position: { x: -0.3 } }] }] });
     if (opt.method === 'PUT' && opt.path.endsWith('entertainment_configuration/' + CONF)) aktionen.push(JSON.parse(data).action);
     if (opt.method === 'PUT' && /groups\/200\/action/.test(opt.path)) gruppe.push(JSON.parse(data));
     const res = new EventEmitter(); res.statusCode = 200;
@@ -75,11 +76,11 @@ const dtls = require(path.join(TMP, 'hue-dtls.js'));
     srv = server(); await sleep(700);
     const r = await hue.lichtshow();
     await sleep(300);
-    ok(r.ok, 'lichtshow() meldet Erfolg: ' + r.text);
+    ok(r.ok, 'lichtshow() meldet Erfolg: ' + r.text.replace('4 Lampen', '4 Lampen'));
     ok(aktionen[0] === 'start' && aktionen[aktionen.length - 1] === 'stop', `Streaming gestartet und wieder gestoppt (${aktionen.join(' → ')})`);
     ok(srv.anzahl() === 125, `125 Bilder (5 s × 25) gesendet, ${srv.anzahl()} angekommen`);
     const letzte = srv.daten.subarray(srv.daten.lastIndexOf('HueStream'));
-    ok(letzte.length >= 52 + 3 * 7, 'jedes Bild enthält alle 3 Kanäle');
+    ok(letzte.length >= 52 + 4 * 7, 'jedes Bild enthält alle 4 Kanäle');
     srv.stop(); await sleep(400);
 
     console.log('Spiel mit Lichtstream:');
@@ -91,9 +92,9 @@ const dtls = require(path.join(TMP, 'hue-dtls.js'));
     await hue.onPhase('question'); await sleep(1600);
     let c = farbe(); ok(c && c[2] > c[0] && c[2] > c[1] && c[2] < 20000, `Frage: gedimmtes Blau (${c})`);
     const vorher = srv.anzahl();
-    await hue.onPhase('reveal', { q: 1, correct: 0 }); await sleep(300);
+    await hue.onPhase('reveal', { q: 1, correct: 0 }); await sleep(700);   // nach der Welle (0,6 s) sind alle Lampen dran
     c = farbe(); ok(c && c[0] > 60000 && c[2] < 10000, `Auflösung A: sofort volles Orange-Rot (${c})`);
-    await sleep(2400);
+    await sleep(2000);
     c = farbe(); ok(c && c[0] < 30000 && c[0] > c[2], `danach in derselben Farbe abgedunkelt, kein Weiß (${c})`);
     await sleep(2600);
     c = farbe(); ok(c && c[2] > c[0] && c[2] < 20000, `zurück im gedimmten Blau (${c})`);
@@ -103,6 +104,38 @@ const dtls = require(path.join(TMP, 'hue-dtls.js'));
     const nachLobby = srv.anzahl(); await sleep(400);
     ok(!hue.status().streamAktiv && aktionen[aktionen.length - 1] === 'stop' && srv.anzahl() === nachLobby, 'Lobby: Stream gestoppt, Lampen wieder frei');
     srv.stop(); await sleep(400);
+
+    console.log('Lichteffekte im Stream:');
+    // Farbe je Kanal im zuletzt empfangenen Bild; Reihenfolge links → rechts: 1, 3, 0, 2
+    const bild = () => { const i = srv.daten.lastIndexOf('HueStream'), f = {}; for (let o = i + 52; o + 7 <= srv.daten.length && srv.daten.subarray(o, o + 9).toString() !== 'HueStream'; o += 7) f[srv.daten[o]] = [srv.daten.readUInt16BE(o + 1), srv.daten.readUInt16BE(o + 3), srv.daten.readUInt16BE(o + 5)]; return f; };
+    const hell = c => Math.max(...c);
+    srv = server(); await sleep(700);
+    await hue.onPhase('ident'); await sleep(1200);
+    await hue.onPhase('intro'); await sleep(300);
+    await hue.onPhase('question', { kind: 'choice', n: 4, ends: Date.now() + 4200 }); await sleep(1500);
+    let f = bild();
+    const art = k => { const [r, g, b] = f[k] || [0, 0, 0]; return b >= r && b >= g ? 'blau' : g >= r ? 'grün' : g > r * 0.5 ? 'gelb' : 'rot'; };
+    ok(['1', '3', '0', '2'].map(art).join(',') === 'rot,blau,gelb,grün', `Antwortfarben A–D von links nach rechts (${['1', '3', '0', '2'].map(art).join(',')})`);
+    const verlauf = []; for (let i = 0; i < 30; i++) { verlauf.push(hell(bild()[1] || [0])); await sleep(50); }
+    ok(Math.max(...verlauf) > 2.5 * Math.min(...verlauf), `Herzschlag in den letzten Sekunden (hell ${Math.min(...verlauf)} … ${Math.max(...verlauf)})`);
+    await sleep(1500);
+    await hue.onPhase('reveal', { q: 2, correct: 0 }); await sleep(170);
+    f = bild();
+    ok(f[1][0] > 60000 && f[2][0] < 40000, `Welle: links schon Orange-Rot (${f[1]}), rechts noch nicht (${f[2]})`);
+    await sleep(700); f = bild();
+    ok(f[2][0] > 60000, `Welle ist rechts angekommen (${f[2]})`);
+    await hue.onPhase('special'); await sleep(600);
+    const an = () => { const b = bild(); return Object.keys(b).filter(k => hell(b[k]) > 50000).length; };
+    const zaehl = []; for (let i = 0; i < 6; i++) { zaehl.push(an()); await sleep(117); }
+    ok(zaehl.every(z => z === 1), `Lauflicht: immer genau eine Lampe hell (${zaehl.join(' ')})`);
+    await hue.onPhase('end', { winnerColor: '#4aa3f0' }); await sleep(400);
+    const feu = {}; for (let i = 0; i < 40; i++) { const b = bild(); for (const k in b) (feu[k] = feu[k] || []).push(hell(b[k])); await sleep(50); }
+    ok(Object.values(feu).filter(v => Math.max(...v) > 2 * Math.min(...v)).length >= 3, 'Feuerwerk: Lampen blitzen unterschiedlich auf und verglühen');
+    hue.setEffekt('welle', false);
+    await hue.onPhase('reveal', { q: 3, correct: 1 }); await sleep(90); f = bild();
+    ok(f[2][2] > 60000, 'Welle abgeschaltet: alle Lampen sofort in der Antwortfarbe');
+    hue.setEffekt('welle', true);
+    await hue.onPhase('lobby'); srv.stop(); await sleep(400);
 
     console.log('Stream geht nicht → normaler Weg:');
     gruppe.length = 0;
