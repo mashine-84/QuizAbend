@@ -58,7 +58,8 @@
   .tickets.two .abriss { padding: 1.3vw 1.2vw 1.5vw; font-size: 1.2vw; } .tickets.two .abriss b { font-size: 1.45vw; }
   .gl { min-width: 0; }
   .glkopf span { color: var(--c); }
-  .glkopf { font-family: Adventor, sans-serif; font-weight: 700; font-size: 2.65vw; letter-spacing: -0.01em; margin: 0 0 3vh; line-height: 1; }
+  .glkopf { font-family: Adventor, sans-serif; font-weight: 700; font-size: 2.65vw; letter-spacing: -0.01em; margin: 0 0 1.2vh; line-height: 1; }
+  .glunter { font-size: 1.6vw; color: var(--muted); margin: 0 0 3vh; } .glunter b { color: var(--ink); }
   /* Spielerkarten: Avatar mit Ring in der Spielerfarbe = bereit; blass = wartet noch / nicht verbunden */
   .spk { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2.2vh 1.25vw; }
   .spk > div { height: 23.6vh; border-radius: 1.7vw; background: rgba(255,255,255,.05); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5vh; position: relative; padding: 0 .8vw; min-width: 0; }
@@ -75,7 +76,6 @@
   .spk .off .nm { opacity: .5; }
   .spk .crown { position: absolute; top: 1.3vh; right: 1.1vw; font-size: 1.6vw; }
   .spk .ew { position: absolute; top: 1.3vh; left: 1vw; font-size: 1vw; font-weight: 800; background: rgba(255,255,255,.1); border-radius: 99px; padding: .3vh .55vw; white-space: nowrap; }
-  .gl .hint { margin-top: 4vh; text-align: center; font-size: 1.6vw; } .gl .hint b { color: var(--ink); }
   .gl .packs { text-align: center; }
   .hint { margin-top: 3vh; color: var(--muted); font-size: 1.5vw; text-align: center; }
   .hint b { color: var(--ink); }
@@ -973,20 +973,20 @@ function renderLobby() {
   const gm = S.pub && S.pub.host;   // Pub-Quiz: der Host moderiert und steht nicht bei den Spielern
   const vipName = (S.players.find(p => p.id === S.vip) || {}).name || '';
   const starter = gm ? `🎤 <b>${esc(gm.name)}</b>` : `<b>${esc(vipName)}</b>`;
-  const status = n === 0 ? 'Noch niemand da. Handy raus und den Code scannen!'
-    : need > 0 ? `<b>${n} von mindestens ${S.minPlayers}</b> da. Noch ${need === 1 ? 'eine Person' : need + ' Personen'}, dann kann es losgehen.`
-    : ready === n ? `<b>Alle bereit.</b> ${starter} startet das Spiel am Handy.`
-    : `<b>${ready} von ${n}</b> bereit. ${starter} startet, sobald alle so weit sind.`;
+  // Überschrift = Spielstand (gelb das Wichtige), darunter der nächste Schritt
+  const [kopf, unter] = n === 0 ? ['Noch <span>niemand</span> da', 'Handy raus und den Code scannen!']
+    : need > 0 ? [`Noch <span>${need === 1 ? 'eine Person' : need + ' Personen'}</span>, dann geht's los`, `${n} ${n === 1 ? 'ist' : 'sind'} da – mindestens ${S.minPlayers} braucht es.`]
+    : ready === n ? ['<span>Alle</span> bereit!', `${starter} startet das Spiel am Handy.`]
+    : [`<span>${ready} von ${n}</span> sind bereit`, `${starter} startet, sobald alle so weit sind.`];
   app.innerHTML = topbar('') + `
     <div class="lobby" style="transform:${lobbyShift()}">
       ${joinBox()}
       <div class="gl">
         ${gm ? `<div class="gmline" style="--pc:${gm.color}">🎤 Gamemaster: <span class="av">${gm.avatar}</span><b>${esc(gm.name)}</b> <small>· Pub-Quiz</small></div>` : ''}
-        <h2 class="glkopf">Wer spielt <span>mit?</span></h2>
+        <h2 class="glkopf">${kopf}</h2>
+        <div class="glunter">${unter}</div>
         <div class="spk">${karten.join('')}</div>
         ${packLine()}
-        ${soundHint()}
-        <div class="hint">${status}</div>
       </div>
     </div>`;
 }
@@ -1105,11 +1105,6 @@ function ctx() {
 // Browser erlauben Ton oft erst nach einem Klick/Tastendruck (am Pi ist das freigeschaltet)
 addEventListener('click', () => { try { ctx(); } catch (_) {} }, { once: true });
 addEventListener('keydown', () => { try { ctx(); } catch (_) {} }, { once: true });
-function soundHint() {
-  if (KIOSK || !soundOn()) return '';
-  try { if (ctx().state === 'running') return ''; } catch (_) { return ''; }
-  return '<div class="packs">🔊 Für Sounds einmal auf diesen Bildschirm klicken</div>';
-}
 const sfx = {
   tone(freq, start, dur, { type = 'sine', gain = 0.3, attack = 0.005, filter = null } = {}) {
     const c = ctx(), o = c.createOscillator(), g = c.createGain();
