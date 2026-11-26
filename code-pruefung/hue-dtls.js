@@ -114,11 +114,13 @@ const dtls = require(path.join(TMP, 'hue-dtls.js'));
     await hue.onPhase('intro'); await sleep(300);
     await hue.onPhase('question', { kind: 'choice', n: 4, ends: Date.now() + 4200 }); await sleep(1500);
     let f = bild();
-    const art = k => { const [r, g, b] = f[k] || [0, 0, 0]; return b >= r && b >= g ? 'blau' : g >= r ? 'grün' : g > r * 0.5 ? 'gelb' : 'rot'; };
-    ok(['1', '3', '0', '2'].map(art).join(',') === 'rot,blau,gelb,grün', `Antwortfarben A–D von links nach rechts (${['1', '3', '0', '2'].map(art).join(',')})`);
-    const verlauf = []; for (let i = 0; i < 30; i++) { verlauf.push(hell(bild()[1] || [0])); await sleep(50); }
-    ok(Math.max(...verlauf) > 2.5 * Math.min(...verlauf), `Herzschlag in den letzten Sekunden (hell ${Math.min(...verlauf)} … ${Math.max(...verlauf)})`);
-    await sleep(1500);
+    const blau = Object.values(f).every(c => c[2] > c[0] && c[2] > c[1]);
+    ok(blau && new Set(Object.values(f).map(String)).size === 1, 'Frage: alle Lampen gleiches gedimmtes Blau (keine Antwortfarben)');
+    // Countdown-Ende bei +4200 ms ab Fragebeginn: jetzt (≈1,5 s) sind noch ≈2,7 s übrig → Pulse bei 3, 2 und 1
+    const verlauf = []; for (let i = 0; i < 52; i++) { verlauf.push([Date.now(), hell(bild()[1] || [0])]); await sleep(50); }
+    const spitzen = verlauf.filter((v, i) => i > 0 && i < verlauf.length - 1 && v[1] > verlauf[i - 1][1] && v[1] >= verlauf[i + 1][1] && v[1] > 6000);
+    ok(spitzen.length >= 2 && spitzen.length <= 3, `ein Puls pro Sekunde (${spitzen.length} Spitzen in 2,6 s)`);
+    ok(spitzen.length >= 2 && spitzen[1][1] > spitzen[0][1], `jeder Puls heller als der vorige (${spitzen.map(v => v[1]).join(' < ')})`);
     await hue.onPhase('reveal', { q: 2, correct: 0 }); await sleep(170);
     f = bild();
     ok(f[1][0] > 60000 && f[2][0] < 40000, `Welle: links schon Orange-Rot (${f[1]}), rechts noch nicht (${f[2]})`);
