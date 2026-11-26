@@ -318,9 +318,7 @@ Das Quiz kann das Licht im Raum mitsteuern. Es braucht dafür nur die Hue Bridge
 
 - Lampen ohne Farbe werden nur gedimmt.
 - **Mit einem Entertainment-Bereich** läuft das Licht im Spiel als **Lichtstream** (Hue Entertainment, 25 Bilder pro Sekunde): Das Quiz rechnet Übergänge und Pulsieren selbst – weicher, genauer, ohne Zwischentöne wie Weiß oder Hellblau. Der Stream startet mit dem Opener und endet in der Lobby; so lange reagieren die Lampen des Bereichs nicht auf die Hue-App. Klappt er nicht oder bricht ab (z. B. Bridge-Neustart), nimmt das Quiz für dieses Spiel automatisch den normalen Weg und schreibt den Grund ins Protokoll („Hue: Lichtstream …“). Abschaltbar mit „Schneller Lichtweg (Stream)“.
-- **Lichteffekte im Stream** (einzeln abschaltbar unter „Lichteffekte im Stream“). Für die Welle zählt die Reihenfolge der Lampen von links nach rechts, so wie sie in der Hue-App im Entertainment-Bereich stehen:
-  - **Farbwelle bei der Auflösung:** Die Antwortfarbe läuft in einer halben Sekunde von links nach rechts durch den Raum.
-  - **Puls im Sekundentakt, wenn der Countdown rot wird:** In den letzten 5 Sekunden leuchtet das Licht bei jeder Zahl kurz auf, jedes Mal etwas heller.
+- **Lichteffekt im Stream** (abschaltbar): **Puls im Sekundentakt, wenn der Countdown rot wird** – in den letzten 5 Sekunden leuchtet das Licht bei jeder Zahl kurz auf, jedes Mal etwas heller.
 - **Ohne Stream** (Raum, Zone oder Schalter aus) schickt das Quiz jeden Lichtwechsel als einen Gruppenbefehl an den ganzen Bereich, so schalten alle Lampen gleichzeitig. Die Bridge erlaubt etwa einen Gruppenbefehl pro Sekunde.
 - Läuft gleichzeitig Hue Sync (App oder Sync Box) für denselben Bereich, ignoriert die Bridge die Befehle des Quiz. Hue Sync also vorher ausschalten.
 - Die Zugangsdaten liegen in `hue.json` im Quiz-Ordner (nicht in Git). „Verbindung trennen“ löscht sie.
