@@ -570,6 +570,7 @@ function hueUpdate() {
   const info = {};
   if (ph === 'reveal' && q) { info.q = state.idx; info.correct = q.kind === 'choice' ? q.correct : null; }
   if (ph === 'end') { const w = ranking()[0]; info.winnerColor = w && w.color; }
+  if (ph === 'question' && q) { info.kind = q.kind; info.n = (q.answers || []).length; info.ends = state.phaseEnds || 0; }   // für Lichteffekte im Stream
   hue.onPhase(ph, info).catch(() => {});
 }
 
@@ -2014,6 +2015,7 @@ const server = http.createServer(async (req, res) => {
     else if (a === 'stoptest') r = hue.stopTest();
     else if (a === 'lichtshow') r = await hue.lichtshow();
     else if (a === 'stream') r = hue.setStream(!!body.on);
+    else if (a === 'effekt') r = hue.setEffekt(String(body.name || ''), !!body.on);
     else if (a === 'forget') r = hue.forget();
     else r = { ok: false, text: 'Unbekannte Aktion' };
     return json(res, 200, r);
