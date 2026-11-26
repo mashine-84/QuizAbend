@@ -1,5 +1,6 @@
-// Philips Hue (Variante 1, Proof of Concept): Raumlicht passend zum Spiel steuern.
-// Spricht die Bridge direkt im Heimnetz über die CLIP-v2-Schnittstelle an (HTTPS, keine Zusatzpakete).
+// Philips Hue: Raumlicht passend zum Spiel steuern.
+// Spricht die Bridge direkt im Heimnetz über die CLIP-v2-Schnittstelle an (HTTPS, keine Zusatzpakete);
+// bei einem Entertainment-Bereich als Lichtstream (Hue Entertainment, siehe „Lichtstream“ und hue-dtls.js).
 // Zugangsdaten und Auswahl liegen in hue.json (nicht in Git).
 'use strict';
 const https = require('https');
@@ -74,6 +75,7 @@ async function targets() {
 
 // Ausgewählten Bereich in einzelne Lampen auflösen (und merken, was sie können)
 async function select(kind, id) {
+  await streamStop();
   if (!['entertainment_configuration', 'room', 'zone'].includes(kind)) return { ok: false, text: 'Unbekannte Auswahl.' };
   try {
     const t = (await clip('GET', `${kind}/${encodeURIComponent(id)}`)).json;
@@ -97,10 +99,11 @@ async function select(kind, id) {
 }
 
 function status() {
-  return { paired: !!cfg.appKey, ip: cfg.ip || null, enabled: !!cfg.enabled, target: cfg.target || null, lights: (cfg.lights || []).length, testing: !!testTimer };
+  return { paired: !!cfg.appKey, ip: cfg.ip || null, enabled: !!cfg.enabled, target: cfg.target || null, lights: (cfg.lights || []).length, testing: !!testTimer,
+    streamMoeglich: stromMoeglich(), stream: cfg.stream !== false, streamAktiv: stromAn(), streamFehler: stromKaputt };
 }
-function enable(on) { cfg.enabled = !!on; save(); if (!on) restore(); return { ok: true }; }
-function forget() { restore(); cfg = {}; try { fs.unlinkSync(FILE); } catch (_) {} return { ok: true }; }
+function enable(on) { cfg.enabled = !!on; save(); if (!on) { streamStop(); restore(); } return { ok: true }; }
+function forget() { streamStop(); restore(); cfg = {}; try { fs.unlinkSync(FILE); } catch (_) {} return { ok: true }; }
 
 // ---------- Senden (höchstens ~10 Befehle pro Sekunde, wie von Philips empfohlen) ----------
 const pending = new Map();    // Lampe -> nächster Zustand (neuere Befehle ersetzen ältere)
@@ -153,7 +156,10 @@ function xy(hex) {
 // Stimmung auf den ganzen Bereich: { color: '#rrggbb' } oder { mirek: 370 } (warmweiß), bri 1–100, ms Übergang,
 // pulse = Lampen pulsieren lassen (wird mit dem nächsten Befehl wieder gestoppt)
 let pulseTimer = null;
-function apply({ color, mirek, bri, ms = 800, pulse = false }, onSent) {   // onSent: läuft, sobald der Befehl wirklich gesendet ist
+function apply(mood, onSent) {   // onSent: läuft, sobald der Befehl wirklich gesendet ist
+  letzteStimmung = mood;
+  if (stromAn()) { clearTimeout(pulseTimer); streamStimmung(mood); if (onSent) setTimeout(onSent, 0); return; }
+  const { color, mirek, bri, ms = 800, pulse = false } = mood;
   if (!cfg.group) return;
   clearTimeout(pulseTimer);
   // Erst Farbe und Helligkeit setzen (beim Pulsieren ohne Übergang), das Pulsieren kommt als eigener Befehl danach:
@@ -169,7 +175,107 @@ function apply({ color, mirek, bri, ms = 800, pulse = false }, onSent) {   // on
     }, 600);
   } : onSent || null);
 }
-function stopPulse() { clearTimeout(pulseTimer); if (cfg.group) groupSend({ alert: 'none' }); }
+function stopPulse() { clearTimeout(pulseTimer); if (strom) strom.puls = false; if (cfg.group && !stromAn()) groupSend({ alert: 'none' }); }
+
+// ---------- Lichtstream (Hue Entertainment) ----------
+// Mit einem Entertainment-Bereich schickt das Quiz das Licht als verschlüsselten Stream (25 Bilder pro Sekunde) statt als
+// einzelne Befehle. Übergänge und Pulsieren rechnet das Quiz selbst: sofort, gleichmäßig, ohne Umweg über Weiß oder
+// Hellblau, und ohne die Grenze von ~1 Gruppenbefehl pro Sekunde. Klappt der Stream nicht oder bricht er ab,
+// nimmt das Quiz automatisch wieder den normalen Weg (Gruppenbefehle). Solange der Stream läuft, gehören die Lampen
+// dem Quiz (die Hue-App kommt nicht durch); in der Lobby gibt es sie zurück. Abschaltbar in den Einstellungen (cfg.stream).
+const STREAM_TAKT_MS = 40;
+const STREAM_GAMMA = 2;           // Helligkeit 1–100 % ist „gefühlt“ (wie bei der Bridge), der Stream erwartet Lichtwerte
+const WARMWEISS = '#ffb46b';      // ≈ 2700 K – im Stream statt Farbtemperatur (mirek 370)
+let strom = null, stromStart = null, stromKaputt = false, letzteStimmung = null;
+const stromMoeglich = () => !!(cfg.target && cfg.target.kind === 'entertainment_configuration' && cfg.clientKey);
+const streamGewollt = () => cfg.stream !== false && !stromKaputt && stromMoeglich();
+const stromAn = () => !!strom;
+function rgbVon(m) {
+  const f = Math.pow(Math.max(0, Math.min(100, m.bri == null ? 100 : m.bri)) / 100, STREAM_GAMMA), hex = m.color || WARMWEISS;
+  return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255 * f);
+}
+function streamFarbe(k, jetzt) {
+  const s = strom, p = s.ms > 0 ? Math.min(1, (jetzt - s.t0) / s.ms) : 1, w = p * p * (3 - 2 * p);   // weich ein- und ausblenden
+  const c = s.von[k].map((v, i) => v + (s.nach[k][i] - v) * w);
+  if (!s.puls) return c;
+  const f = 0.62 + 0.38 * Math.cos(2 * Math.PI * (jetzt - s.t0) / 1000);   // Pulsieren: einmal pro Sekunde
+  return c.map(v => v * f);
+}
+function streamStimmung(m) {
+  const s = strom, jetzt = Date.now(), ziel = rgbVon(m);
+  s.von = s.kanaele.map((_, k) => streamFarbe(k, jetzt));
+  s.nach = s.kanaele.map(() => ziel);
+  s.t0 = jetzt; s.ms = m.ms == null ? 800 : m.ms; s.puls = !!m.pulse;
+}
+function streamBild() {
+  const s = strom; if (!s) return;
+  const jetzt = Date.now();
+  try {
+    s.conn.send(s.dtls.hueStream(s.id, s.seq++, s.kanaele.map((id, k) => {
+      const [r, g, b] = streamFarbe(k, jetzt).map(v => Math.round(Math.max(0, Math.min(1, v)) * 65535));
+      return { id, r, g, b };
+    })));
+  } catch (e) { console.error('Hue: Lichtstream – Senden ging nicht:', e.message); streamAbbauen(); stromKaputt = true; if (letzteStimmung) apply(letzteStimmung); }
+}
+// Stream aufbauen (ohne darauf zu warten: bis er steht, gilt der normale Weg). Ein Fehler schaltet für dieses Spiel auf den normalen Weg.
+function streamStart() {
+  if (strom || stromStart || !streamGewollt()) return stromStart || Promise.resolve(stromAn());
+  const id = cfg.target.id;
+  stromStart = (async () => {
+    let gestartet = false;
+    try {
+      const dtls = require('./hue-dtls');
+      const r = await clip('GET', 'entertainment_configuration/' + id);
+      const conf = r.json && r.json.data && r.json.data[0];
+      if (!conf) throw new Error(`Bereich nicht gefunden (HTTP ${r.status})`);
+      const kanaele = (conf.channels || []).map(c => c.channel_id);
+      if (!kanaele.length) throw new Error('der Bereich hat keine Lampen');
+      const st = await clip('PUT', 'entertainment_configuration/' + id, { action: 'start' });
+      if (st.status !== 200) throw new Error(`Bridge lehnt den Start ab (HTTP ${st.status}${((st.json && st.json.errors) || []).map(e => ': ' + e.description).join('')})`);
+      gestartet = true;
+      const t0 = Date.now();
+      const conn = await dtls.connect({ host: cfg.ip, identity: cfg.appKey, psk: Buffer.from(cfg.clientKey, 'hex') });
+      const start = letzteStimmung ? rgbVon(letzteStimmung) : [0, 0, 0];
+      strom = { dtls, conn, id, kanaele, seq: 0, von: kanaele.map(() => start), nach: kanaele.map(() => start), t0: Date.now(), ms: 0, puls: false };
+      if (letzteStimmung) streamStimmung({ ...letzteStimmung, ms: 300 });
+      strom.timer = setInterval(streamBild, STREAM_TAKT_MS);
+      strom.wacht = setInterval(streamPruefen, 15000);
+      console.log(`Hue: Lichtstream läuft (${kanaele.length} Lampen, Verbindung nach ${Date.now() - t0} ms)`);
+      return true;
+    } catch (e) {
+      console.error('Hue: Lichtstream geht nicht, nehme den normalen Weg –', e.message);
+      stromKaputt = true;
+      if (gestartet) clip('PUT', 'entertainment_configuration/' + id, { action: 'stop' }).catch(() => {});
+      if (letzteStimmung) apply(letzteStimmung);   // normaler Weg übernimmt die aktuelle Stimmung
+      return false;
+    } finally { stromStart = null; }
+  })();
+  return stromStart;
+}
+// Alle 15 s: läuft der Stream an der Bridge noch? (Hue-App, anderes Programm oder Neustart der Bridge beenden ihn)
+async function streamPruefen() {
+  const s = strom; if (!s) return;
+  let conf;
+  try { const r = await clip('GET', 'entertainment_configuration/' + s.id); conf = r.json && r.json.data && r.json.data[0]; }
+  catch (e) { warn(e); return; }                     // Bridge kurz nicht erreichbar: einfach weiter senden
+  if (!conf || conf.status === 'active' || strom !== s) return;
+  console.error('Hue: Lichtstream wurde an der Bridge beendet – baue ihn neu auf');
+  streamAbbauen(); streamStart();
+}
+function streamAbbauen() {
+  const s = strom; strom = null; if (!s) return;
+  clearInterval(s.timer); clearInterval(s.wacht);
+  try { s.conn.close(); } catch (_) {}
+}
+async function streamStop() {
+  if (stromStart) await stromStart;
+  stromKaputt = false;                               // nächstes Spiel probiert es wieder
+  const s = strom; if (!s) return;
+  streamAbbauen();
+  await clip('PUT', 'entertainment_configuration/' + s.id, { action: 'stop' }).catch(warn);
+  console.log('Hue: Lichtstream beendet, Lampen wieder frei');
+}
+function setStream(on) { cfg.stream = !!on; save(); if (!on) { streamStop(); if (letzteStimmung) apply(letzteStimmung); } return { ok: true }; }
 
 // Zustand vor dem Spiel merken und danach wiederherstellen
 async function takeSnapshot() {
@@ -207,11 +313,12 @@ const ANSWER = ['#ff4a1c', '#1e9bff', '#ffc21a', '#3fd12e'];
 async function onPhase(phase, info = {}) {
   clearSeq();   // ein laufender Licht-Ablauf (Opener) endet mit jeder neuen Phase
   if (!cfg.enabled || !cfg.appKey || !(cfg.lights || []).length) return;
-  if (phase === 'lobby') return restore();
-  if (!(await ensureGroup())) return;
+  if (phase === 'lobby') { await streamStop(); return restore(); }
+  if (!(await ensureGroup()) && !streamGewollt()) return;   // ohne Gruppe geht nur der Stream
   // Lichtzustand vor dem Spiel merken, damit er am Ende wiederhergestellt wird – vor dem ersten Spiel-Licht,
   // also schon beim Opener (der läuft seit dem Opener vor dem Intro)
   if ((phase === 'ident' || phase === 'opening') && !snapshot) await takeSnapshot();
+  if (streamGewollt() && !strom) streamStart();   // Lichtstream fürs Spiel (läuft bis zur Lobby); bis er steht, gilt der normale Weg
   let mood, key = phase;
   switch (phase) {
     case 'ident': mood = { color: VIOLET, bri: 12, ms: 400 }; break;                      // Opener: abdunkeln, dann Ablauf (s. u.)
@@ -243,6 +350,11 @@ async function onPhase(phase, info = {}) {
     // Schritte hängen am tatsächlichen Senden (die Warteschlange kann verzögern), damit das Abdunkeln fertig ist,
     // bevor die Farbe wechselt; eine neue Phase bricht die Kette ab (seqGen)
     const gen = seqGen, live = () => gen === seqGen, later = (ms, f) => { if (live()) seqTimers.push(setTimeout(f, ms)); };
+    if (stromAn()) {   // Stream: exakt nach Zeit, Farbwechsel ohne Umweg – halten, in der Antwortfarbe abdunkeln, weich ins Frage-Blau
+      later(REVEAL_HOLD_MS, () => apply({ color: farbe, bri: 1, ms: REVEAL_FADE_MS }));
+      later(REVEAL_HOLD_MS + REVEAL_FADE_MS, () => apply({ color: DEEP, bri: 22, ms: 1500 }));
+      return;
+    }
     // Den Farbwechsel im Dunkeln schicken wir direkt an jede Lampe (ohne Übergang): Einzelbefehle dürfen ~10× pro Sekunde,
     // Gruppenbefehle nur ~1× – so ist es nur einen Augenblick ganz dunkel, bevor das Blau wieder hochkommt.
     later(REVEAL_HOLD_MS, () => apply({ color: farbe, bri: 1, ms: REVEAL_FADE_MS },                  // langsam in der Antwortfarbe abdunkeln
@@ -287,6 +399,7 @@ function testing() { return !!testTimer; }
 let showLaeuft = false;
 async function lichtshow() {
   if (showLaeuft) return { ok: false, text: 'Die Lichtshow läuft schon.' };
+  if (strom || stromStart) return { ok: false, text: 'Gerade läuft ein Spiel mit Lichtstream – die Lichtshow geht nur in der Lobby.' };
   const t = cfg.target;
   if (!t || t.kind !== 'entertainment_configuration') return { ok: false, text: 'Für die Lichtshow einen Unterhaltungsbereich wählen („Anderen Bereich wählen“ › Entertainment-Bereiche). Den legst du in der Hue-App an.' };
   if (!cfg.clientKey) return { ok: false, text: 'Für die Lichtshow fehlt ein Schlüssel – bitte „Verbindung trennen“ und die Bridge neu verbinden.' };
@@ -330,4 +443,4 @@ async function lichtshow() {
   }
 }
 
-module.exports = { status, discover, pair, targets, select, enable, forget, test, stopTest, testing, onPhase, lichtshow };
+module.exports = { status, discover, pair, targets, select, enable, forget, test, stopTest, testing, onPhase, lichtshow, setStream };
