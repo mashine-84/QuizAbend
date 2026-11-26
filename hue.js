@@ -185,7 +185,8 @@ function stopPulse() { clearTimeout(pulseTimer); if (strom) strom.puls = false; 
 // nimmt das Quiz automatisch wieder den normalen Weg (Gruppenbefehle). Solange der Stream läuft, gehören die Lampen
 // dem Quiz (die Hue-App kommt nicht durch); in der Lobby gibt es sie zurück. Abschaltbar in den Einstellungen (cfg.stream).
 const STREAM_TAKT_MS = 40;
-const STREAM_GAMMA = 2;           // Helligkeit 1–100 % ist „gefühlt“ (wie bei der Bridge), der Stream erwartet Lichtwerte
+const STREAM_GAMMA = 1;           // Helligkeit 1–100 % direkt als Farbwert: die Bridge behandelt Stream-Farben wie Bildschirmfarben
+                                  // und wendet selbst die Gammakorrektur an (mit 2 war alles doppelt abgedunkelt – 22 % und 40 % sahen gleich dunkel aus)
 const WARMWEISS = '#ffb46b';      // ≈ 2700 K – im Stream statt Farbtemperatur (mirek 370)
 let strom = null, stromStart = null, stromKaputt = false, letzteStimmung = null;
 const stromMoeglich = () => !!(cfg.target && cfg.target.kind === 'entertainment_configuration' && cfg.clientKey);
@@ -289,7 +290,7 @@ function herz(ende) {
     const rest = ende - jetzt; if (rest > 5000 || rest <= 0) return c;
     const seit = (5000 - rest) % 1000, nr = Math.floor((5000 - rest) / 1000);       // nr 0–4: Zahl 5 … 1
     const b = seit < 80 ? seit / 80 : Math.exp(-(seit - 80) / 220);
-    const m = Math.max(...c) || 1, hell = c.map(v => v / m * (0.18 + 0.09 * nr));    // 18 % … 54 % Lichtwert
+    const m = Math.max(...c) || 1, ziel = m + (1 - m) * (0.25 + 0.15 * nr), hell = c.map(v => v / m * ziel);   // immer heller als das Grundlicht, jeder Puls heller
     return mix(c, hell, b);
   };
 }
