@@ -343,6 +343,17 @@ const blockPacks = b => packs.filter(p => !b.disabled.includes(p.id));
 const usable = q => !q.spotify || (spotify.ready() && !hotspot());
 const blockPool = b => blockPacks(b).flatMap(p => p.questions).filter(usable);
 
+// Pause: nur die Hauptkategorien, aus denen im Block wirklich Fragen kommen – einmal zufällig gemischt und gemerkt,
+// damit die Anzeige nicht bei jedem Update springt. null, wenn sich nichts zuordnen lässt (z. B. Technik-Test).
+function blockKategorien(block) {
+  const memo = state.blockKat || (state.blockKat = {});
+  if (memo[block] !== undefined) return memo[block];
+  const gruppe = new Map(packs.map(p => [p.id, p.group]));
+  const namen = [...new Set(state.questions.filter(x => x.block === block && !x.tiebreak).map(x => gruppe.get(String(x.uid).split('#')[0])).filter(Boolean))];
+  for (let i = namen.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [namen[i], namen[j]] = [namen[j], namen[i]]; }
+  return (memo[block] = namen.length ? namen : null);
+}
+
 function blockSummary(b) {
   const ps = blockPacks(b), groups = [...new Set(ps.map(p => p.group))];
   const allOfGroup = g => packs.filter(p => p.group === g).every(p => ps.includes(p));
@@ -1296,7 +1307,7 @@ function baseView() {
     opening: state.phase === 'opening' ? state.opening : null,
     version: VERSION, packs: packSummary(), avatars: AVATARS,
     block: q ? { num: q.block + 1, total: q.blockCount, names: q.blockNames, q: q.blockQ, len: q.blockLen } : null,
-    nextBlock: (() => { const n = state.questions[state.idx + 1]; return n && q && n.block !== q.block ? { num: n.block + 1, total: n.blockCount, names: n.blockNames } : null; })(),
+    nextBlock: (() => { const n = state.questions[state.idx + 1]; return n && q && n.block !== q.block ? { num: n.block + 1, total: n.blockCount, names: blockKategorien(n.block) || n.blockNames } : null; })(),
     special: state.special && ['special', 'votes', 'reveal'].includes(ph) ? { mult: settings.special.mult } : null,
     risk: isRisk(q) && ['risk', 'intro', 'media', 'preview', 'question', 'locked', 'votes', 'reveal'].includes(ph),   // Risikofrage (vor der Frage angekündigt)
     // Stechen um Platz 1: wer darf antworten (nur in der Ansage und während der Stechen-Frage)
