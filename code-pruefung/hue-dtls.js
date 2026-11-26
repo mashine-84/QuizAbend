@@ -92,9 +92,9 @@ const dtls = require(path.join(TMP, 'hue-dtls.js'));
     await hue.onPhase('question'); await sleep(1600);
     let c = farbe(); ok(c && c[2] > c[0] && c[2] > c[1] && c[2] < 20000, `Frage: gedimmtes Blau (${c})`);
     const vorher = srv.anzahl();
-    await hue.onPhase('reveal', { q: 1, correct: 0 }); await sleep(700);   // nach der Welle (0,6 s) sind alle Lampen dran
+    await hue.onPhase('reveal', { q: 1, correct: 0 }); await sleep(300);
     c = farbe(); ok(c && c[0] > 60000 && c[2] < 10000, `Auflösung A: sofort volles Orange-Rot (${c})`);
-    await sleep(2000);
+    await sleep(2400);
     c = farbe(); ok(c && c[0] < 30000 && c[0] > c[2], `danach in derselben Farbe abgedunkelt, kein Weiß (${c})`);
     await sleep(2600);
     c = farbe(); ok(c && c[2] > c[0] && c[2] < 20000, `zurück im gedimmten Blau (${c})`);
@@ -106,7 +106,7 @@ const dtls = require(path.join(TMP, 'hue-dtls.js'));
     srv.stop(); await sleep(400);
 
     console.log('Lichteffekte im Stream:');
-    // Farbe je Kanal im zuletzt empfangenen Bild; Reihenfolge links → rechts: 1, 3, 0, 2
+    // Farbe je Kanal im zuletzt empfangenen Bild
     const bild = () => { const i = srv.daten.lastIndexOf('HueStream'), f = {}; for (let o = i + 52; o + 7 <= srv.daten.length && srv.daten.subarray(o, o + 9).toString() !== 'HueStream'; o += 7) f[srv.daten[o]] = [srv.daten.readUInt16BE(o + 1), srv.daten.readUInt16BE(o + 3), srv.daten.readUInt16BE(o + 5)]; return f; };
     const hell = c => Math.max(...c);
     srv = server(); await sleep(700);
@@ -121,21 +121,20 @@ const dtls = require(path.join(TMP, 'hue-dtls.js'));
     const spitzen = verlauf.filter((v, i) => i > 0 && i < verlauf.length - 1 && v[1] > verlauf[i - 1][1] && v[1] >= verlauf[i + 1][1] && v[1] > 6000);
     ok(spitzen.length >= 2 && spitzen.length <= 3, `ein Puls pro Sekunde (${spitzen.length} Spitzen in 2,6 s)`);
     ok(spitzen.length >= 2 && spitzen[1][1] > spitzen[0][1], `jeder Puls heller als der vorige (${spitzen.map(v => v[1]).join(' < ')})`);
-    await hue.onPhase('reveal', { q: 2, correct: 0 }); await sleep(170);
+    console.log('  (alle haben geantwortet, während der Puls läuft)');
+    await hue.onPhase('intro'); await hue.onPhase('question', { kind: 'choice', n: 4, ends: Date.now() + 2500 }); await sleep(600);
+    await hue.onPhase('locked'); await sleep(400);
+    const still = []; for (let i = 0; i < 30; i++) { still.push(hell(bild()[1] || [0])); await sleep(50); }
+    ok(Math.max(...still) - Math.min(...still) < 300, `Puls hört auf, sobald alle geantwortet haben (hell ${Math.min(...still)} … ${Math.max(...still)})`);
+    await hue.onPhase('reveal', { q: 2, correct: 0 }); await sleep(120);
     f = bild();
-    ok(f[1][0] > 60000 && f[2][0] < 40000, `Welle: links schon Orange-Rot (${f[1]}), rechts noch nicht (${f[2]})`);
-    await sleep(700); f = bild();
-    ok(f[2][0] > 60000, `Welle ist rechts angekommen (${f[2]})`);
+    ok(Object.values(f).every(c => c[0] > 60000 && c[2] < 10000), 'Auflösung: alle Lampen sofort gleichzeitig in der Antwortfarbe (keine Welle)');
     await hue.onPhase('special'); await sleep(600);
     const sp = []; for (let i = 0; i < 20; i++) { const b = bild(); sp.push(Object.values(b).map(hell)); await sleep(50); }
     ok(sp.every(r => Math.max(...r) - Math.min(...r) < 2000) && Math.max(...sp.flat()) > 2 * Math.min(...sp.flat()), 'Spezialfrage: alle Lampen pulsieren ruhig und gleich (kein Lauflicht)');
     await hue.onPhase('end', { winnerColor: '#4aa3f0' }); await sleep(600);
     const en = []; for (let i = 0; i < 20; i++) { const b = bild(); en.push(Object.values(b).map(hell)); await sleep(50); }
     ok(en.every(r => Math.max(...r) - Math.min(...r) < 2000), 'Siegerehrung: alle Lampen gleich (kein Feuerwerk)');
-    hue.setEffekt('welle', false);
-    await hue.onPhase('reveal', { q: 3, correct: 1 }); await sleep(90); f = bild();
-    ok(f[2][2] > 60000, 'Welle abgeschaltet: alle Lampen sofort in der Antwortfarbe');
-    hue.setEffekt('welle', true);
     await hue.onPhase('lobby'); srv.stop(); await sleep(400);
 
     console.log('Stream geht nicht → normaler Weg:');

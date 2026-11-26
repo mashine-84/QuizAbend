@@ -232,17 +232,13 @@ function streamStart() {
       if (!conf) throw new Error(`Bereich nicht gefunden (HTTP ${r.status})`);
       const kanaele = (conf.channels || []).map(c => c.channel_id);
       if (!kanaele.length) throw new Error('der Bereich hat keine Lampen');
-      // Platz im Raum (aus der Hue-App): Reihenfolge von links nach rechts für die Welle
-      const xyz = (conf.channels || []).map(c => c.position || {});
-      const order = kanaele.map((_, k) => k).sort((a, b) => ((xyz[a].x || 0) - (xyz[b].x || 0)) || ((xyz[a].y || 0) - (xyz[b].y || 0)));
-      const rang = []; order.forEach((k, i) => { rang[k] = i; });
       const st = await clip('PUT', 'entertainment_configuration/' + id, { action: 'start' });
       if (st.status !== 200) throw new Error(`Bridge lehnt den Start ab (HTTP ${st.status}${((st.json && st.json.errors) || []).map(e => ': ' + e.description).join('')})`);
       gestartet = true;
       const t0 = Date.now();
       const conn = await dtls.connect({ host: cfg.ip, identity: cfg.appKey, psk: Buffer.from(cfg.clientKey, 'hex') });
       const start = letzteStimmung ? rgbVon(letzteStimmung) : [0, 0, 0];
-      strom = { dtls, conn, id, kanaele, rang, seq: 0, von: kanaele.map(() => start), nach: kanaele.map(() => start), t0: Date.now(), ms: 0, puls: false };
+      strom = { dtls, conn, id, kanaele, seq: 0, von: kanaele.map(() => start), nach: kanaele.map(() => start), t0: Date.now(), ms: 0, puls: false };
       if (letzteStimmung) streamStimmung({ ...letzteStimmung, ms: 300 });
       strom.timer = setInterval(streamBild, STREAM_TAKT_MS);
       strom.wacht = setInterval(streamPruefen, 15000);
@@ -282,15 +278,10 @@ async function streamStop() {
   console.log('Hue: Lichtstream beendet, Lampen wieder frei');
 }
 // ---------- Lichteffekte (nur im Stream, einzeln abschaltbar: cfg.effekte) ----------
-const EFFEKTE = { welle: 'Farbwelle bei der Auflösung', herz: 'Puls im Sekundentakt, wenn der Countdown rot wird' };
-// (Lauflicht bei Spezial-/Risikofrage, Feuerwerk bei der Siegerehrung und Antwortfarben bei der Frage gab es kurz – zu unruhig)
+const EFFEKTE = { herz: 'Puls im Sekundentakt, wenn der Countdown rot wird' };
+// (Lauflicht, Feuerwerk, Antwortfarben und eine Farbwelle bei der Auflösung gab es kurz – zu unruhig bzw. mit wenigen Lampen nicht zu sehen)
 const effektAn = n => stromAn() && !(cfg.effekte && cfg.effekte[n] === false);
 const mix = (a, b, w) => a.map((v, i) => v + (b[i] - v) * w);
-// Auflösung: die Antwortfarbe läuft in 0,5 s von links nach rechts durch den Raum
-function welle() {
-  const s = strom, t0 = Date.now(), vorher = s.von, n = Math.max(1, s.kanaele.length - 1);
-  s.effekt = (k, jetzt, c) => { const d = jetzt - t0 - s.rang[k] / n * 500; return d <= 0 ? vorher[k] : d < 120 ? mix(vorher[k], c, d / 120) : c; };
-}
 // Countdown: sobald er am Fernseher rot wird (letzte 5 s), ein Puls pro Sekunde – genau beim Umspringen der Zahl,
 // jeder etwas heller als der vorige (gleiche Farbe, kurz aufleuchten, dann zurück)
 function herz(ende) {
@@ -305,6 +296,10 @@ function herz(ende) {
 // Frage: Puls am Ende des Countdowns
 function frageEffekte(info) {
   if (effektAn('herz') && info.ends) herz(info.ends);
+}
+function streamEffektAus() {   // Effekt beenden: weich (0,3 s) zurück zur Grundfarbe
+  const s = strom, jetzt = Date.now();
+  s.von = s.kanaele.map((_, k) => streamFarbe(k, jetzt)); s.effekt = null; s.t0 = jetzt; s.ms = 300;
 }
 function setEffekt(name, on) {
   if (!EFFEKTE[name]) return { ok: false, text: 'Unbekannter Effekt.' };
@@ -374,12 +369,16 @@ async function onPhase(phase, info = {}) {
     case 'end': mood = { color: info.winnerColor || GOLD, bri: 90, ms: 800, pulse: true }; break;
     default: return;
   }
-  if (key === lastMood) { if (phase === 'question' && stromAn()) frageEffekte(info); return; }
+  if (key === lastMood) {
+    // Frage-Licht bleibt; der Countdown-Puls gehört aber nur zur laufenden Frage – haben alle geantwortet
+    // (locked/votes), hört er sofort auf, auch wenn er schon angefangen hat
+    if (stromAn()) { if (phase === 'question') frageEffekte(info); else if (strom.effekt) streamEffektAus(); }
+    return;
+  }
   lastMood = key;
   apply(mood);
   if (stromAn()) {   // Lichteffekte im Stream
     if (phase === 'question') frageEffekte(info);
-    if (phase === 'reveal' && effektAn('welle')) welle();
   }
   // Opener „Vier Kacheln“: grob im Takt – mehr als ~1 Befehl pro Sekunde verträgt die Bridge nicht.
   // 1,25 s: Gold-Blitz (das „?“ erscheint bei 1,41 s, Lampen reagieren etwas verzögert), 2,35 s: sanft ins ruhige Violett.
