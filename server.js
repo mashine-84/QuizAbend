@@ -343,7 +343,7 @@ const blockPacks = b => packs.filter(p => !b.disabled.includes(p.id));
 const usable = q => !q.spotify || (spotify.ready() && !hotspot());
 const blockPool = b => blockPacks(b).flatMap(p => p.questions).filter(usable);
 
-// Pause: nur die Hauptkategorien, aus denen im Block wirklich Fragen kommen – einmal zufällig gemischt und gemerkt,
+// Pause und Block-Ansage: nur die Hauptkategorien, aus denen im Block wirklich Fragen kommen – einmal zufällig gemischt und gemerkt,
 // damit die Anzeige nicht bei jedem Update springt. null, wenn sich nichts zuordnen lässt (z. B. Technik-Test).
 function blockKategorien(block) {
   const memo = state.blockKat || (state.blockKat = {});
@@ -1306,7 +1306,7 @@ function baseView() {
     frozen: !!state.frozen, system: systemMsg,
     opening: state.phase === 'opening' ? state.opening : null,
     version: VERSION, packs: packSummary(), avatars: AVATARS,
-    block: q ? { num: q.block + 1, total: q.blockCount, names: q.blockNames, q: q.blockQ, len: q.blockLen } : null,
+    block: q ? { num: q.block + 1, total: q.blockCount, names: blockKategorien(q.block) || q.blockNames, q: q.blockQ, len: q.blockLen } : null,
     nextBlock: (() => { const n = state.questions[state.idx + 1]; return n && q && n.block !== q.block ? { num: n.block + 1, total: n.blockCount, names: blockKategorien(n.block) || n.blockNames } : null; })(),
     special: state.special && ['special', 'votes', 'reveal'].includes(ph) ? { mult: settings.special.mult } : null,
     risk: isRisk(q) && ['risk', 'intro', 'media', 'preview', 'question', 'locked', 'votes', 'reveal'].includes(ph),   // Risikofrage (vor der Frage angekündigt)
