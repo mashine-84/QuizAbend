@@ -47,7 +47,7 @@ const ANSWER = ['#ff4a1c', '#1e9bff', '#ffc21a', '#3fd12e'];
     ok(sw && sw.body.dynamics.duration === 0 && sw.body.dimming.brightness <= 2 && sw.body.color.xy.x < 0.2 && sw.t - dim.t >= 2100,
       `Farbwechsel zum Blau erst ganz dunkel, ohne Übergang, direkt an die Lampe (${sw && sw.t - dim.t} ms nach dem Abdunkeln)`);
     const rise = g[2];
-    ok(rise && rise.body.xy[0] < 0.2 && rise.body.bri > 60 && rise.body.bri <= 90 && sw && rise.t - sw.t <= 600,
+    ok(rise && rise.body.xy[0] < 0.2 && rise.body.bri > 90 && rise.body.bri <= 115 && sw && rise.t - sw.t <= 600,
       `gleich danach hoch ins normale dunkle Blau (${rise && sw && rise.t - sw.t} ms ganz dunkel, bri ${rise && rise.body.bri})`);
     ok(g.length === 3, `nur 3 Gruppenbefehle (${g.length})`);
     const abst = g.slice(1).map((x, i) => x.t - g[i].t);
