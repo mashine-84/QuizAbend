@@ -54,10 +54,15 @@ function pickNext(left, { prev = null, pos = 0, len = 1, weights = [1, 1, 1], fr
     q => !(MEDIEN.has(pa) && MEDIEN.has(art(q))),                    // Höhepunkte (Bild, Ton, Spotify …) verteilen
   );
 
+  // Verlauf vor Schwierigkeit und Art: Erst wenn feststeht, welche Fragen frisch sind (nie oder am längsten nicht
+  // gespielt), wird daraus Schwierigkeit und Art gewählt. Sonst kommt eine Frage, die als einzige ihrer Sorte
+  // (z. B. das einzige ★-Merkbild) in ihrem Topf liegt, immer wieder – egal, wie oft sie schon dran war.
+  const frisch = fresher(cand);
+
   // Schwierigkeit nach Spielfortschritt
-  const byLevel = [1, 2, 3].map(l => cand.filter(q => (q.level || 1) === l));
+  const byLevel = [1, 2, 3].map(l => frisch.filter(q => (q.level || 1) === l));
   const li = pickWeighted(weights.map((x, i) => byLevel[i].length ? x : 0), rnd);
-  let sub = li >= 0 ? byLevel[li] : cand;
+  let sub = li >= 0 ? byLevel[li] : frisch;
 
   // Grundton oder Würze – im Verhältnis dessen, was im Topf liegt; unter den Würze-Arten jede gleich wahrscheinlich
   const quiz = sub.filter(q => art(q) === 'quiz');

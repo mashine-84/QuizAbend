@@ -61,6 +61,30 @@ console.log('Teil 1: Regeln');
   const h = folge([{ pool: fragen(10, 'K', { kind: 'pin' }), plays: 3 }, { pool: [...fragen(5, 'K2', { kind: 'pin' }), ...fragen(5, 'A')], plays: 3 }]);
   ok(art(h[3]) === 'quiz', 'nach Kartenblock beginnt der nächste Block mit einer Quizfrage');
 }
+{
+  // Verlauf: Die einzige ★-Merkbildfrage war schon dran, die ★★-Merkbilder noch nicht → sie darf nicht wiederkommen,
+  // solange es noch ungespielte Merkbilder gibt (früher kam sie bei jeder ★-Merkbild-Ziehung, weil sie allein im Topf lag).
+  const verlauf = { M0: 1 };
+  const fresher = l => { if (l.length < 2) return l; const u = l.filter(q => !verlauf[q.uid]); if (u.length) return u;
+    const s = [...l].sort((a, b) => verlauf[a.uid] - verlauf[b.uid]); return s.slice(0, Math.max(1, Math.ceil(s.length / 3))); };
+  const pool = [...fragen(60, 'A'), { uid: 'M0', pack: 'M', kind: 'choice', level: 1, flash: 8 },
+    ...Array.from({ length: 5 }, (_, i) => ({ uid: 'M' + (i + 1), pack: 'M', kind: 'choice', level: 2, flash: 8 })), ...fragen(20, 'E', { kind: 'estimate' })];
+  let alt = 0, merk = 0;
+  for (let g = 0; g < 400; g++) {
+    const used = new Set(); let prev = null;
+    for (let k = 0; k < 10; k++) {
+      const q = pickNext(pool.filter(x => !used.has(x)), { prev, pos: k, len: 10, weights: [5, 1, 1], fresher }); used.add(q); prev = q;
+      if (q.flash) merk++; if (q.uid === 'M0') alt++;
+    }
+  }
+  ok(merk > 50 && alt === 0, `gespielte Frage kommt nicht wieder, solange ihre Art noch Frisches hat (${merk} Merkbilder, davon ${alt}× die gespielte)`);
+  // Alles gespielt: die am längsten nicht gespielte kommt zuerst
+  const v2 = { X0: 1, X1: 2, X2: 3, X3: 4, X4: 5, X5: 6 };
+  const fr2 = l => { const s = [...l].sort((a, b) => v2[a.uid] - v2[b.uid]); return s.slice(0, Math.max(1, Math.ceil(s.length / 3))); };
+  const alle = Array.from({ length: 6 }, (_, i) => ({ uid: 'X' + i, pack: 'X', kind: 'choice', level: 1 + (i % 3) }));
+  let frueh = 0; for (let g = 0; g < 200; g++) if (['X0', 'X1'].includes(pickNext(alle, { fresher: fr2 }).uid)) frueh++;
+  ok(frueh === 200, 'alles schon gespielt: es kommen die, die am längsten her sind');
+}
 
 // ---------- Teil 2: echte Pakete über den Server ----------
 const REPO = [process.env.FRAGEN_REPO, path.join(ROOT, 'fragen', '_repo'), path.join(ROOT, '..', 'quizabend-fragen')].find(p => p && fs.existsSync(path.join(p, 'pruefen.js')));
