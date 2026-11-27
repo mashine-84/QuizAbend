@@ -90,7 +90,7 @@ const warte = async (bed, ms = 30000) => { const t = Date.now(); while (!bed() &
     ok(p2.length === 4, `Neuer Fragenplan gezogen (${p2.length} Fragen)`);
     ok(JSON.stringify(p2) !== JSON.stringify(p1), 'Nach dem Spiel ist es nicht mehr derselbe Plan');
     ok(!p2.includes(p1[0]), 'Die gespielte erste Frage ist im neuen Plan nicht mehr dabei');
-    ok(p2.every(u => !p1.includes(u)), 'Der neue Plan nimmt nur Fragen, die noch nicht dran waren (genug frische im Topf)');
+    // Nur die erste Frage wurde gespielt – die anderen drei des alten Plans sind noch frisch und dürfen wiederkommen.
 
     verb.forEach(c => c.abort());
   } catch (e) {
