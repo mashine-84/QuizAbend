@@ -650,16 +650,19 @@ function buildGame() {
 }
 
 // ---------- Pub-Quiz: Fragenplan, den der Host vor dem Spiel bearbeiten kann ----------
-let pubPlan = null;   // { items: [{ uid, bi }], special: uid | null }
+let pubPlan = null;   // { items: [{ uid, bi }], special: uid | null, seit: Zeitpunkt der Erstellung }
 const byUid = () => { const m = new Map(); packs.forEach(pk => pk.questions.forEach(q => m.set(q.uid, q))); return m; };
 function planValid() {
   if (!pubPlan || !pubPlan.items.length) return false;
   const m = byUid();
+  // Ist eine Frage aus dem Plan inzwischen gespielt worden, ist der Plan verbraucht – sonst käme beim nächsten
+  // Pub-Quiz dasselbe Spiel noch einmal. Ein Plan, der noch nicht angespielt wurde, bleibt (mit Änderungen des Hosts).
+  if (pubPlan.items.some(it => history[it.uid] && history[it.uid] >= (pubPlan.seit || 0))) return false;
   return pubPlan.items.every(it => m.has(it.uid) && it.bi < settings.blocks.length);
 }
 function planEnsure() {
   if (planValid()) return;
-  pubPlan = { items: buildGame().map(q => ({ uid: q.uid, bi: q.bi })), special: null };
+  pubPlan = { items: buildGame().map(q => ({ uid: q.uid, bi: q.bi })), special: null, seit: Date.now() };
 }
 function planQuestions() {
   const m = byUid(), out = [];
