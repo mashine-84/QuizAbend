@@ -169,6 +169,7 @@
   .est { flex: 1; display: flex; flex-direction: column; gap: 12px; }
   .display { background: var(--papier); color: #1b1440; border-radius: 16px; padding: 16px; text-align: center; font-size: 40px; font-weight: 900; min-height: 82px; display: flex; align-items: baseline; justify-content: center; gap: 8px; font-variant-numeric: tabular-nums; }
   .display small { font-size: 20px; color: #6a5acd; }
+  .display.lang { font-size: 30px; } .display.lang small { font-size: 16px; }   /* lange Zahl + Einheit passt sonst nicht in die Zeile */
   .display .ph { font-size: 20px; color: #9a94bf; font-weight: 700; }
   .pad { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .pad button { font: inherit; font-size: 28px; font-weight: 800; border: none; border-radius: 14px; background: rgba(255,255,255,.12); color: var(--ink); min-height: 56px; }
@@ -1679,10 +1680,17 @@ function renderEstimate() {
     ? `Punkte nur bei höchstens ±${fmt(q.tolerance)} ${q.year ? (q.tolerance === 1 ? 'Jahr' : 'Jahren') : esc(q.unit || '')} Abweichung` : '';
   main.innerHTML = qline(q.year ? 'Jahreszahl!' : 'Schätze!', tol) + `
     <div class="est">
-      <div class="display"><span id="disp">${est ? esc(est) : `<span class="ph">${q.year ? 'Jahreszahl' : 'Zahl'} eingeben</span>`}</span>${q.unit ? `<small>${esc(q.unit)}</small>` : ''}</div>
+      <div class="display${(q.year ? est : estAnzeige(est)).length + (q.unit || '').length > 15 ? ' lang' : ''}"><span id="disp">${est ? esc(q.year ? est : estAnzeige(est)) : `<span class="ph">${q.year ? 'Jahreszahl' : 'Zahl'} eingeben</span>`}</span>${q.unit ? `<small>${esc(q.unit)}</small>` : ''}</div>
       <div class="pad">${keys.map(k => k ? `<button onclick="estKey('${k}')">${k}</button>` : '<span></span>').join('')}</div>
       <button class="btn" onclick="sendEstimate()" ${est && est !== '-' ? '' : 'disabled'}>Abschicken</button>
     </div>`;
+}
+// Anzeige beim Tippen mit Tausenderpunkten (42195 → 42.195), damit man sofort sieht, ob die Zahl stimmt –
+// ein Komma bleibt das Dezimalkomma (42,195). Gesendet wird weiter die getippte Zahl ohne Punkte.
+function estAnzeige(e) {
+  const [ganz, rest] = e.split(',');
+  const g = ganz.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return rest === undefined ? g : g + ',' + rest;
 }
 function estKey(k) {
   if (k === '⌫') est = est.slice(0, -1);
