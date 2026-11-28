@@ -7,6 +7,8 @@
     {"frage": "Test: Ein sehr langer Fragetext, damit man sieht, wie der Fernseher und das Handy mit fast 160 Zeichen umgehen – passt alles, bricht es sauber um?", "antworten": ["Eine lange Antwort mit vielen Wörtern darin", "Kurz", "Noch eine ziemlich lange Antwortmöglichkeit", "Mittel lang"], "schwierigkeit": 2},
     {"frage": "Test: Mit „💡 Übrigens“ und nur 10 Sekunden Zeit", "antworten": ["Richtig", "Falsch 1", "Falsch 2", "Falsch 3"], "zeit": 10, "schwierigkeit": 2, "info": "So sieht der Info-Text bei der Auflösung aus – am Fernseher und am Handy."},
     {"kategorie": "Bilderrätsel", "bild": "formen.png", "bildnachweis": "Bild: selbst erstellt (Testbild)", "frage": "Test-Bilderrätsel: Welche Farbe hat der Stern?", "antworten": ["Gelb", "Rot", "Blau", "Grün"], "schwierigkeit": 2},
-    {"kategorie": "Merkbild", "bild": "formen.png", "merken": 6, "frage": "Test-Merkbild: Wie viele grüne Dreiecke waren zu sehen?", "antworten": ["4", "3", "5", "2"], "schwierigkeit": 3}
+    {"kategorie": "Merkbild", "bild": "formen.png", "merken": 6, "frage": "Test-Merkbild: Wie viele grüne Dreiecke waren zu sehen?", "antworten": ["4", "3", "5", "2"], "schwierigkeit": 3},
+    {"kategorie": "Bilderrätsel", "bild": "formen.png", "bildnachweis": "Bild: selbst erstellt (Testbild)", "ausschnitt": [80, 18, 16, 25], "frage": "Test-Ausschnitt (ganzes Bild erst bei der Auflösung): Welche Form ist das?", "antworten": ["Stern", "Kreis", "Quadrat", "Dreieck"], "schwierigkeit": 1},
+    {"kategorie": "Bilderrätsel", "bild": "formen.png", "bildnachweis": "Bild: selbst erstellt (Testbild)", "ausschnitt": [12, 56, 14, 24], "aufdecken": true, "frage": "Test-Aufdecken (zoomt während der Frage heraus): Wie viele grüne Dreiecke hat das ganze Bild?", "antworten": ["4", "3", "5", "2"], "schwierigkeit": 2}
   ]
 }

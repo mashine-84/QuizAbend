@@ -168,11 +168,26 @@ function normalizeQuestion(q, dir, packName, packLevel) {
     // Quellenangabe (Fotograf, Lizenz) – steht klein am Bild; bei CC BY Pflicht
     if (q.bildnachweis) base.credit = String(q.bildnachweis).replace(/\s+/g, ' ').trim().slice(0, 120);
   }
+  // Bildausschnitt: in der Frage nur ein Teil des Bilds, bei der Auflösung das ganze; "aufdecken": langsam herauszoomen
+  if (q.ausschnitt !== undefined) {
+    const a = Array.isArray(q.ausschnitt) ? q.ausschnitt.map(Number) : [];
+    if (!base.image) throw new Error('"ausschnitt" braucht ein "bild"');
+    if (a.length !== 4 || !a.every(Number.isFinite)) throw new Error('"ausschnitt" muss [x, y, Breite, Höhe] in Prozent des Bilds sein, z. B. [40, 20, 25, 25]');
+    const [x, y, w, h] = a;
+    if (x < 0 || y < 0 || w < 5 || h < 5 || x + w > 100.001 || y + h > 100.001) throw new Error('"ausschnitt" muss im Bild liegen (x, y ab 0; Breite, Höhe mindestens 5; x + Breite und y + Höhe höchstens 100)');
+    base.crop = a;
+  }
+  if (q.aufdecken !== undefined) {
+    if (typeof q.aufdecken !== 'boolean') throw new Error('"aufdecken" muss true oder false sein');
+    if (q.aufdecken && !base.crop) throw new Error('"aufdecken" braucht einen "ausschnitt" (dort beginnt das Bild)');
+    base.reveal = !!q.aufdecken;
+  }
   if (q.merken !== undefined && q.merken !== false) {
     // Merkbild: das Bild erst nur kurz im Vollbild zeigen, die Frage kommt danach ohne Bild
     const secs = q.merken === true ? 8 : Number(q.merken);
     if (!base.image) throw new Error('"merken" braucht ein "bild"');
     if (q.video || q.audio) throw new Error('"merken" geht nicht zusammen mit "video" oder "audio"');
+    if (base.crop) throw new Error('"merken" geht nicht zusammen mit "ausschnitt"');
     if (!(secs >= 2 && secs <= 60)) throw new Error('"merken" muss true oder eine Sekundenzahl von 2 bis 60 sein');
     base.flash = secs;
   }
@@ -629,6 +644,7 @@ function prepareQuestion(q) {
   else if (q.kind === 'match') { out.label = 'Zuordnung'; out.icon = '🔗'; }
   else if (q.kind === 'tf') { out.label = 'Richtig oder falsch'; out.icon = '⚖️'; }
   else if (q.kind === 'estimate') { out.label = q.image ? 'Bilderrätsel · Schätzfrage' : 'Schätzfrage'; out.icon = q.image ? '🖼️' : '🔢'; }
+  else if (q.image && q.reveal) { out.label = 'Bilderrätsel · Aufdecken'; out.icon = '🔍'; }
   else if (q.image) { out.label = 'Bilderrätsel'; out.icon = '🖼️'; }
   out.timeMs = q.timeMs || (q.kind === 'match' ? MATCH_TIME_MS : q.kind === 'tf' ? TF_TIME_MS : q.kind === 'pin' || q.kind === 'land' ? MAP_TIME_MS : QUESTION_TIME_MS);
   return out;
@@ -1367,6 +1383,7 @@ function baseView() {
     if (ph !== 'intro' && ph !== 'media' && q.kind === 'match') vq.left = q.left;
     if (['question', 'locked', 'special', 'votes', 'reveal'].includes(ph)) {
       vq.text = q.text; vq.image = q.flash ? null : q.image;   // Merkbild: in der Frage kein Bild mehr
+      if (vq.image && q.crop) { vq.ausschnitt = q.crop; vq.aufdecken = !!q.reveal; }
       if (q.credit && (vq.image || ph === 'reveal')) vq.credit = q.credit;
       if (q.kind === 'choice') vq.answers = q.answers;
       if (q.kind === 'match') vq.right = q.right;
@@ -1431,6 +1448,7 @@ function gameFeatures() {
   for (const q of qs) {
     f.add(q.kind === 'pin' && q.naechster ? 'naechster' : q.kind);
     if (q.image && !q.flash) f.add('image');
+    if (q.crop) f.add(q.reveal ? 'aufdecken' : 'ausschnitt');
     if (q.flash) f.add('flash');
     if (q.audio) f.add('audio');
     if (q.video) f.add('video');

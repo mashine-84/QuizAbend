@@ -41,6 +41,12 @@ const ANL_BILD = {
     <path d="M182,80 L212,80" stroke="#f5b014" stroke-width="3" marker-end="url(#anQ)"/>${anlArrow('anQ')}
     ${anlPhone(222, 22, 66, 120, anlTiles(66, 120))}${anlFinger(270, 60)}<text x="255" y="16" font-size="11" fill="#b9b2e6" text-anchor="middle">Handy</text>
     <g transform="translate(150,178)"><circle r="18" fill="none" stroke="#f5b014" stroke-width="5"/><text y="6" font-size="15" fill="#f3ead8" text-anchor="middle">${i.zeit}</text></g>`,
+  // Ausschnitt: kleines Bild mit Lupe auf einen Teil, Pfeil zum vergrößerten Ausschnitt
+  ausschnitt: () => `<rect x="14" y="40" width="110" height="82" rx="6" fill="#2b5c8a"/><circle cx="96" cy="60" r="9" fill="#f5b014"/><path d="M14,122 L50,78 L76,106 L94,90 L124,122Z" fill="#2fb36d"/>
+    <rect x="80" y="48" width="30" height="26" fill="none" stroke="#f3ead8" stroke-width="2.5"/>
+    <path d="M114,60 L150,60" stroke="#f5b014" stroke-width="3"/><path d="M150,52 L162,60 L150,68Z" fill="#f5b014"/>
+    <rect x="170" y="22" width="118" height="102" rx="8" fill="#2b5c8a"/><circle cx="229" cy="73" r="34" fill="#f5b014"/>
+    <text x="229" y="160" font-size="13" fill="#f3ead8" text-anchor="middle">in der Frage</text><text x="69" y="160" font-size="13" fill="#9a94bf" text-anchor="middle">bei der Auflösung</text>`,
   bild: () => `<rect x="14" y="20" width="150" height="112" rx="8" fill="#2b5c8a"/><circle cx="130" cy="48" r="14" fill="#f5b014"/><path d="M14,132 L64,70 L100,108 L124,86 L164,132Z" fill="#2fb36d"/>
     <text x="236" y="40" font-size="12" fill="#f3ead8" text-anchor="middle">Welcher Berg</text><text x="236" y="56" font-size="12" fill="#f3ead8" text-anchor="middle">ist das?</text>
     ${ANL_C.map((c, k) => `<rect x="${180 + (k % 2) * 56}" y="${74 + Math.floor(k / 2) * 30}" width="50" height="24" rx="5" fill="${c}"/>`).join('')}

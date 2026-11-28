@@ -42,5 +42,7 @@ jobs:
         run: node code-pruefung/fragenplan.js
       - name: Wer kommt am nächsten ran? (Pin ohne Kreis)
         run: node code-pruefung/naechster.js
+      - name: Bildausschnitt und Aufdecken
+        run: node code-pruefung/ausschnitt.js
       - name: Hue-Lichtshow (DTLS gegen OpenSSL, Ablauf mit nachgebauter Bridge)
         run: node code-pruefung/hue-dtls.js
