@@ -10,6 +10,7 @@
     {"frage": "Test: Pegel fest eingestellt – wie viele Minuten hat ein Fußballspiel?", "schaetzen": 90, "anzeige": "pegel", "schwierigkeit": 1},
     {"frage": "Test: Slotmaschine fest eingestellt – wie hoch ist die Zugspitze?", "schaetzen": 2962, "einheit": "m", "anzeige": "slot", "schwierigkeit": 2},
     {"kategorie": "Bilderrätsel", "bild": "punkte-47.png", "frage": "Test: Schätzfrage mit Bild – wie viele weiße Punkte sind zu sehen?", "schaetzen": 47, "schwierigkeit": 2},
-    {"kategorie": "Merkbild", "bild": "punkte-23.png", "merken": 5, "frage": "Test: Merkbild-Schätzfrage – wie viele orange Punkte waren es?", "schaetzen": 23, "schwierigkeit": 3}
+    {"kategorie": "Merkbild", "bild": "punkte-23.png", "merken": 5, "frage": "Test: Merkbild-Schätzfrage – wie viele orange Punkte waren es?", "schaetzen": 23, "schwierigkeit": 3},
+    {"kategorie": "Bilderrätsel", "bild": "punkte-47.png", "bildnachweis": "Bild: selbst erstellt (Testbild)", "ausschnitt": [5, 50, 22, 45], "aufdecken": true, "frage": "Test: Schätzfrage mit Aufdecken – wie viele weiße Punkte hat das ganze Bild?", "schaetzen": 47, "schwierigkeit": 2}
   ]
 }
