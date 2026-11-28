@@ -99,6 +99,20 @@ for (const file of files.sort()) {
       else if (![path.join(d, name), path.join(d, sub, name)].some(f => fs.existsSync(f))) err(where, `"${field}": „${name}“ nicht gefunden (in den Ordner „${sub}“ neben der Datei legen)`);
     }
     if (q.merken !== undefined && !q.bild && !q.bildquelle) err(where, '"merken" braucht ein "bild"');
+    // Bildausschnitt: in der Frage nur ein Teil des Bilds (x, y, Breite, Höhe in %), bei der Auflösung das ganze
+    if (q.ausschnitt !== undefined) {
+      const a = Array.isArray(q.ausschnitt) ? q.ausschnitt.map(Number) : [];
+      if (!q.bild && !q.bildquelle) err(where, '"ausschnitt" braucht ein "bild"');
+      if (a.length !== 4 || !a.every(Number.isFinite)) err(where, '"ausschnitt" muss [x, y, Breite, Höhe] in Prozent des Bilds sein, z. B. [40, 20, 25, 25]');
+      else if (a[0] < 0 || a[1] < 0 || a[2] < 5 || a[3] < 5 || a[0] + a[2] > 100.001 || a[1] + a[3] > 100.001) err(where, '"ausschnitt" muss im Bild liegen (x, y ab 0; Breite, Höhe mindestens 5; x + Breite und y + Höhe höchstens 100)');
+      else if (a[2] > 70 && a[3] > 70) warn(where, '"ausschnitt" ist fast das ganze Bild – lohnt sich kaum');
+      if (q.merken !== undefined) err(where, '"merken" geht nicht zusammen mit "ausschnitt"');
+      if (q.karte !== undefined) warn(where, '"ausschnitt" bei Kartenfragen: das Bild ist dort sehr klein');
+    }
+    if (q.aufdecken !== undefined) {
+      if (typeof q.aufdecken !== 'boolean') err(where, '"aufdecken" muss true oder false sein');
+      if (q.aufdecken && q.ausschnitt === undefined) err(where, '"aufdecken" braucht einen "ausschnitt" (dort beginnt das Bild)');
+    }
     // Bilder aus freien Quellen: "bildquelle" → GitHub Actions („Bilder holen“) lädt das Bild und trägt "bild" + "bildnachweis" ein
     if (q.bildquelle !== undefined) {
       const bq = q.bildquelle, keys = bq && typeof bq === 'object' ? Object.keys(bq) : [];

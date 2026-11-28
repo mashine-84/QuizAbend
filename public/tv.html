@@ -831,7 +831,7 @@ function render() {
   if (stage === 'intro') return fresh ? renderIntro() : null;
   if (stage === 'media') return fresh ? (S.question.flash ? renderFlash() : S.question.audio ? renderAudio() : S.question.spotify ? renderSpotify() : renderVideo()) : null;
   if (stage === 'preview') return fresh ? renderPreview() : null;
-  if (inQ) return fresh ? renderMain() : updateMain();
+  if (inQ) { const r = fresh ? renderMain() : updateMain(); bildAusschnitt(); return r; }
   { const ov = document.getElementById('special'); if (ov && S.phase !== 'special') ov.remove(); }
   if (S.phase === 'scores') return fresh ? renderScores() : null;
   if (S.phase === 'end') return fresh ? renderEnd() : null;
@@ -1400,6 +1400,42 @@ function renderPreview() {
 }
 
 // ---------- Frage + Auflösung ----------
+// Bildausschnitt ("ausschnitt": [x, y, Breite, Höhe] in % des Bilds): In der Frage zeigt das Bild nur diesen Teil,
+// bei der Auflösung zoomt es auf das ganze Bild. "aufdecken": schon während der Frage langsam bis zum ganzen Bild.
+// Nur transform (GPU, auch am Pi flüssig); die Übergänge stehen inline mit !important, damit der Lite-Modus sie nicht abschaltet.
+function bildAusschnitt() {
+  const q = S.question, img = document.querySelector('.imgbox img');
+  if (!q || !q.ausschnitt || !img) return;
+  if (!img.complete || !img.naturalWidth) { img.onload = () => bildAusschnitt(); return; }
+  const box = img.parentElement, bw = box.clientWidth, bh = box.clientHeight;
+  if (!bw || !bh) return;
+  const nw = img.naturalWidth, nh = img.naturalHeight, s1 = Math.min(bw / nw, bh / nh);
+  const [x, y, w, h] = q.ausschnitt.map(v => v / 100);
+  // Mitte des Ausschnitts in Koordinaten der Box (das Bild liegt mit object-fit: contain mittig darin)
+  const px = (bw - nw * s1) / 2 + (x + w / 2) * nw * s1, py = (bh - nh * s1) / 2 + (y + h / 2) * nh * s1;
+  const k = Math.min(bw / (w * nw * s1), bh / (h * nh * s1));
+  const zu = `translate(${bw / 2 - px}px, ${bh / 2 - py}px) scale(${k})`;
+  const setze = (transform, sek) => {
+    img.style.setProperty('transition', sek ? `transform ${sek}s ${sek > 2 ? 'linear' : 'ease-in-out'}` : 'none', 'important');
+    img.style.setProperty('transform', transform, 'important');
+  };
+  // Zustand: 'zu' (Ausschnitt), 'auf' (läuft/ganzes Bild), 'halt' (angehalten)
+  const ziel = S.phase === 'reveal' ? 'ganz' : q.aufdecken ? (S.phase === 'question' ? (S.frozen ? 'halt' : 'auf') : 'ganz') : 'zu';
+  if (img.dataset.zustand === ziel + ':' + S.qNum) return;
+  const erstes = !img.dataset.zustand || !img.dataset.zustand.endsWith(':' + S.qNum);
+  img.style.transformOrigin = `${px}px ${py}px`;
+  if (erstes) { setze(zu, 0); void img.offsetWidth; }   // erst den Ausschnitt setzen, dann (ggf.) losfahren
+  if (ziel === 'zu') setze(zu, 0);
+  else if (ziel === 'ganz') {
+    // Läuft schon ein (langsamer) Zoom zum ganzen Bild, startet „none“ keinen neuen Übergang – erst anhalten, dann zügig fertig
+    if (!erstes) { setze(getComputedStyle(img).transform, 0); void img.offsetWidth; }
+    setze('none', erstes && S.phase !== 'reveal' ? 0 : 1.2);
+  }
+  else if (ziel === 'halt') setze(getComputedStyle(img).transform, 0);   // Spiel angehalten: Zoom bleibt stehen
+  else setze('none', Math.max(0.5, (deadline - Date.now()) / 1000));   // Aufdecken bis zum Ende der Fragezeit
+  img.dataset.zustand = ziel + ':' + S.qNum;
+}
+
 function renderMain() {
   const q = S.question;
   const head = `<div class="qcard ${q.image || q.kind === 'match' || q.kind === 'tf' || q.map ? 'compact' : ''}"><div class="cat">${esc(q.category)}</div><div class="qtext">${esc(q.text)}</div></div>`;
