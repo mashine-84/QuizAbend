@@ -60,6 +60,12 @@ const ANL_BILD = {
     ${anlPin(160, 110, '#f5b014', '', 1.5)}<circle cx="160" cy="72.5" r="6" fill="#f3ead8"/>
     ${anlPin(178, 100, '#e5484d', '🦊')}${anlPin(90, 70, '#3e8ef7', '🐼')}<line x1="90" y1="70" x2="160" y2="110" stroke="#3e8ef7" stroke-width="2" stroke-dasharray="5 4"/>
     <g transform="translate(250,40)"><circle r="16" fill="rgba(255,255,255,.18)"/><text y="6" font-size="17" text-anchor="middle">🤏</text></g>`,
+  // Wer kommt am nächsten ran?: kein Kreis, Linien mit Kilometern zu jedem Pin, der Nächste hervorgehoben
+  naechster: i => `<rect width="300" height="210" fill="#1d2c55"/><path d="M40,30 L140,20 L190,50 L230,40 L270,90 L250,160 L170,190 L90,180 L50,130 Z" fill="#3a3570" stroke="#7d77bd" stroke-width="2"/>
+    ${[[212, 118, '#e5484d', '🦊', '60 km', 1, 238, 128], [72, 70, '#3e8ef7', '🐼', '310 km', .5, 38, 84], [96, 172, '#2fb36d', '🐸', '240 km', .5, 60, 186]].map(([x, y, c, e, km, o, lx, ly]) =>
+      `<g opacity="${o}"><line x1="${x}" y1="${y}" x2="160" y2="135" stroke="${c}" stroke-width="2.5"/><rect x="${lx - 24}" y="${ly - 12}" width="48" height="17" rx="8.5" fill="#f3ead8"/><text x="${lx}" y="${ly + 1}" font-size="10.5" fill="#1b1440" text-anchor="middle">${km}</text>${anlPin(x, y, c, e)}</g>`).join('')}
+    ${anlPin(160, 135, '#f5b014', '', 1.5)}<circle cx="160" cy="97.5" r="6" fill="#f3ead8"/>
+    <text x="150" y="203" font-size="12" fill="#8ff0b5" text-anchor="middle">${i.scoring === 'level' ? 'am nächsten: Punkte' : 'am nächsten: +200'}</text>`,
   land: () => `<rect width="300" height="210" fill="#1d2c55"/><path d="M30,60 L100,40 L120,90 L80,130 L30,120Z" fill="#3a3570" stroke="#7d77bd" stroke-width="2"/><path d="M100,40 L180,30 L200,80 L120,90Z" fill="#3a3570" stroke="#7d77bd" stroke-width="2"/>
     <path d="M120,90 L200,80 L230,130 L160,160 L80,130Z" fill="rgba(0,0,0,.45)" transform="translate(0,4)"/><path d="M120,90 L200,80 L230,130 L160,160 L80,130Z" fill="#e5484d" stroke="#fff" stroke-width="3" transform="translate(0,-5)"/>
     <path d="M200,80 L270,70 L280,140 L230,130Z" fill="#3a3570" stroke="#7d77bd" stroke-width="2"/>${anlFinger(160, 118)}

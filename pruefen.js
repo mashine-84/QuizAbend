@@ -172,7 +172,11 @@ for (const file of files.sort()) {
         }
         if (q.toleranz !== undefined && !(Number(q.toleranz) > 0)) err(where, '"toleranz" muss eine Entfernung in km über 0 sein');
         if (q.radius !== undefined && !(Number(q.radius) > 0)) err(where, '"radius" muss eine Entfernung in km über 0 sein (bis dahin zählt der Pin als richtig)');
+        // „Wer kommt am nächsten ran?“: kein Kreis – wer am nächsten dran ist, gewinnt
+        if (q.naechster !== undefined && typeof q.naechster !== 'boolean') err(where, '"naechster" muss true oder false sein');
+        if (q.naechster && q.radius !== undefined) err(where, '"naechster": true und "radius" passen nicht zusammen – bei „Wer kommt am nächsten ran?“ gibt es keinen Kreis');
       }
+      if (q.naechster !== undefined && q.ort === undefined) err(where, '"naechster" gibt es nur bei Pin-Fragen (mit "ort")');
       if (q.land !== undefined && KARTEN[map] && !KARTEN[map].has(String(q.land).toLowerCase())) err(where, `„${q.land}“ gibt es auf der Karte „${map}“ nicht (Namen wie in der Karte, z. B. „Nordmazedonien“, „Moldau“)`);
     }
     if (q.zuordnen !== undefined) {

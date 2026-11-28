@@ -1509,7 +1509,7 @@ function kPanel(side, q) {
   if (n) list.insertAdjacentHTML('afterbegin', `<div class="krow khead"><span class="vav"></span><b>Spieler</b><i>${reveal ? (q.kind === 'pin' ? 'Abstand' : 'Getippt') : ''}</i></div>`);
   if (reveal && q.name) {
     const L = q.name.length, sz = L > 18 ? 'xs' : L > 11 ? 's' : '';
-    side.insertAdjacentHTML('afterbegin', `<div class="kres"><span class="lbl">Richtig</span><span class="big ${sz}">${esc(q.name)}</span>${q.kind === 'pin' && q.radius ? `<small>Treffer bis ${kKm(q.radius)}</small>` : ''}</div>`);
+    side.insertAdjacentHTML('afterbegin', `<div class="kres"><span class="lbl">Richtig</span><span class="big ${sz}">${esc(q.name)}</span>${q.kind === 'pin' && q.naechster ? '<small>🎯 Am nächsten dran gewinnt</small>' : q.kind === 'pin' && q.radius ? `<small>Treffer bis ${kKm(q.radius)}</small>` : ''}</div>`);
   }
 }
 function renderGeo(byId) {
@@ -1541,7 +1541,7 @@ function renderGeo(byId) {
     const u = kUnit(svg);
     const players = S.players.filter(p => byId[p.id]);
     if (S.phase === 'question' || S.phase === 'locked' || S.phase === 'special') {
-      side.innerHTML = `<div class="khint">${q.kind === 'pin' ? `📍 Setzt am Handy einen Pin!${q.radius ? `<small>Richtig bis ${kKm(q.radius)} daneben</small>` : ''}` : q.map === 'deutschland' ? '🗺️ Tippt am Handy auf das Bundesland!' : '🗺️ Tippt am Handy auf das Land!'}<small>Zoomen mit zwei Fingern</small></div>`;
+      side.innerHTML = `<div class="khint">${q.kind === 'pin' ? (q.naechster ? '🎯 Setzt am Handy einen Pin!<small>Wer am nächsten dran ist, gewinnt</small>' : `📍 Setzt am Handy einen Pin!${q.radius ? `<small>Richtig bis ${kKm(q.radius)} daneben</small>` : ''}`) : q.map === 'deutschland' ? '🗺️ Tippt am Handy auf das Bundesland!' : '🗺️ Tippt am Handy auf das Land!'}<small>Zoomen mit zwei Fingern</small></div>`;
       return;
     }
     if (q.kind === 'pin') {

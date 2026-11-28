@@ -1702,7 +1702,7 @@ function renderGeoQ() {
   const q = S.question, me = S.me, pin = q.kind === 'pin';
   main.innerHTML = qline(S.risk ? 'Nur wenn du sicher bist!' : '', S.risk ? '<span class="rkhint">Falsch kostet Punkte – du kannst auch aussetzen.</span>' : '') + `<div class="kcard">${esc(q.text)}</div>
     <div class="kmap" id="kmap"><div class="kload">Karte lädt …</div></div>
-    <p class="khelp">${pin ? `Tippen setzt den Pin – nochmal tippen versetzt ihn.${q.radius ? ` <b>Richtig bis ${kKm(q.radius)} daneben.</b>` : ''}` : 'Tippe auf das ' + (q.map === 'deutschland' ? 'Bundesland' : 'Land') + '. Kleine Länder haben einen Kreis.'} Zoomen mit zwei Fingern oder ＋/－.</p>
+    <p class="khelp">${pin ? `Tippen setzt den Pin – nochmal tippen versetzt ihn.${q.naechster ? ' <b>Wer am nächsten dran ist, gewinnt.</b>' : q.radius ? ` <b>Richtig bis ${kKm(q.radius)} daneben.</b>` : ''}` : 'Tippe auf das ' + (q.map === 'deutschland' ? 'Bundesland' : 'Land') + '. Kleine Länder haben einen Kreis.'} Zoomen mit zwei Fingern oder ＋/－.</p>
     <button class="btn" id="kgo" onclick="sendGeo()" ${geo ? '' : 'disabled'}>${pin ? '📍 Hier ist es' : '✓ Dieses ' + (q.map === 'deutschland' ? 'Bundesland' : 'Land')}</button>${skipBtn()}`;
   const host = document.getElementById('kmap'), qn = S.qNum;
   loadKarte(q.map).then(m => {
@@ -1809,7 +1809,11 @@ function renderResult() {
   const r = S.me.result || { answered: false };
   const q = S.question;
   let cls, title, detail;
-  if (q.kind === 'pin') {
+  if (q.kind === 'pin' && q.naechster) {   // Wer kommt am nächsten ran?
+    cls = !r.answered ? 'none' : r.correct ? 'ok' : r.gain ? 'mid' : 'bad';
+    title = !r.answered ? 'Kein Pin' : r.correct ? 'Am nächsten dran! 🎯' : 'Jemand war näher';
+    detail = `<p>${q.name ? `<b>${esc(q.name)}</b><br>` : ''}${r.answered ? `Du lagst <b>${kKm(r.km)}</b> daneben` : ''}<br><small>wer am nächsten dran ist, gewinnt</small></p>`;
+  } else if (q.kind === 'pin') {
     cls = !r.answered ? 'none' : r.correct ? 'ok' : r.gain ? 'mid' : 'bad';
     title = !r.answered ? 'Kein Pin' : r.correct ? (r.km < q.radius / 5 ? 'Volltreffer! 🎯' : 'Richtig! 🎉') : r.gain ? 'Knapp daneben' : 'Daneben';
     detail = `<p>${q.name ? `<b>${esc(q.name)}</b><br>` : ''}${r.answered ? `Du lagst <b>${kKm(r.km)}</b> daneben` : ''}<br><small>richtig bis ${kKm(q.radius)}${r.outOfRange ? ` · ab ${kKm(q.range)} keine Punkte` : ''}</small></p>`;

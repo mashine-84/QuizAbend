@@ -40,5 +40,7 @@ jobs:
         run: node code-pruefung/meldungen.js
       - name: Fragenplan im Pub-Quiz (nach dem Spiel neu gezogen)
         run: node code-pruefung/fragenplan.js
+      - name: Wer kommt am nächsten ran? (Pin ohne Kreis)
+        run: node code-pruefung/naechster.js
       - name: Hue-Lichtshow (DTLS gegen OpenSSL, Ablauf mit nachgebauter Bridge)
         run: node code-pruefung/hue-dtls.js

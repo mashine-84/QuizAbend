@@ -8,6 +8,8 @@
     {"frage": "Test: Kleines Land mit Tippkreis – tippe auf Luxemburg", "karte": "europa", "land": "Luxemburg", "schwierigkeit": 2},
     {"frage": "Test: Bundesland – tippe auf Bremen", "karte": "deutschland", "land": "Bremen", "schwierigkeit": 2},
     {"kategorie": "Bilderrätsel", "bild": "flagge.png", "frage": "Test: Land mit Bild – zu welchem Land gehört diese Flagge? Tippe es an!", "karte": "europa", "land": "Österreich", "schwierigkeit": 1},
-    {"kategorie": "Bilderrätsel", "bild": "flagge.png", "frage": "Test: Pin mit Bild – wo liegt die Hauptstadt dieses Landes?", "karte": "europa", "ort": [48.21, 16.37], "name": "Wien", "radius": 50, "schwierigkeit": 2}
+    {"kategorie": "Bilderrätsel", "bild": "flagge.png", "frage": "Test: Pin mit Bild – wo liegt die Hauptstadt dieses Landes?", "karte": "europa", "ort": [48.21, 16.37], "name": "Wien", "radius": 50, "schwierigkeit": 2},
+    {"frage": "Test: Wer kommt am nächsten ran? (Welt, ohne Kreis) – wo liegt das Wrack der Titanic?", "karte": "welt", "ort": [41.73, -49.95], "name": "Titanic-Wrack", "naechster": true, "schwierigkeit": 2},
+    {"frage": "Test: Wer kommt am nächsten ran? (Deutschland) – wo liegt der Mittelpunkt Deutschlands?", "karte": "deutschland", "ort": [51.16, 10.45], "name": "Niederdorla", "naechster": true, "schwierigkeit": 1}
   ]
 }
