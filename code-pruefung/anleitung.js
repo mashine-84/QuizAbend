@@ -8,7 +8,7 @@ const raw = JSON.parse(fs.readFileSync(path.join(ROOT, 'anleitung.json'), 'utf8'
 const ids = raw.folien.map(f => f.id);
 ok(raw.folien.every(f => f.id && f.titel), 'Jede Folie hat id und titel');
 ok(new Set(ids).size === ids.length, 'Folien-IDs sind eindeutig');
-const ARTEN = ['choice', 'estimate', 'pin', 'land'], MERKMALE = ['choice', 'image', 'flash', 'estimate', 'pin', 'land', 'match', 'tf', 'audio', 'video', 'spotify', 'pub', 'special', 'risk', 'pause'];
+const ARTEN = ['choice', 'estimate', 'pin', 'land'], MERKMALE = ['choice', 'image', 'flash', 'estimate', 'pin', 'naechster', 'land', 'match', 'tf', 'audio', 'video', 'spotify', 'pub', 'special', 'risk', 'pause'];
 ok(raw.folien.every(f => !f.uebung || ARTEN.includes(f.uebung.art)), 'uebung.art ist bekannt');
 ok(raw.folien.every(f => !f.nurWenn || [].concat(f.nurWenn).every(k => MERKMALE.includes(k))), 'nurWenn nennt nur bekannte Merkmale');
 ok(raw.folien.every(f => !f.wertung || ['speed', 'level'].includes(f.wertung)), 'wertung ist speed oder level');

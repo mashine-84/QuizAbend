@@ -244,11 +244,16 @@ function normalizeQuestion(q, dir, packName, packLevel) {
       if (o.length !== 2 || !(Math.abs(o[0]) <= 90) || !(Math.abs(o[1]) <= 180)) throw new Error('"ort" muss [Breite, Länge] sein, z. B. [45.76, 4.84] für Lyon');
       if (q.toleranz !== undefined && !(Number(q.toleranz) > 0)) throw new Error('"toleranz" muss eine Entfernung in km über 0 sein');
       if (!inMapField(map, o)) throw new Error(`"ort" liegt außerhalb der Karte „${map}“ – Breite und Länge vertauscht?`);
+      if (q.naechster !== undefined && typeof q.naechster !== 'boolean') throw new Error('"naechster" muss true oder false sein');
+      if (q.naechster && q.radius !== undefined) throw new Error('"naechster": true und "radius" passen nicht zusammen – bei „Wer kommt am nächsten ran?“ gibt es keinen Kreis');
       if (q.radius !== undefined && !(Number(q.radius) > 0)) throw new Error('"radius" muss eine Entfernung in km über 0 sein (bis dahin zählt der Pin als richtig)');
-      const radius = q.radius !== undefined ? Number(q.radius) : MAP_RADIUS_KM[map] || 100;
+      // „Wer kommt am nächsten ran?“: kein Kreis, wer am nächsten dran ist, gewinnt (radius 0)
+      const naechster = !!q.naechster;
+      const radius = naechster ? 0 : q.radius !== undefined ? Number(q.radius) : MAP_RADIUS_KM[map] || 100;
       const range = Math.max(q.toleranz !== undefined ? Number(q.toleranz) : MAP_RANGE_KM[map] || 1000, radius * 2);
-      return { ...base, kind: 'pin', map, target: o, name: q.name ? String(q.name) : '', radius, range };
+      return { ...base, kind: 'pin', map, target: o, name: q.name ? String(q.name) : '', radius, range, naechster };
     }
+    if (q.naechster !== undefined) throw new Error('"naechster" gibt es nur bei Pin-Fragen (mit "ort")');
     if (q.land !== undefined) {
       const region = findRegion(map, q.land);
       if (!region) throw new Error(`"${q.land}" gibt es auf der Karte "${map}" nicht${map === 'deutschland' ? ' (dort gibt es nur die Bundesländer)' : ''}`);
@@ -618,6 +623,7 @@ function prepareQuestion(q) {
   else if (q.video) { out.label = 'Seh-Test' + suffix; out.icon = '👀'; }
   else if (q.audio) { out.label = 'Soundcheck' + suffix; out.icon = '🎧'; }
   else if (q.spotify) { out.label = 'Spotify' + suffix; out.icon = '🎵'; out.brand = 'spotify'; }
+  else if (q.kind === 'pin' && q.naechster) { out.label = 'Wer kommt am nächsten ran?'; out.icon = '🎯'; }
   else if (q.kind === 'pin') { out.label = 'Wo liegt das?'; out.icon = '📍'; }
   else if (q.kind === 'land') { out.label = q.map === 'deutschland' ? 'Welches Bundesland?' : 'Welches Land?'; out.icon = '🗺️'; }
   else if (q.kind === 'match') { out.label = 'Zuordnung'; out.icon = '🔗'; }
@@ -804,7 +810,8 @@ function openingInfo(questions) {
     ['estimate', '🔢', 'Schätzfragen', q => q.kind === 'estimate' && !q.image && !q.video && !q.audio && !q.spotify],
     ['match', '🔗', 'Zuordnung', q => q.kind === 'match' && !q.video && !q.audio && !q.spotify],
     ['tf', '⚖️', 'Richtig oder falsch', q => q.kind === 'tf' && !q.video && !q.audio && !q.spotify],
-    ['pin', '📍', 'Wo liegt das?', q => q.kind === 'pin'],
+    ['pin', '📍', 'Wo liegt das?', q => q.kind === 'pin' && !q.naechster],
+    ['naechster', '🎯', 'Wer kommt am nächsten ran?', q => q.kind === 'pin' && q.naechster],
     ['land', '🗺️', 'Länder auf der Karte', q => q.kind === 'land'],
     ['video', '👀', 'Seh-Test', q => q.video],
     ['audio', '🎧', 'Soundcheck', q => q.audio],
@@ -986,6 +993,17 @@ function scoreQuestion() {
       p.score += gain;
       state.results[p.id] = { gain, correct: closest, exact: diff === 0, answered: true, value: a.value, outOfRange: !inRange(diff) };
     }
+  } else if (q.kind === 'pin' && q.naechster) {
+    // Wer kommt am nächsten ran?: Punkte nach Entfernung (bis 800, ab "range" nichts), der Nächste +200 (Gleichstand: alle Gleichnahen)
+    const near = pinNaechste(list, q);
+    for (const p of list) {
+      const a = state.answers[p.id];
+      if (!a) { streakBonus(p, false); state.results[p.id] = { gain: 0, correct: false, answered: false }; continue; }
+      const d = kmBetween(a.pos, q.target), closest = near(d);
+      const gain = round10(800 * Math.max(0, 1 - d / q.range)) + (closest ? 200 : 0) + streakBonus(p, closest);
+      p.score += gain;
+      state.results[p.id] = { gain, correct: closest, answered: true, km: Math.round(d * 10) / 10, outOfRange: d > q.range };
+    }
   } else if (q.kind === 'pin') {
     // Im Radius = richtig: 700–1000 Punkte (je näher, desto mehr). Außerhalb Teilpunkte bis "range" (bis 600), dann nichts.
     for (const p of list) {
@@ -1050,6 +1068,16 @@ function applyRisk(streaks) {
   }
 }
 
+// „Wer kommt am nächsten ran?“: Prüffunktion für „ist am nächsten dran“. Gleich nah ist, wer höchstens 3 % (mindestens 1 km)
+// weiter weg ist als der Beste – zwei Pins liegen sonst praktisch nie exakt gleich weit weg.
+const NAECHSTER_GLEICH = 0.03;
+function pinNaechste(list, q) {
+  const ds = list.map(p => state.answers[p.id]).filter(Boolean).map(a => kmBetween(a.pos, q.target));
+  if (!ds.length) return () => false;
+  const best = Math.min(...ds), grenze = Math.max(best * (1 + NAECHSTER_GLEICH), best + 1);
+  return d => d <= grenze;
+}
+
 // Alternative Wertung: richtige Antwort = so viele Punkte wie die Schwierigkeit (1–3).
 // Zuordnung: jedes richtige Paar 1 Punkt. Schätzfrage: wer am nächsten dran ist (bei Toleranz nur innerhalb).
 function scoreByLevel(q) {
@@ -1065,6 +1093,16 @@ function scoreByLevel(q) {
       const gain = closest ? lv : 0;
       p.score += gain;
       state.results[p.id] = { gain, correct: closest, exact: diff === 0, answered: true, value: a.value, outOfRange: !inRange(diff) };
+    }
+  } else if (q.kind === 'pin' && q.naechster) {
+    // Wer kommt am nächsten ran?: nur der Nächste bekommt die Punkte der Schwierigkeit (Gleichstand: alle Gleichnahen)
+    const near = pinNaechste(list, q);
+    for (const p of list) {
+      const a = state.answers[p.id];
+      if (!a) { state.results[p.id] = { gain: 0, correct: false, answered: false }; continue; }
+      const d = kmBetween(a.pos, q.target), closest = near(d), gain = closest ? lv : 0;
+      p.score += gain;
+      state.results[p.id] = { gain, correct: closest, answered: true, km: Math.round(d * 10) / 10, outOfRange: d > q.range };
     }
   } else if (q.kind === 'pin') {
     // Im Radius = richtig = Punkte der Schwierigkeit
@@ -1335,7 +1373,7 @@ function baseView() {
       if (q.kind === 'tf') vq.statements = q.statements;
       if (q.kind === 'estimate') { vq.unit = q.unit; vq.year = q.year; vq.tolerance = q.tolerance; vq.show = q.show; }
       if (q.kind === 'pin' || q.kind === 'land') vq.map = q.map;
-      if (q.kind === 'pin') { vq.range = q.range; vq.radius = q.radius; }
+      if (q.kind === 'pin') { vq.range = q.range; vq.radius = q.radius; vq.naechster = !!q.naechster; }
     }
     if (ph === 'votes' || ph === 'reveal') {
       const byTime = Object.entries(state.answers).sort((a, b) => a[1].at - b[1].at);
@@ -1391,7 +1429,7 @@ let anleitung = null;   // { folien, id (aktuelle Folie), tries: { folienId: { s
 function gameFeatures() {
   const f = new Set(), qs = settings.blocks.flatMap(blockPool);
   for (const q of qs) {
-    f.add(q.kind);
+    f.add(q.kind === 'pin' && q.naechster ? 'naechster' : q.kind);
     if (q.image && !q.flash) f.add('image');
     if (q.flash) f.add('flash');
     if (q.audio) f.add('audio');
@@ -1493,7 +1531,7 @@ function hostSolution() {
   if (q.brand) out.brand = q.brand;
   if (q.kind === 'choice') { out.answers = q.answers; out.correct = q.correct; }
   if (q.kind === 'estimate') { out.value = q.value; out.unit = q.unit; out.year = q.year; out.tolerance = q.tolerance; }
-  if (q.kind === 'pin') { out.solution = (q.name || 'Ort') + ` (${q.target[0].toFixed(2)}, ${q.target[1].toFixed(2)}) – richtig bis ${q.radius} km`; }
+  if (q.kind === 'pin') { out.solution = (q.name || 'Ort') + ` (${q.target[0].toFixed(2)}, ${q.target[1].toFixed(2)}) – ` + (q.naechster ? 'wer am nächsten dran ist, gewinnt' : `richtig bis ${q.radius} km`); }
   if (q.kind === 'land') out.solution = q.name;
   if (q.kind === 'match') out.pairs = q.left.map((l, i) => [l, q.right[q.solution[i]]]);
   if (q.kind === 'tf') out.items = q.statements.map((t, i) => [t, q.truths[i]]);
